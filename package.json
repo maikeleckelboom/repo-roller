@@ -1,0 +1,11 @@
+{
+  "name": "repo-roller",
+  "module": "src/index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^24.10.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
