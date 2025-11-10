@@ -1,11 +1,38 @@
 {
   "name": "repo-roller",
-  "module": "src/index.ts",
+  "version": "1.0.0",
+  "description": "Aggregate source code into a single Markdown file",
   "type": "module",
-  "devDependencies": {
-    "@types/node": "^24.10.0"
+  "bin": {
+    "repo-roller": "./dist/cli.js"
   },
-  "peerDependencies": {
+  "main": "./dist/cli.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "keywords": [
+    "cli",
+    "source-code",
+    "aggregator",
+    "markdown",
+    "documentation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^7.2.0",
+    "commander": "^12.1.0",
+    "fast-glob": "^3.3.3",
+    "ignore": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3"
   }
 }
