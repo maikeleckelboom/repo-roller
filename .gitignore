@@ -6,6 +6,7 @@ out
 dist
 *.tgz
 test-output.md
+test.md
 source_code.md
 
 # code coverage
