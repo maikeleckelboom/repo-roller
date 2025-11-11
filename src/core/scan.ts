@@ -42,10 +42,88 @@ async function isBinaryFile(path: string): Promise<boolean> {
 }
 
 /**
+ * Default blacklist of common dev artifacts that should always be ignored
+ */
+const DEFAULT_IGNORE_PATTERNS = [
+  // Version control
+  '.git',
+
+  // Dependencies
+  'node_modules',
+
+  // Lock files
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'bun.lockb',
+  'composer.lock',
+  'Gemfile.lock',
+  'poetry.lock',
+  'Cargo.lock',
+  'go.sum',
+  'Pipfile.lock',
+
+  // Build outputs
+  'dist',
+  'build',
+  'out',
+  '.next',
+  '.nuxt',
+  '.output',
+  '.vercel',
+  '.netlify',
+
+  // Cache directories
+  '.cache',
+  '.parcel-cache',
+  '.turbo',
+  '.swc',
+  '.webpack',
+  '.vite',
+
+  // Coverage and test outputs
+  'coverage',
+  '.nyc_output',
+  '.jest',
+
+  // Environment files
+  '.env',
+  '.env.local',
+  '.env.*.local',
+
+  // IDE/Editor files
+  '.vscode',
+  '.idea',
+  '*.swp',
+  '*.swo',
+  '*~',
+  '.DS_Store',
+
+  // Logs
+  '*.log',
+  'logs',
+  'npm-debug.log*',
+  'yarn-debug.log*',
+  'yarn-error.log*',
+
+  // Temporary files
+  '*.tmp',
+  'tmp',
+  'temp',
+
+  // System files
+  'Thumbs.db',
+  'desktop.ini',
+];
+
+/**
  * Load .gitignore patterns from a directory
  */
 async function loadGitignore(dir: string): Promise<Ignore> {
   const ig = createIgnore();
+
+  // Add default blacklist patterns first
+  ig.add(DEFAULT_IGNORE_PATTERNS);
 
   try {
     const gitignorePath = join(dir, '.gitignore');
@@ -54,10 +132,6 @@ async function loadGitignore(dir: string): Promise<Ignore> {
   } catch {
     // No .gitignore file, that's okay
   }
-
-  // Always ignore .git directory (if not already in .gitignore)
-  // The ignore package follows gitignore rules - no trailing slash needed
-  ig.add('.git');
 
   return ig;
 }
