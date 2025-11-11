@@ -35,6 +35,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   }
 
   // File selection using Ink TUI
+  let inkExitPromise: Promise<void> | undefined;
   const selectedPaths = await new Promise<string[]>((resolve) => {
     const { waitUntilExit } = render(
       React.createElement(App, {
@@ -45,10 +46,15 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       })
     );
 
-    waitUntilExit().catch(() => {
-      resolve([]);
+    inkExitPromise = waitUntilExit().catch(() => {
+      // Ignore exit errors
     });
   });
+
+  // Wait for Ink to fully exit before continuing
+  if (inkExitPromise) {
+    await inkExitPromise;
+  }
 
   // Small delay to allow terminal to settle after Ink exit
   await new Promise((resolve) => setTimeout(resolve, 100));
