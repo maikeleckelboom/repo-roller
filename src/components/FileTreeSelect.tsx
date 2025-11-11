@@ -91,13 +91,60 @@ function buildTree(files: readonly FileInfo[]): Tree {
   };
 }
 
+/**
+ * Get all file paths under a directory path
+ */
+function getFilesUnderPath(files: readonly FileInfo[], dirPath: string): string[] {
+  // Normalize directory path
+  const normalizedDir = dirPath.endsWith('/') ? dirPath : dirPath + '/';
+
+  return files
+    .filter((f) => f.relativePath.startsWith(normalizedDir) || f.relativePath === dirPath)
+    .map((f) => f.relativePath);
+}
+
+/**
+ * Build a map of all paths (including directories) to their descendant file paths
+ */
+function buildPathToFilesMap(files: readonly FileInfo[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  // Add each file to itself
+  for (const file of files) {
+    map.set(file.relativePath, [file.relativePath]);
+  }
+
+  // Add all parent directories and their descendant files
+  const dirPaths = new Set<string>();
+  for (const file of files) {
+    const parts = file.relativePath.split('/');
+    for (let i = 0; i < parts.length; i++) {
+      const dirPath = parts.slice(0, i + 1).join('/');
+      dirPaths.add(dirPath);
+    }
+  }
+
+  for (const dirPath of dirPaths) {
+    const filesInDir = getFilesUnderPath(files, dirPath);
+    if (filesInDir.length > 0) {
+      map.set(dirPath, filesInDir);
+    }
+  }
+
+  return map;
+}
+
 export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplete }) => {
   const [selectedPaths, setSelectedPaths] = useState<string[]>(
     files.map((f) => f.relativePath)
   );
+  const [previousPaths, setPreviousPaths] = useState<Set<string>>(
+    new Set(files.map((f) => f.relativePath))
+  );
   const { exit } = useApp();
 
   const tree = buildTree(files);
+  const pathToFilesMap = buildPathToFilesMap(files);
 
   useInput((input) => {
     if (input === 'q') {
@@ -107,13 +154,46 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
   });
 
   const handleSelect = (paths: string[]) => {
-    setSelectedPaths(paths);
-    onComplete(paths);
+    // Filter to only actual file paths
+    const filePaths = paths.filter((p) => files.some((f) => f.relativePath === p));
+    setSelectedPaths(filePaths);
+    onComplete(filePaths);
     exit();
   };
 
   const handleChange = (_activePath: string, paths: string[]) => {
-    setSelectedPaths(paths);
+    const currentSet = new Set(paths);
+    const prevSet = previousPaths;
+
+    // Find what was added or removed
+    const added = paths.filter((p) => !prevSet.has(p));
+    const removed = Array.from(prevSet).filter((p) => !currentSet.has(p));
+
+    let finalPaths = new Set(selectedPaths);
+
+    // Handle additions (including directory toggles)
+    for (const path of added) {
+      const descendantFiles = pathToFilesMap.get(path) || [path];
+      for (const filePath of descendantFiles) {
+        finalPaths.add(filePath);
+      }
+    }
+
+    // Handle removals (including directory toggles)
+    for (const path of removed) {
+      const descendantFiles = pathToFilesMap.get(path) || [path];
+      for (const filePath of descendantFiles) {
+        finalPaths.delete(filePath);
+      }
+    }
+
+    // Filter to only actual file paths
+    const filePathsOnly = Array.from(finalPaths).filter((p) =>
+      files.some((f) => f.relativePath === p)
+    );
+
+    setSelectedPaths(filePathsOnly);
+    setPreviousPaths(currentSet);
   };
 
   return (

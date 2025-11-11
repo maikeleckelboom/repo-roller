@@ -50,6 +50,9 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     });
   });
 
+  // Small delay to allow terminal to settle after Ink exit
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   if (selectedPaths.length === 0) {
     console.log('No files selected. Exiting.');
     return;
