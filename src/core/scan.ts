@@ -55,9 +55,9 @@ async function loadGitignore(dir: string): Promise<Ignore> {
     // No .gitignore file, that's okay
   }
 
-  // Always ignore common directories (these patterns match at any depth)
-  ig.add('.git/');
-  ig.add('node_modules/');
+  // Always ignore .git directory (if not already in .gitignore)
+  // The ignore package follows gitignore rules - no trailing slash needed
+  ig.add('.git');
 
   return ig;
 }
@@ -116,19 +116,24 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
   // Build glob patterns
   const patterns = include.length > 0 ? [...include] : ['**/*'];
 
-  // Find all files
+  // Find all files - fast-glob doesn't natively support .gitignore, so we:
+  // 1. Use explicit ignore patterns to avoid traversing common ignored directories
+  // 2. Then filter results through the ignore package for .gitignore patterns
   const allPaths = await fg(patterns, {
     cwd: root,
-    ignore: [...exclude],
-    gitignore: true,
+    ignore: [
+      ...exclude,
+      '**/.git/**',
+      '**/.git',
+      '**/node_modules/**',
+      '**/node_modules',
+    ],
     absolute: false,
     dot: true,
     onlyFiles: true,
   });
 
-  // Filter through additional ignore patterns (belt and suspenders approach)
-  // The gitignore:true option above handles .gitignore files, but we also
-  // apply manual filtering to catch edge cases and custom patterns
+  // Filter through gitignore patterns loaded from .gitignore file
   const allowedPaths = allPaths.filter((path: string) => !ig.ignores(path));
 
   // Process each file
