@@ -55,9 +55,9 @@ async function loadGitignore(dir: string): Promise<Ignore> {
     // No .gitignore file, that's okay
   }
 
-  // Always ignore .git directory
-  ig.add('.git');
-  ig.add('node_modules');
+  // Always ignore common directories (these patterns match at any depth)
+  ig.add('.git/');
+  ig.add('node_modules/');
 
   return ig;
 }
@@ -119,13 +119,16 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
   // Find all files
   const allPaths = await fg(patterns, {
     cwd: root,
-    ignore: [...exclude, '**/.git/**', '**/node_modules/**'],
+    ignore: [...exclude],
+    gitignore: true,
     absolute: false,
     dot: true,
     onlyFiles: true,
   });
 
-  // Filter through gitignore
+  // Filter through additional ignore patterns (belt and suspenders approach)
+  // The gitignore:true option above handles .gitignore files, but we also
+  // apply manual filtering to catch edge cases and custom patterns
   const allowedPaths = allPaths.filter((path: string) => !ig.ignores(path));
 
   // Process each file
