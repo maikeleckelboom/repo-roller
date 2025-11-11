@@ -87,7 +87,7 @@ describe('scanFiles - gitignore handling', () => {
 
     // Should only include index.ts, not .git files
     expect(result.files.length).toBe(1);
-    expect(result.files[0].relativePath).toBe('index.ts');
+    expect(result.files[0]?.relativePath).toBe('index.ts');
     expect(result.files.some(f => f.relativePath.includes('.git'))).toBe(false);
   });
 

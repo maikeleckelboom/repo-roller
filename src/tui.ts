@@ -1,8 +1,11 @@
 import { writeFile } from 'node:fs/promises';
-import { checkbox, confirm, input, select } from '@inquirer/prompts';
+import { confirm } from '@inquirer/prompts';
+import { render } from 'ink';
+import React from 'react';
 import type { ResolvedOptions, FileInfo } from './core/types.js';
 import { scanFiles } from './core/scan.js';
 import { renderMarkdown } from './core/render.js';
+import { App } from './components/App.js';
 
 /**
  * Format bytes to human-readable string
@@ -13,26 +16,6 @@ function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-}
-
-/**
- * Group files by directory for better display
- */
-function groupFilesByDirectory(files: readonly FileInfo[]): Map<string, FileInfo[]> {
-  const groups = new Map<string, FileInfo[]>();
-
-  for (const file of files) {
-    const parts = file.relativePath.split('/');
-    const dir = parts.length > 1 ? parts.slice(0, -1).join('/') : '.';
-
-    if (!groups.has(dir)) {
-      groups.set(dir, []);
-    }
-
-    groups.get(dir)!.push(file);
-  }
-
-  return groups;
 }
 
 /**
@@ -51,34 +34,20 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     return;
   }
 
-  // File selection
-  const grouped = groupFilesByDirectory(scan.files);
-  const choices: Array<{ name: string; value: string; checked?: boolean }> = [];
+  // File selection using Ink TUI
+  const selectedPaths = await new Promise<string[]>((resolve) => {
+    const { waitUntilExit } = render(
+      React.createElement(App, {
+        files: scan.files,
+        onComplete: (paths: string[]) => {
+          resolve(paths);
+        },
+      })
+    );
 
-  for (const [dir, files] of Array.from(grouped.entries()).sort()) {
-    // Add directory separator
-    choices.push({
-      name: `\n📁 ${dir}`,
-      value: `__dir__${dir}`,
-      checked: false,
+    waitUntilExit().catch(() => {
+      resolve([]);
     });
-
-    // Add files in this directory
-    for (const file of files) {
-      const fileName = file.relativePath.split('/').pop() ?? file.relativePath;
-      const size = formatBytes(file.sizeBytes);
-      choices.push({
-        name: `   ${fileName} (${size})`,
-        value: file.relativePath,
-        checked: true,
-      });
-    }
-  }
-
-  const selectedPaths = await checkbox({
-    message: 'Select files to include:',
-    choices: choices.filter((c) => !c.value.startsWith('__dir__')),
-    pageSize: 15,
   });
 
   if (selectedPaths.length === 0) {

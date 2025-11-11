@@ -6,6 +6,9 @@
     "module": "Node16",
     "moduleDetection": "force",
     "allowJs": true,
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment",
 
     // Module resolution for Node.js
     "moduleResolution": "Node16",
