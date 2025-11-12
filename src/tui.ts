@@ -27,7 +27,8 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   // Initial scan
   console.log(`🔍 Scanning files in ${options.root}...`);
   let scan = await scanFiles(options);
-  console.log(`✅ Found ${scan.files.length} files (${formatBytes(scan.totalBytes)})\n`);
+  const defaultIncludedCount = scan.files.filter(f => f.isDefaultIncluded).length;
+  console.log(`✅ Found ${scan.files.length} files (${defaultIncludedCount} pre-selected, ${formatBytes(scan.totalBytes)})\n`);
 
   if (scan.files.length === 0) {
     console.log('No files found matching the criteria.');

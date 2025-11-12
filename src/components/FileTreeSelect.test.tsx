@@ -14,6 +14,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 100,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
       ];
 
@@ -30,6 +31,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 100,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
         {
           absolutePath: '/test/src/nested/file2.ts',
@@ -37,6 +39,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 200,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
       ];
 
@@ -51,6 +54,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 100,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
         {
           absolutePath: '/test/lib/file2.ts',
@@ -58,6 +62,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 200,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
       ];
 
@@ -110,6 +115,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 100,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
       ];
 
@@ -125,9 +131,10 @@ describe('FileTreeSelect', () => {
   });
 
   describe('initial selection state', () => {
-    it('should pre-select all files passed to the component', () => {
-      // Files are already filtered by scanFiles based on defaults, presets, and gitignore
-      // So they should all be pre-selected in the interactive UI
+    it('should pre-select only files with isDefaultIncluded: true', () => {
+      // In interactive mode, scanFiles returns ALL files (including excluded/ignored ones)
+      // but marks them with isDefaultIncluded flag
+      // Only files with isDefaultIncluded: true should be pre-selected
       const mockFiles: FileInfo[] = [
         {
           absolutePath: '/test/file1.ts',
@@ -135,6 +142,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 100,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
         {
           absolutePath: '/test/file2.ts',
@@ -142,6 +150,7 @@ describe('FileTreeSelect', () => {
           sizeBytes: 200,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
         {
           absolutePath: '/test/src/file3.ts',
@@ -149,12 +158,14 @@ describe('FileTreeSelect', () => {
           sizeBytes: 300,
           extension: 'ts',
           isBinary: false,
+          isDefaultIncluded: true,
         },
       ];
 
-      // When the component initializes, all files should be in the selected set
-      // This is because scanFiles already filtered based on blacklist, gitignore, and presets
-      const expectedSelection = new Set(mockFiles.map(f => f.relativePath));
+      // When the component initializes, only files with isDefaultIncluded: true should be selected
+      const expectedSelection = new Set(
+        mockFiles.filter(f => f.isDefaultIncluded).map(f => f.relativePath)
+      );
 
       expect(expectedSelection.size).toBe(3);
       expect(expectedSelection.has('file1.ts')).toBe(true);
