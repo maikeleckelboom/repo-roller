@@ -37,7 +37,7 @@ async function main(): Promise<void> {
     .version('1.0.0')
     .argument('[root]', 'Root directory to scan', '.')
     // Output options
-    .option('-o, --out <file>', 'Output file path (use "auto" for smart naming)')
+    .option('-o, --out <file>', 'Output file path (default: auto-generated {project}-{date}.{ext})')
     .option('--out-template <template>', 'Output filename template (e.g., "{project}-{date}.{ext}")')
     .option('-f, --format <type>', 'Output format: md, json, yaml, txt (default: md)')
     // Filter options

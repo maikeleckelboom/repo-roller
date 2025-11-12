@@ -14,19 +14,6 @@ import type {
 import { getBuiltInPreset } from './builtInPresets.js';
 
 /**
- * Get default output filename for a given format (legacy)
- */
-function getDefaultOutputFile(format: OutputFormat): string {
-  const formatExtensions: Record<OutputFormat, string> = {
-    md: 'source_code.md',
-    json: 'source_code.json',
-    yaml: 'source_code.yaml',
-    txt: 'source_code.txt',
-  };
-  return formatExtensions[format];
-}
-
-/**
  * Generate contextual output filename with smart naming
  */
 function generateSmartOutputFile(
@@ -254,14 +241,12 @@ export function resolveOptions(
 
   // Handle output file naming
   let outFile: string;
-  if (cli.out === 'auto') {
-    // Use smart naming
-    outFile = generateSmartOutputFile(root, format, profile, cli.outTemplate);
-  } else if (cli.out) {
+  if (cli.out) {
+    // User explicitly specified output file
     outFile = cli.out;
   } else {
-    // Legacy default naming
-    outFile = getDefaultOutputFile(format);
+    // Default to smart naming (project-date.ext)
+    outFile = generateSmartOutputFile(root, format, profile, cli.outTemplate);
   }
 
   // Handle language shortcuts

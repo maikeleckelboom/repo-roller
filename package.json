@@ -17,7 +17,7 @@
     "interactive": "tsx src/cli.ts --interactive",
     "ui": "tsx src/cli.ts --interactive",
     "quick": "tsx src/cli.ts",
-    "snapshot": "tsx src/cli.ts --preset llm --out auto",
+    "snapshot": "tsx src/cli.ts --preset llm",
     "docs": "tsx src/cli.ts --preset docs -o docs.md",
     "preview": "tsx src/cli.ts --dry-run",
     "stats": "tsx src/cli.ts --stats-only",

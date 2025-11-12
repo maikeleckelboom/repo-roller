@@ -137,8 +137,8 @@ export function displayExamples(): void {
   console.log('TypeScript project for LLM:');
   console.log('  repo-roller . --preset llm --lang typescript\n');
 
-  console.log('Smart output naming:');
-  console.log('  repo-roller . --out auto\n');
+  console.log('Custom output filename:');
+  console.log('  repo-roller . --out my-custom-name.md\n');
 
   console.log('Preview without generating:');
   console.log('  repo-roller . --dry-run\n');
