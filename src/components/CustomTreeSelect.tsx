@@ -152,8 +152,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     return initial;
   });
 
-  // Track which files are selected
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Track which files are selected - initialize with all files since they've already been filtered
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    return new Set(files.map(f => f.relativePath));
+  });
 
   // Current cursor position
   const [cursor, setCursor] = useState(0);
