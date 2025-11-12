@@ -35,7 +35,8 @@ function generateSmartOutputFile(
   profile: string,
   template?: string
 ): string {
-  const timestamp = new Date().toISOString().split('T')[0]; // 2025-11-12
+  // Use slice instead of split to avoid TypeScript type issues
+  const timestamp = new Date().toISOString().slice(0, 10); // 2025-11-12
 
   // Try to get project name from directory
   const projectName = basename(root) || 'code';
