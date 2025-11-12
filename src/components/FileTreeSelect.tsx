@@ -135,18 +135,16 @@ function buildPathToFilesMap(files: readonly FileInfo[]): Map<string, string[]> 
 }
 
 export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplete }) => {
-  // Start with all files selected in our state
-  const [selectedPaths, setSelectedPaths] = useState<string[]>(
-    files.map((f) => f.relativePath)
-  );
-  // Track the tree component's internal state - starts empty because library doesn't support initial selection
-  const [previousTreePaths, setPreviousTreePaths] = useState<Set<string>>(
-    new Set()
-  );
-  const { exit } = useApp();
-
   const tree = buildTree(files);
   const pathToFilesMap = buildPathToFilesMap(files);
+
+  // Start with no files selected (matches tree component's initial empty state)
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+
+  // Track the tree component's internal state - starts empty
+  const [previousTreePaths, setPreviousTreePaths] = useState<Set<string>>(new Set());
+
+  const { exit } = useApp();
 
   useInput((input) => {
     if (input === 'q' || input === 'Q') {
@@ -156,11 +154,9 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
     }
   });
 
-  const handleSelect = (paths: string[]) => {
-    // Filter to only actual file paths
-    const filePaths = paths.filter((p) => files.some((f) => f.relativePath === p));
-    setSelectedPaths(filePaths);
-    onComplete(filePaths);
+  const handleSelect = () => {
+    // Use the current selectedPaths state which has been correctly maintained by handleChange
+    onComplete(selectedPaths);
     exit();
   };
 
@@ -208,7 +204,7 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
           📁 File Selection
         </Text>
         <Text dimColor>
-          All files are pre-selected. Uncheck items to exclude them.
+          Select the files you want to include in the output.
         </Text>
         <Text dimColor>
           Space: toggle | Enter: confirm | Q: cancel
