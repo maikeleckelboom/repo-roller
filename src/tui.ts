@@ -123,6 +123,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   }
 
   // Update options with user selections
+  // Note: format is preserved from original options
   const updatedOptions: ResolvedOptions = {
     ...options,
     stripComments,
@@ -130,8 +131,9 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     withStats,
   };
 
-  // Generate output
-  const formatLabel = options.format.toUpperCase();
+  // Generate output using the format-aware render function
+  // This dispatches to the correct renderer based on options.format (md, json, yaml, txt)
+  const formatLabel = updatedOptions.format.toUpperCase();
   console.log(`\n📝 Rendering ${formatLabel} output...`);
   const output = await renderOutput(scan, updatedOptions);
 

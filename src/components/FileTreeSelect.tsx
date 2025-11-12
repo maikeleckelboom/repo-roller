@@ -135,11 +135,13 @@ function buildPathToFilesMap(files: readonly FileInfo[]): Map<string, string[]> 
 }
 
 export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplete }) => {
+  // Start with all files selected in our state
   const [selectedPaths, setSelectedPaths] = useState<string[]>(
     files.map((f) => f.relativePath)
   );
-  const [previousPaths, setPreviousPaths] = useState<Set<string>>(
-    new Set(files.map((f) => f.relativePath))
+  // Track the tree component's internal state - starts empty because library doesn't support initial selection
+  const [previousTreePaths, setPreviousTreePaths] = useState<Set<string>>(
+    new Set()
   );
   const { exit } = useApp();
 
@@ -163,16 +165,18 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
   };
 
   const handleChange = (_activePath: string, paths: string[]) => {
-    const currentSet = new Set(paths);
-    const prevSet = previousPaths;
+    // paths: current checked items from the tree component
+    // previousTreePaths: what was checked in the tree before
+    const currentTreeSet = new Set(paths);
+    const prevTreeSet = previousTreePaths;
 
-    // Find what was added or removed
-    const added = paths.filter((p) => !prevSet.has(p));
-    const removed = Array.from(prevSet).filter((p) => !currentSet.has(p));
+    // Find what was added or removed in the tree UI
+    const added = paths.filter((p) => !prevTreeSet.has(p));
+    const removed = Array.from(prevTreeSet).filter((p) => !currentTreeSet.has(p));
 
     let finalPaths = new Set(selectedPaths);
 
-    // Handle additions (including directory toggles)
+    // Handle additions: when a path is checked, add it and all descendant files
     for (const path of added) {
       const descendantFiles = pathToFilesMap.get(path) || [path];
       for (const filePath of descendantFiles) {
@@ -180,7 +184,7 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
       }
     }
 
-    // Handle removals (including directory toggles)
+    // Handle removals: when a path is unchecked, remove it and all descendant files
     for (const path of removed) {
       const descendantFiles = pathToFilesMap.get(path) || [path];
       for (const filePath of descendantFiles) {
@@ -188,20 +192,26 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
       }
     }
 
-    // Filter to only actual file paths
+    // Filter to only actual file paths (exclude directory paths)
     const filePathsOnly = Array.from(finalPaths).filter((p) =>
       files.some((f) => f.relativePath === p)
     );
 
     setSelectedPaths(filePathsOnly);
-    setPreviousPaths(currentSet);
+    setPreviousTreePaths(currentTreeSet);
   };
 
   return (
     <Box flexDirection="column">
-      <Box marginBottom={1}>
+      <Box marginBottom={1} flexDirection="column">
         <Text bold color="cyan">
-          Select files to include (Space to toggle, Enter to confirm, Q to quit)
+          📁 File Selection
+        </Text>
+        <Text dimColor>
+          All files are pre-selected. Uncheck items to exclude them.
+        </Text>
+        <Text dimColor>
+          Space: toggle | Enter: confirm | Q: cancel
         </Text>
       </Box>
 
@@ -212,8 +222,8 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
       />
 
       <Box marginTop={1}>
-        <Text dimColor>
-          {selectedPaths.length} / {files.length} files selected
+        <Text bold color="green">
+          ✓ {selectedPaths.length} / {files.length} files selected
         </Text>
       </Box>
     </Box>
