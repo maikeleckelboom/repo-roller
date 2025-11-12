@@ -13,6 +13,19 @@ import type {
 } from './types.js';
 
 /**
+ * Get default output filename for a given format
+ */
+function getDefaultOutputFile(format: OutputFormat): string {
+  const formatExtensions: Record<OutputFormat, string> = {
+    md: 'source_code.md',
+    json: 'source_code.json',
+    yaml: 'source_code.yaml',
+    txt: 'source_code.txt',
+  };
+  return formatExtensions[format];
+}
+
+/**
  * Default options used as base
  */
 const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'> = {
@@ -160,7 +173,10 @@ export function resolveOptions(
 
   // Apply CLI overrides
   const root = resolve(cli.root ?? config?.root ?? process.cwd());
-  const outFile = cli.out ?? options.outFile;
+  const format = cli.format ?? options.format;
+
+  // If no explicit output file is specified, use default based on format
+  const outFile = cli.out ?? getDefaultOutputFile(format);
 
   // CLI flags override everything
   return {
@@ -179,7 +195,7 @@ export function resolveOptions(
     verbose: cli.verbose ?? options.verbose,
     presetName: cli.preset,
     profile: cli.profile ?? options.profile,
-    format: cli.format ?? options.format,
+    format,
     repoRollerConfig,
   };
 }

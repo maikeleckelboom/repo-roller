@@ -19,7 +19,7 @@ async function main(): Promise<void> {
     .description('Aggregate source code into a single output file with multiple format support')
     .version('1.0.0')
     .argument('[root]', 'Root directory to scan', '.')
-    .option('-o, --out <file>', 'Output file path', 'source_code.md')
+    .option('-o, --out <file>', 'Output file path (defaults based on format: source_code.{md|json|yaml|txt})')
     .option('-i, --include <patterns...>', 'Include glob patterns')
     .option('-x, --exclude <patterns...>', 'Exclude glob patterns')
     .option('--ext <extensions>', 'Comma-separated list of file extensions (e.g., ts,tsx,md)')
