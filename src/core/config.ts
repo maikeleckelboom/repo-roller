@@ -107,9 +107,9 @@ export async function loadConfig(rootDir: string): Promise<RollerConfig | undefi
  * Merge preset options with defaults
  */
 function mergePreset(
-  defaults: Omit<ResolvedOptions, 'root' | 'presetName'>,
+  defaults: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'>,
   preset: RollerPreset | undefined
-): Omit<ResolvedOptions, 'root' | 'presetName'> {
+): Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'> {
   if (!preset) return defaults;
 
   return {
@@ -124,6 +124,8 @@ function mergePreset(
     sort: preset.sort ?? defaults.sort,
     interactive: defaults.interactive,
     verbose: defaults.verbose,
+    profile: defaults.profile,
+    format: defaults.format,
   };
 }
 

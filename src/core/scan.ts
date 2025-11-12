@@ -191,7 +191,7 @@ function sortByLayout(files: FileInfo[], layout: readonly string[]): FileInfo[] 
 
     for (let i = 0; i < layout.length; i++) {
       const pattern = layout[i];
-      if (minimatch(file.relativePath, pattern)) {
+      if (pattern && minimatch(file.relativePath, pattern)) {
         minPriority = Math.min(minPriority, i);
       }
     }
@@ -291,7 +291,8 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
 
   // Sort files - use profile layout if available, otherwise use sort mode
   let sortedFiles: FileInfo[];
-  const profileLayout = options.repoRollerConfig?.profiles?.[options.profile]?.layout;
+  const activeProfile = options.profile || 'llm-context';
+  const profileLayout = options.repoRollerConfig?.profiles?.[activeProfile]?.layout;
 
   if (profileLayout && profileLayout.length > 0) {
     sortedFiles = sortByLayout(fileInfos, profileLayout);

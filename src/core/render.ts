@@ -1,6 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, basename, sep } from 'node:path';
-import type { ScanResult, RenderOptions } from './types.js';
+import { execSync } from 'node:child_process';
+import yaml from 'js-yaml';
+import type {
+  ScanResult,
+  RenderOptions,
+  OutputFormat,
+  ResolvedOptions,
+  StructuredOutput
+} from './types.js';
 
 /**
  * Format bytes to human-readable string
@@ -16,7 +24,7 @@ function formatBytes(bytes: number): string {
 /**
  * Map file extension to code fence language
  */
-function getLanguage(extension: string): string {
+export function getLanguage(extension: string): string {
   const langMap: Record<string, string> = {
     ts: 'typescript',
     tsx: 'tsx',
@@ -58,6 +66,31 @@ function getLanguage(extension: string): string {
   };
 
   return langMap[extension.toLowerCase()] ?? extension;
+}
+
+/**
+ * Get git repository URL if available
+ */
+function getGitRepositoryUrl(rootPath: string): string | undefined {
+  try {
+    const remoteUrl = execSync('git config --get remote.origin.url', {
+      cwd: rootPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+
+    // Convert SSH URLs to HTTPS
+    if (remoteUrl.startsWith('git@')) {
+      return remoteUrl
+        .replace('git@', 'https://')
+        .replace('.com:', '.com/')
+        .replace('.git', '');
+    }
+
+    return remoteUrl.replace('.git', '');
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -220,7 +253,8 @@ ${extList}
  */
 export async function renderMarkdown(
   scan: ScanResult,
-  opts: RenderOptions
+  opts: RenderOptions,
+  architecturalOverview?: string
 ): Promise<string> {
   const { files, totalBytes, rootPath } = scan;
   const { withTree, withStats, stripComments: shouldStripComments } = opts;
@@ -234,6 +268,17 @@ export async function renderMarkdown(
 ---
 
 `;
+
+  // Add architectural overview if provided
+  if (architecturalOverview) {
+    output += `## 🏗️ Architectural Overview
+
+${architecturalOverview}
+
+---
+
+`;
+  }
 
   // Add tree view if requested
   if (withTree) {
@@ -261,15 +306,19 @@ export async function renderMarkdown(
 
       const language = getLanguage(file.extension);
 
-      output += `### ${file.relativePath}
+      // Inject file path as a comment at the top of the content
+      const filePathComment = `// File: ${file.relativePath}`;
+      const contentWithComment = `${filePathComment}\n\n${content}`;
+
+      output += `### \`${file.relativePath}\`
 
 \`\`\`${language}
-${content}
+${contentWithComment}
 \`\`\`
 
 `;
     } catch (error) {
-      output += `### ${file.relativePath}
+      output += `### \`${file.relativePath}\`
 
 \`\`\`
 [Error reading file: ${error instanceof Error ? error.message : String(error)}]
@@ -280,4 +329,171 @@ ${content}
   }
 
   return output;
+}
+
+/**
+ * Render JSON output from scan results
+ */
+export async function renderJson(
+  scan: ScanResult,
+  options: ResolvedOptions
+): Promise<string> {
+  const { files, rootPath } = scan;
+
+  const structuredData: StructuredOutput = {
+    metadata: {
+      sourceRepository: getGitRepositoryUrl(rootPath),
+      profile: options.profile,
+      timestamp: new Date().toISOString(),
+      fileCount: files.length,
+    },
+    architecturalOverview: options.repoRollerConfig?.architectural_overview,
+    files: await Promise.all(
+      files.map(async (file) => {
+        try {
+          let content = await readFile(file.absolutePath, 'utf-8');
+
+          // Strip comments if requested
+          if (options.stripComments) {
+            content = stripComments(content, file.extension);
+          }
+
+          return {
+            path: file.relativePath,
+            language: getLanguage(file.extension),
+            content,
+          };
+        } catch (error) {
+          return {
+            path: file.relativePath,
+            language: getLanguage(file.extension),
+            content: `[Error reading file: ${error instanceof Error ? error.message : String(error)}]`,
+          };
+        }
+      })
+    ),
+  };
+
+  return JSON.stringify(structuredData, null, 2);
+}
+
+/**
+ * Render YAML output from scan results
+ */
+export async function renderYaml(
+  scan: ScanResult,
+  options: ResolvedOptions
+): Promise<string> {
+  const { files, rootPath } = scan;
+
+  const structuredData: StructuredOutput = {
+    metadata: {
+      sourceRepository: getGitRepositoryUrl(rootPath),
+      profile: options.profile,
+      timestamp: new Date().toISOString(),
+      fileCount: files.length,
+    },
+    architecturalOverview: options.repoRollerConfig?.architectural_overview,
+    files: await Promise.all(
+      files.map(async (file) => {
+        try {
+          let content = await readFile(file.absolutePath, 'utf-8');
+
+          // Strip comments if requested
+          if (options.stripComments) {
+            content = stripComments(content, file.extension);
+          }
+
+          return {
+            path: file.relativePath,
+            language: getLanguage(file.extension),
+            content,
+          };
+        } catch (error) {
+          return {
+            path: file.relativePath,
+            language: getLanguage(file.extension),
+            content: `[Error reading file: ${error instanceof Error ? error.message : String(error)}]`,
+          };
+        }
+      })
+    ),
+  };
+
+  return yaml.dump(structuredData, {
+    lineWidth: -1,
+    noRefs: true,
+  });
+}
+
+/**
+ * Render plain text output from scan results
+ */
+export async function renderTxt(
+  scan: ScanResult,
+  options: ResolvedOptions
+): Promise<string> {
+  const { files } = scan;
+  let output = '';
+
+  for (const file of files) {
+    try {
+      let content = await readFile(file.absolutePath, 'utf-8');
+
+      // Strip comments if requested
+      if (options.stripComments) {
+        content = stripComments(content, file.extension);
+      }
+
+      output += `${'='.repeat(50)}
+File: ${file.relativePath}
+${'='.repeat(50)}
+
+${content}
+
+`;
+    } catch (error) {
+      output += `${'='.repeat(50)}
+File: ${file.relativePath}
+${'='.repeat(50)}
+
+[Error reading file: ${error instanceof Error ? error.message : String(error)}]
+
+`;
+    }
+  }
+
+  return output;
+}
+
+/**
+ * Main render function that dispatches to the appropriate renderer
+ */
+export async function render(
+  scan: ScanResult,
+  options: ResolvedOptions
+): Promise<string> {
+  const { format } = options;
+
+  switch (format) {
+    case 'json':
+      return renderJson(scan, options);
+    case 'yaml':
+      return renderYaml(scan, options);
+    case 'txt':
+      return renderTxt(scan, options);
+    case 'md':
+    default: {
+      const architecturalOverview = options.repoRollerConfig?.architectural_overview;
+      return renderMarkdown(
+        scan,
+        {
+          withTree: options.withTree,
+          withStats: options.withStats,
+          stripComments: options.stripComments,
+        },
+        architecturalOverview
+      );
+    }
+  }
 }
