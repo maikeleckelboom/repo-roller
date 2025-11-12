@@ -147,8 +147,9 @@ export const FileTreeSelect: React.FC<FileTreeSelectProps> = ({ files, onComplet
   const pathToFilesMap = buildPathToFilesMap(files);
 
   useInput((input) => {
-    if (input === 'q') {
-      onComplete(selectedPaths);
+    if (input === 'q' || input === 'Q') {
+      // Quit without selecting any files (cancel)
+      onComplete([]);
       exit();
     }
   });

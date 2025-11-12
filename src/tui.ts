@@ -1,11 +1,11 @@
 import { writeFile } from 'node:fs/promises';
-import { confirm } from '@inquirer/prompts';
 import { render } from 'ink';
 import React from 'react';
 import type { ResolvedOptions, FileInfo } from './core/types.js';
 import { scanFiles } from './core/scan.js';
 import { renderMarkdown } from './core/render.js';
 import { App } from './components/App.js';
+import { Confirm } from './components/Confirm.js';
 
 /**
  * Format bytes to human-readable string
@@ -56,9 +56,6 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     await inkExitPromise;
   }
 
-  // Small delay to allow terminal to settle after Ink exit
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
   if (selectedPaths.length === 0) {
     console.log('No files selected. Exiting.');
     return;
@@ -81,22 +78,32 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     extensionCounts: selectedExtCounts,
   };
 
+  // Helper function to prompt for confirmation using Ink
+  const promptConfirm = async (message: string, defaultValue: boolean): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      const { waitUntilExit } = render(
+        React.createElement(Confirm, {
+          message,
+          defaultValue,
+          onSubmit: (value: boolean) => {
+            resolve(value);
+          },
+        })
+      );
+
+      waitUntilExit().catch(() => {
+        // Ignore exit errors
+      });
+    });
+  };
+
   // Additional options
   console.log('');
-  const stripComments = await confirm({
-    message: 'Strip comments from source files?',
-    default: options.stripComments,
-  });
+  const stripComments = await promptConfirm('Strip comments from source files?', options.stripComments);
 
-  const withTree = await confirm({
-    message: 'Include directory tree view?',
-    default: options.withTree,
-  });
+  const withTree = await promptConfirm('Include directory tree view?', options.withTree);
 
-  const withStats = await confirm({
-    message: 'Include statistics section?',
-    default: options.withStats,
-  });
+  const withStats = await promptConfirm('Include statistics section?', options.withStats);
 
   // Summary and confirmation
   console.log('\n📊 Summary:');
@@ -107,10 +114,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   console.log(`  Include tree: ${withTree ? 'Yes' : 'No'}`);
   console.log(`  Include stats: ${withStats ? 'Yes' : 'No'}`);
 
-  const shouldGenerate = await confirm({
-    message: '\nGenerate markdown file?',
-    default: true,
-  });
+  const shouldGenerate = await promptConfirm('\nGenerate markdown file?', true);
 
   if (!shouldGenerate) {
     console.log('Cancelled.');
