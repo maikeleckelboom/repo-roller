@@ -123,4 +123,43 @@ describe('FileTreeSelect', () => {
       expect(props.files.length).toBe(1);
     });
   });
+
+  describe('initial selection state', () => {
+    it('should pre-select all files passed to the component', () => {
+      // Files are already filtered by scanFiles based on defaults, presets, and gitignore
+      // So they should all be pre-selected in the interactive UI
+      const mockFiles: FileInfo[] = [
+        {
+          absolutePath: '/test/file1.ts',
+          relativePath: 'file1.ts',
+          sizeBytes: 100,
+          extension: 'ts',
+          isBinary: false,
+        },
+        {
+          absolutePath: '/test/file2.ts',
+          relativePath: 'file2.ts',
+          sizeBytes: 200,
+          extension: 'ts',
+          isBinary: false,
+        },
+        {
+          absolutePath: '/test/src/file3.ts',
+          relativePath: 'src/file3.ts',
+          sizeBytes: 300,
+          extension: 'ts',
+          isBinary: false,
+        },
+      ];
+
+      // When the component initializes, all files should be in the selected set
+      // This is because scanFiles already filtered based on blacklist, gitignore, and presets
+      const expectedSelection = new Set(mockFiles.map(f => f.relativePath));
+
+      expect(expectedSelection.size).toBe(3);
+      expect(expectedSelection.has('file1.ts')).toBe(true);
+      expect(expectedSelection.has('file2.ts')).toBe(true);
+      expect(expectedSelection.has('src/file3.ts')).toBe(true);
+    });
+  });
 });
