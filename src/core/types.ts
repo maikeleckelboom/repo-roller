@@ -62,6 +62,7 @@ export interface FileInfo {
   readonly sizeBytes: number;
   readonly extension: string;
   readonly isBinary: boolean;
+  readonly isDefaultIncluded: boolean; // Whether file should be pre-selected in interactive mode
 }
 
 /**

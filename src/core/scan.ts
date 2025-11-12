@@ -216,7 +216,7 @@ function sortByLayout(files: FileInfo[], layout: readonly string[]): FileInfo[] 
  * Scan files in the directory respecting .gitignore and filters
  */
 export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
-  const { root, include, exclude, extensions, maxFileSizeBytes, sort: sortMode } = options;
+  const { root, include, exclude, extensions, maxFileSizeBytes, sort: sortMode, interactive } = options;
 
   // Load gitignore patterns
   const ig = await loadGitignore(root);
@@ -241,14 +241,11 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
     onlyFiles: true,
   });
 
-  // Filter through gitignore patterns loaded from .gitignore file
-  const allowedPaths = allPaths.filter((path: string) => !ig.ignores(path));
-
   // Process each file
   const fileInfos: FileInfo[] = [];
   const extensionCounts: Record<string, number> = {};
 
-  for (const relativePath of allowedPaths) {
+  for (const relativePath of allPaths) {
     const absolutePath = resolve(root, relativePath);
 
     // Get file stats
@@ -259,19 +256,17 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
       continue; // Skip files we can't stat
     }
 
-    // Check size limit
-    if (stats.size > maxFileSizeBytes) {
-      continue;
-    }
-
-    // Check extension filter
-    if (!matchesExtension(relativePath, extensions)) {
-      continue;
-    }
-
     // Check if binary
     const isBinary = await isBinaryFile(absolutePath);
-    if (isBinary) {
+
+    // Determine if file should be included by default
+    const isIgnored = ig.ignores(relativePath);
+    const isSizeExceeded = stats.size > maxFileSizeBytes;
+    const isExtensionFiltered = !matchesExtension(relativePath, extensions);
+    const isDefaultIncluded = !isIgnored && !isSizeExceeded && !isExtensionFiltered && !isBinary;
+
+    // In interactive mode, include all files; in non-interactive mode, only include default files
+    if (!interactive && !isDefaultIncluded) {
       continue;
     }
 
@@ -283,10 +278,13 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
       sizeBytes: stats.size,
       extension: ext,
       isBinary,
+      isDefaultIncluded,
     });
 
-    // Count extensions
-    extensionCounts[ext] = (extensionCounts[ext] ?? 0) + 1;
+    // Count extensions only for default included files
+    if (isDefaultIncluded) {
+      extensionCounts[ext] = (extensionCounts[ext] ?? 0) + 1;
+    }
   }
 
   // Sort files - use profile layout if available, otherwise use sort mode
@@ -300,8 +298,10 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
     sortedFiles = sortFiles(fileInfos, sortMode);
   }
 
-  // Calculate total size
-  const totalBytes = sortedFiles.reduce((sum, file) => sum + file.sizeBytes, 0);
+  // Calculate total size (only for default included files)
+  const totalBytes = sortedFiles
+    .filter(file => file.isDefaultIncluded)
+    .reduce((sum, file) => sum + file.sizeBytes, 0);
 
   return {
     files: sortedFiles,
