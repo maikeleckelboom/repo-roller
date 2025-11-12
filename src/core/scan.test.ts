@@ -30,6 +30,14 @@ describe('scanFiles - gitignore handling', () => {
       profile: 'llm-context',
       format: 'md',
       repoRollerConfig: undefined,
+      // New DX options
+      dryRun: false,
+      statsOnly: false,
+      // Format-specific options
+      compact: false,
+      indent: 2,
+      toc: false,
+      frontMatter: false,
     };
   });
 

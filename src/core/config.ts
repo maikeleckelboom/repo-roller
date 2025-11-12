@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { resolve, join, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 import type {
@@ -11,18 +11,36 @@ import type {
   RepoRollerYmlConfig,
   OutputFormat,
 } from './types.js';
+import { getBuiltInPreset } from './builtInPresets.js';
 
 /**
- * Get default output filename for a given format
+ * Generate contextual output filename with smart naming
  */
-function getDefaultOutputFile(format: OutputFormat): string {
-  const formatExtensions: Record<OutputFormat, string> = {
-    md: 'source_code.md',
-    json: 'source_code.json',
-    yaml: 'source_code.yaml',
-    txt: 'source_code.txt',
-  };
-  return formatExtensions[format];
+function generateSmartOutputFile(
+  root: string,
+  format: OutputFormat,
+  profile: string,
+  template?: string
+): string {
+  // Use slice instead of split to avoid TypeScript type issues
+  const timestamp = new Date().toISOString().slice(0, 10); // 2025-11-12
+
+  // Try to get project name from directory
+  const projectName = basename(root) || 'code';
+
+  // Only add profile suffix if it's not the default
+  const profileSuffix = profile !== 'llm-context' ? `-${profile}` : '';
+
+  if (template) {
+    // Custom template support
+    return template
+      .replace('{project}', projectName)
+      .replace('{profile}', profile)
+      .replace('{date}', timestamp)
+      .replace('{ext}', format);
+  }
+
+  return `${projectName}${profileSuffix}-${timestamp}.${format}`;
 }
 
 /**
@@ -42,6 +60,14 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   verbose: false,
   profile: 'llm-context',
   format: 'md' as OutputFormat,
+  // New DX options
+  dryRun: false,
+  statsOnly: false,
+  // Format-specific options
+  compact: false,
+  indent: 2,
+  toc: false,
+  frontMatter: false,
 } as const;
 
 /**
@@ -139,13 +165,45 @@ function mergePreset(
     verbose: defaults.verbose,
     profile: defaults.profile,
     format: defaults.format,
+    dryRun: defaults.dryRun,
+    statsOnly: defaults.statsOnly,
+    compact: defaults.compact,
+    indent: defaults.indent,
+    toc: defaults.toc,
+    frontMatter: defaults.frontMatter,
   };
 }
 
 /**
+ * Language shortcuts for quick filtering
+ */
+const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
+  typescript: ['ts', 'tsx'],
+  ts: ['ts', 'tsx'],
+  javascript: ['js', 'jsx', 'mjs', 'cjs'],
+  js: ['js', 'jsx', 'mjs', 'cjs'],
+  python: ['py', 'pyi'],
+  py: ['py', 'pyi'],
+  go: ['go'],
+  rust: ['rs'],
+  rs: ['rs'],
+  java: ['java'],
+  cpp: ['cpp', 'cc', 'cxx', 'hpp', 'h'],
+  c: ['c', 'h'],
+  ruby: ['rb'],
+  rb: ['rb'],
+  php: ['php'],
+  swift: ['swift'],
+  kotlin: ['kt', 'kts'],
+  scala: ['scala'],
+  markdown: ['md', 'mdx'],
+  md: ['md', 'mdx'],
+};
+
+/**
  * Resolve and merge all configuration sources:
  * 1. Base defaults
- * 2. Preset from config (if specified)
+ * 2. Preset from config (if specified) - checks built-in presets first
  * 3. CLI overrides
  * 4. RepoRoller YAML config
  */
@@ -157,11 +215,16 @@ export function resolveOptions(
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
 
-  // Apply preset if specified
-  if (cli.preset && config?.presets) {
-    const preset = config.presets[cli.preset];
-    if (preset) {
-      options = mergePreset(options, preset);
+  // Apply preset if specified (check built-in presets first, then config presets)
+  if (cli.preset) {
+    const builtInPreset = getBuiltInPreset(cli.preset);
+    if (builtInPreset) {
+      options = mergePreset(options, builtInPreset);
+    } else if (config?.presets) {
+      const preset = config.presets[cli.preset];
+      if (preset) {
+        options = mergePreset(options, preset);
+      }
     }
   } else if (config?.defaultPreset && config.presets) {
     // Apply default preset if no preset specified but a default exists
@@ -174,17 +237,53 @@ export function resolveOptions(
   // Apply CLI overrides
   const root = resolve(cli.root ?? config?.root ?? process.cwd());
   const format = cli.format ?? options.format;
+  const profile = cli.profile ?? options.profile;
 
-  // If no explicit output file is specified, use default based on format
-  const outFile = cli.out ?? getDefaultOutputFile(format);
+  // Handle output file naming
+  let outFile: string;
+  if (cli.out) {
+    // User explicitly specified output file
+    outFile = cli.out;
+  } else {
+    // Default to smart naming (project-date.ext)
+    outFile = generateSmartOutputFile(root, format, profile, cli.outTemplate);
+  }
+
+  // Handle language shortcuts
+  let extensions = parseExtensions(cli.ext) ?? options.extensions;
+  if (cli.lang) {
+    const langs = cli.lang.split(',').map(l => l.trim());
+    const langExtensions: string[] = [];
+    for (const lang of langs) {
+      const exts = LANGUAGE_EXTENSIONS[lang.toLowerCase()];
+      if (exts) {
+        langExtensions.push(...exts);
+      }
+    }
+    if (langExtensions.length > 0) {
+      extensions = langExtensions;
+    }
+  }
+
+  // Handle quick exclude flags
+  let exclude = cli.exclude ?? options.exclude;
+  if (cli.noTests) {
+    exclude = [...exclude, '**/*.test.*', '**/*.spec.*', '**/__tests__/**'];
+  }
+  if (cli.noDeps) {
+    exclude = [...exclude, '**/node_modules/**', '**/vendor/**', '**/.venv/**', '**/venv/**'];
+  }
+  if (cli.noGenerated) {
+    exclude = [...exclude, '**/dist/**', '**/build/**', '**/out/**', '**/.next/**', '**/target/**'];
+  }
 
   // CLI flags override everything
   return {
     root,
     outFile,
     include: cli.include ?? options.include,
-    exclude: cli.exclude ?? options.exclude,
-    extensions: parseExtensions(cli.ext) ?? options.extensions,
+    exclude,
+    extensions,
     maxFileSizeBytes:
       cli.maxSize !== undefined ? cli.maxSize * 1024 : options.maxFileSizeBytes,
     stripComments: cli.stripComments ?? options.stripComments,
@@ -194,8 +293,16 @@ export function resolveOptions(
     interactive: cli.interactive ?? options.interactive,
     verbose: cli.verbose ?? options.verbose,
     presetName: cli.preset,
-    profile: cli.profile ?? options.profile,
+    profile,
     format,
     repoRollerConfig,
+    // New DX options
+    dryRun: cli.dryRun ?? options.dryRun,
+    statsOnly: cli.statsOnly ?? options.statsOnly,
+    // Format-specific options
+    compact: cli.compact ?? options.compact,
+    indent: cli.indent ?? options.indent,
+    toc: cli.toc ?? options.toc,
+    frontMatter: cli.frontMatter ?? options.frontMatter,
   };
 }
