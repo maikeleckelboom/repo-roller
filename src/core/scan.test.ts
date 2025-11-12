@@ -699,4 +699,70 @@ describe('scanFiles - gitignore handling', () => {
       expect(result.files.some(f => f.relativePath.includes('node_modules'))).toBe(false);
     });
   });
+
+  describe('interactive mode', () => {
+    it('should include all files in interactive mode with isDefaultIncluded flag', async () => {
+      // Create files that would normally be ignored
+      await writeFile(join(testDir, '.env'), 'SECRET=123');
+      await mkdir(join(testDir, 'dist'));
+      await writeFile(join(testDir, 'dist', 'bundle.js'), 'bundled');
+      await writeFile(join(testDir, 'package-lock.json'), '{}');
+
+      // Create files that should be included by default
+      await writeFile(join(testDir, 'index.ts'), 'source code');
+      await writeFile(join(testDir, 'package.json'), '{}');
+
+      const result = await scanFiles({
+        ...defaultOptions,
+        interactive: true,
+      });
+
+      // In interactive mode, all files should be found (except node_modules and .git)
+      expect(result.files.length).toBeGreaterThan(4);
+
+      // Check that ignored files are present but marked as not default included
+      const envFile = result.files.find(f => f.relativePath === '.env');
+      expect(envFile).toBeDefined();
+      expect(envFile?.isDefaultIncluded).toBe(false);
+
+      const distFile = result.files.find(f => f.relativePath === 'dist/bundle.js');
+      expect(distFile).toBeDefined();
+      expect(distFile?.isDefaultIncluded).toBe(false);
+
+      const lockFile = result.files.find(f => f.relativePath === 'package-lock.json');
+      expect(lockFile).toBeDefined();
+      expect(lockFile?.isDefaultIncluded).toBe(false);
+
+      // Check that normal files are marked as default included
+      const indexFile = result.files.find(f => f.relativePath === 'index.ts');
+      expect(indexFile).toBeDefined();
+      expect(indexFile?.isDefaultIncluded).toBe(true);
+
+      const pkgFile = result.files.find(f => f.relativePath === 'package.json');
+      expect(pkgFile).toBeDefined();
+      expect(pkgFile?.isDefaultIncluded).toBe(true);
+    });
+
+    it('should respect exclude patterns but mark files with isDefaultIncluded', async () => {
+      // Create files
+      await writeFile(join(testDir, 'index.ts'), 'source');
+      await writeFile(join(testDir, 'test.ts'), 'test');
+      await writeFile(join(testDir, 'config.json'), '{}');
+
+      const result = await scanFiles({
+        ...defaultOptions,
+        exclude: ['*.json'],
+        interactive: true,
+      });
+
+      // All files should be found in interactive mode
+      const configFile = result.files.find(f => f.relativePath === 'config.json');
+      expect(configFile).toBeDefined();
+      expect(configFile?.isDefaultIncluded).toBe(false); // Excluded by pattern
+
+      const indexFile = result.files.find(f => f.relativePath === 'index.ts');
+      expect(indexFile).toBeDefined();
+      expect(indexFile?.isDefaultIncluded).toBe(true);
+    });
+  });
 });
