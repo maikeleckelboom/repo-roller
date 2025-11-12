@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { join, relative, extname, resolve } from 'node:path';
 import fg from 'fast-glob';
 import ignorePackage from 'ignore';
+import { minimatch } from 'minimatch';
 import type { FileInfo, ResolvedOptions, ScanResult } from './types.js';
 
 // Type workaround for CommonJS default export
@@ -179,6 +180,39 @@ function sortFiles(files: FileInfo[], mode: 'path' | 'size' | 'extension'): File
 }
 
 /**
+ * Sort files according to profile layout patterns
+ */
+function sortByLayout(files: FileInfo[], layout: readonly string[]): FileInfo[] {
+  // Create a map of file paths to their priority based on layout order
+  const priorityMap = new Map<string, number>();
+
+  for (const file of files) {
+    let minPriority = layout.length; // Default to end if no match
+
+    for (let i = 0; i < layout.length; i++) {
+      const pattern = layout[i];
+      if (pattern && minimatch(file.relativePath, pattern)) {
+        minPriority = Math.min(minPriority, i);
+      }
+    }
+
+    priorityMap.set(file.relativePath, minPriority);
+  }
+
+  // Sort by priority, then by path for files with same priority
+  return [...files].sort((a, b) => {
+    const priorityA = priorityMap.get(a.relativePath) ?? layout.length;
+    const priorityB = priorityMap.get(b.relativePath) ?? layout.length;
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+
+    return a.relativePath.localeCompare(b.relativePath);
+  });
+}
+
+/**
  * Scan files in the directory respecting .gitignore and filters
  */
 export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
@@ -255,8 +289,16 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
     extensionCounts[ext] = (extensionCounts[ext] ?? 0) + 1;
   }
 
-  // Sort files
-  const sortedFiles = sortFiles(fileInfos, sortMode);
+  // Sort files - use profile layout if available, otherwise use sort mode
+  let sortedFiles: FileInfo[];
+  const activeProfile = options.profile || 'llm-context';
+  const profileLayout = options.repoRollerConfig?.profiles?.[activeProfile]?.layout;
+
+  if (profileLayout && profileLayout.length > 0) {
+    sortedFiles = sortByLayout(fileInfos, profileLayout);
+  } else {
+    sortedFiles = sortFiles(fileInfos, sortMode);
+  }
 
   // Calculate total size
   const totalBytes = sortedFiles.reduce((sum, file) => sum + file.sizeBytes, 0);

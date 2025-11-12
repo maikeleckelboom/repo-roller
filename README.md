@@ -1,6 +1,6 @@
 # 📦 repo-roller
 
-A CLI tool that aggregates source code from a repository into a single, well-formatted Markdown file. Perfect for sharing codebases with LLMs, creating documentation snapshots, or code reviews.
+A CLI tool that transforms source code repositories into structured, narrative-driven outputs. Go beyond simple aggregation with intelligent context packaging for LLMs, developers, and documentation.
 
 ## ✨ Features
 
@@ -11,6 +11,9 @@ A CLI tool that aggregates source code from a repository into a single, well-for
 - 🔧 **Configurable**: Presets, glob patterns, size limits, and more
 - 🚀 **Fast**: Efficient file scanning with parallel processing
 - 💪 **Type-safe**: Written in strict TypeScript
+- 📝 **Multi-format**: Output as Markdown, JSON, YAML, or plain text
+- 🏗️ **Profiles**: Control narrative structure and file ordering
+- 🎭 **Architectural Overview**: Inject context about your project's structure
 
 ## 🚀 Quick Start
 
@@ -65,6 +68,8 @@ repo-roller [root] [options]
 | `--sort <mode>` | Sort mode: `path`, `size`, or `extension` | `path` |
 | `-I, --interactive` | Force interactive mode | Auto-detect TTY |
 | `--preset <name>` | Use preset from config file | None |
+| `--profile <name>` | Use profile from `.reporoller.yml` | `llm-context` |
+| `-f, --format <type>` | Output format: `md`, `json`, `yaml`, `txt` | `md` |
 | `-v, --verbose` | Verbose output | `false` |
 
 ### Examples
@@ -127,6 +132,138 @@ export default {
 repo-roller . --preset typescript
 ```
 
+## 🏗️ Profiles & .reporoller.yml
+
+Profiles provide intelligent control over narrative structure and file ordering, perfect for tailoring output to different consumers (LLMs, developers, documentation).
+
+### Creating a `.reporoller.yml` File
+
+Create a `.reporoller.yml` in your project root:
+
+```yaml
+# Introductory text injected into the output
+architectural_overview: |
+  repo-roller is a CLI tool written in TypeScript for aggregating source code.
+  The main entry point is `src/cli.ts`, which uses `commander` for argument parsing.
+  Core logic is separated into scanning (`scan.ts`) and rendering (`render.ts`).
+  Interactive mode is handled by `ink` via `tui.ts`.
+
+# Define profiles with custom file layouts
+profiles:
+  llm-context:  # Optimized for LLM comprehension
+    layout:
+      - package.json
+      - .reporoller.yml
+      - 'src/core/types.ts'
+      - 'src/cli.ts'
+      - 'src/core/**/*.ts'
+      - 'src/**/*.tsx'
+
+  human-readable:  # Optimized for human developers
+    layout:
+      - README.md
+      - 'src/cli.ts'
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - '*.test.ts'
+```
+
+### Using Profiles
+
+```bash
+# Use the llm-context profile (default)
+repo-roller . --profile llm-context
+
+# Use a different profile
+repo-roller . --profile human-readable
+
+# Without a .reporoller.yml, falls back to --sort behavior
+repo-roller . --sort path
+```
+
+**How Profiles Work:**
+- The `layout` array defines glob patterns in priority order
+- Files matching earlier patterns appear first in the output
+- Files not matching any pattern appear at the end, sorted alphabetically
+- The `architectural_overview` is injected into Markdown output
+
+## 📝 Multi-Format Output
+
+Generate structured outputs in different formats for various use cases.
+
+### Available Formats
+
+**Markdown (default)** - Rich, human-readable format with sections
+```bash
+repo-roller . --format md -o output.md
+```
+
+**JSON** - Structured data with metadata
+```bash
+repo-roller . --format json -o output.json
+```
+
+Output structure:
+```json
+{
+  "metadata": {
+    "sourceRepository": "https://github.com/user/repo",
+    "profile": "llm-context",
+    "timestamp": "2025-11-12T02:58:00Z",
+    "fileCount": 15
+  },
+  "architecturalOverview": "...",
+  "files": [
+    {
+      "path": "package.json",
+      "language": "json",
+      "content": "{\n  \"name\": \"repo-roller\"\n}"
+    }
+  ]
+}
+```
+
+**YAML** - Human-friendly structured format
+```bash
+repo-roller . --format yaml -o output.yaml
+```
+
+**Plain Text** - Simple, parseable format
+```bash
+repo-roller . --format txt -o output.txt
+```
+
+Output format:
+```
+==================================================
+File: package.json
+==================================================
+
+{
+  "name": "repo-roller"
+}
+
+==================================================
+File: src/cli.ts
+==================================================
+
+#!/usr/bin/env node
+...
+```
+
+### Combining Features
+
+```bash
+# Use a profile with JSON output for LLM processing
+repo-roller . --profile llm-context --format json -o context.json
+
+# Human-readable YAML for documentation
+repo-roller . --profile human-readable --format yaml -o docs.yaml
+
+# Markdown with custom profile and no stats
+repo-roller . --profile core-only --format md --no-stats -o core.md
+```
+
 ## 🎨 Interactive Mode
 
 Interactive mode provides a rich TUI for selecting files and configuring options:
@@ -146,14 +283,15 @@ Interactive mode is automatically enabled when:
 - Not in CI/CD environment
 - Unless explicitly disabled with `--no-interactive`
 
-## 📄 Output Format
+## 📄 Markdown Output Format
 
-The generated Markdown includes:
+When using `--format md` (default), the generated Markdown includes:
 
 1. **Header**: Project metadata (root, file count, total size)
-2. **Directory Tree** (optional): Visual representation of file structure
-3. **Statistics** (optional): Extension counts and size breakdowns
-4. **File Contents**: Each file in a fenced code block with syntax highlighting
+2. **Architectural Overview** (optional): Injected from `.reporoller.yml`
+3. **Directory Tree** (optional): Visual representation of file structure
+4. **Statistics** (optional): Extension counts and size breakdowns
+5. **File Contents**: Each file in a fenced code block with syntax highlighting
 
 Example output structure:
 
@@ -166,6 +304,12 @@ Example output structure:
 
 ---
 
+## 🏗️ Architectural Overview
+
+repo-roller is a CLI tool written in TypeScript...
+
+---
+
 ## 📂 Directory Structure
 ...
 
@@ -174,9 +318,14 @@ Example output structure:
 
 ## 📄 Files
 
-### src/index.ts
+### `src/index.ts`
+
 ```typescript
-// File contents here
+// File: src/index.ts
+
+export function main() {
+  // File contents here
+}
 ```
 
 ## 🤝 Contributing

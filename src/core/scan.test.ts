@@ -27,6 +27,9 @@ describe('scanFiles - gitignore handling', () => {
       interactive: false,
       verbose: false,
       presetName: undefined,
+      profile: 'llm-context',
+      format: 'md',
+      repoRollerConfig: undefined,
     };
   });
 

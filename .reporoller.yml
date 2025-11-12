@@ -1,0 +1,47 @@
+# Configuration for repo-roller intelligent output
+
+architectural_overview: |
+  repo-roller is a CLI tool written in TypeScript for aggregating source code into structured outputs.
+
+  **Architecture:**
+  - Entry point: `src/cli.ts` uses `commander` for argument parsing
+  - Core scanning: `src/core/scan.ts` handles file discovery with gitignore support
+  - Core rendering: `src/core/render.ts` provides modular output formats (MD, JSON, YAML, TXT)
+  - Configuration: `src/core/config.ts` manages presets and .reporoller.yml loading
+  - Type definitions: `src/core/types.ts` contains all TypeScript interfaces
+  - Interactive mode: `src/tui.ts` and `src/components/` handle the TUI with React/Ink
+
+  **Key Features:**
+  - Multi-format output (Markdown, JSON, YAML, TXT)
+  - Profile-based file ordering via layout patterns
+  - Architectural overview injection
+  - Git-aware with automatic .gitignore respect
+  - Interactive file selection mode
+
+profiles:
+  llm-context:
+    layout:
+      - package.json
+      - .reporoller.yml
+      - 'src/core/types.ts'
+      - 'src/cli.ts'
+      - 'src/core/**/*.ts'
+      - 'src/**/*.tsx'
+      - '*.test.ts'
+
+  human-readable:
+    layout:
+      - README.md
+      - package.json
+      - 'src/cli.ts'
+      - 'src/tui.ts'
+      - 'src/core/*.ts'
+      - 'src/components/*.tsx'
+      - '*.test.ts'
+
+  core-only:
+    layout:
+      - 'src/core/types.ts'
+      - 'src/core/config.ts'
+      - 'src/core/scan.ts'
+      - 'src/core/render.ts'

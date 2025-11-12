@@ -3,7 +3,7 @@ import { render } from 'ink';
 import React from 'react';
 import type { ResolvedOptions, FileInfo } from './core/types.js';
 import { scanFiles } from './core/scan.js';
-import { renderMarkdown } from './core/render.js';
+import { render as renderOutput } from './core/render.js';
 import { App } from './components/App.js';
 import { Confirm } from './components/Confirm.js';
 
@@ -110,27 +110,33 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   console.log(`  Files: ${scan.files.length}`);
   console.log(`  Total size: ${formatBytes(scan.totalBytes)}`);
   console.log(`  Output: ${options.outFile}`);
+  console.log(`  Format: ${options.format.toUpperCase()}`);
   console.log(`  Strip comments: ${stripComments ? 'Yes' : 'No'}`);
   console.log(`  Include tree: ${withTree ? 'Yes' : 'No'}`);
   console.log(`  Include stats: ${withStats ? 'Yes' : 'No'}`);
 
-  const shouldGenerate = await promptConfirm('\nGenerate markdown file?', true);
+  const shouldGenerate = await promptConfirm('\nGenerate output file?', true);
 
   if (!shouldGenerate) {
     console.log('Cancelled.');
     return;
   }
 
-  // Generate markdown
-  console.log('\n📝 Rendering markdown...');
-  const markdown = await renderMarkdown(scan, {
+  // Update options with user selections
+  const updatedOptions: ResolvedOptions = {
+    ...options,
+    stripComments,
     withTree,
     withStats,
-    stripComments,
-  });
+  };
+
+  // Generate output
+  const formatLabel = options.format.toUpperCase();
+  console.log(`\n📝 Rendering ${formatLabel} output...`);
+  const output = await renderOutput(scan, updatedOptions);
 
   // Write output
-  await writeFile(options.outFile, markdown, 'utf-8');
+  await writeFile(options.outFile, output, 'utf-8');
 
   console.log(`✨ Output written to ${options.outFile}`);
   console.log(`   ${scan.files.length} files, ${formatBytes(scan.totalBytes)}`);

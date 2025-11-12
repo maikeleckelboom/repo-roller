@@ -2,10 +2,10 @@
 
 import { writeFile } from 'node:fs/promises';
 import { Command } from 'commander';
-import type { CliOptions, SortMode, ResolvedOptions } from './core/types.js';
-import { loadConfig, resolveOptions } from './core/config.js';
+import type { CliOptions, SortMode, ResolvedOptions, OutputFormat } from './core/types.js';
+import { loadConfig, loadRepoRollerYml, resolveOptions } from './core/config.js';
 import { scanFiles } from './core/scan.js';
-import { renderMarkdown } from './core/render.js';
+import { render } from './core/render.js';
 import { runInteractive } from './tui.js';
 
 /**
@@ -16,7 +16,7 @@ async function main(): Promise<void> {
 
   program
     .name('repo-roller')
-    .description('Aggregate source code into a single Markdown file')
+    .description('Aggregate source code into a single output file with multiple format support')
     .version('1.0.0')
     .argument('[root]', 'Root directory to scan', '.')
     .option('-o, --out <file>', 'Output file path', 'source_code.md')
@@ -31,6 +31,8 @@ async function main(): Promise<void> {
     .option('-I, --interactive', 'Force interactive mode')
     .option('--no-interactive', 'Force non-interactive mode')
     .option('--preset <name>', 'Use a preset from config file')
+    .option('--profile <name>', 'Use a profile from .reporoller.yml (default: llm-context)')
+    .option('-f, --format <type>', 'Output format: md, json, yaml, txt (default: md)')
     .option('-v, --verbose', 'Verbose output')
     .action(async (root: string, options: Record<string, unknown>) => {
       try {
@@ -48,14 +50,17 @@ async function main(): Promise<void> {
           sort: options.sort as SortMode | undefined,
           interactive: options.interactive as boolean | undefined,
           preset: options.preset as string | undefined,
+          profile: options.profile as string | undefined,
+          format: options.format as OutputFormat | undefined,
           verbose: options.verbose as boolean | undefined,
         };
 
-        // Load config file
+        // Load config files
         const config = await loadConfig(root);
+        const repoRollerConfig = await loadRepoRollerYml(root);
 
         // Resolve final options
-        const resolved = resolveOptions(cliOptions, config);
+        const resolved = resolveOptions(cliOptions, config, repoRollerConfig);
 
         if (resolved.verbose) {
           console.log('Configuration:', resolved);
@@ -92,16 +97,13 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
 
   console.log(`✅ Found ${scan.files.length} files (${formatBytes(scan.totalBytes)})`);
 
-  // Render markdown
-  console.log(`📝 Rendering markdown...`);
-  const markdown = await renderMarkdown(scan, {
-    withTree: options.withTree,
-    withStats: options.withStats,
-    stripComments: options.stripComments,
-  });
+  // Render output
+  const formatLabel = options.format.toUpperCase();
+  console.log(`📝 Rendering ${formatLabel} output...`);
+  const output = await render(scan, options);
 
   // Write output
-  await writeFile(options.outFile, markdown, 'utf-8');
+  await writeFile(options.outFile, output, 'utf-8');
 
   console.log(`✨ Output written to ${options.outFile}`);
 }
