@@ -41,9 +41,12 @@
     "ignore": "^6.0.2",
     "ink": "^6.4.0",
     "ink-tree-select": "^2.3.1",
+    "js-yaml": "^4.1.0",
+    "minimatch": "^10.1.1",
     "react": "^19.2.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.10.0",
     "@vitest/ui": "^4.0.8",
     "tsx": "^4.19.2",

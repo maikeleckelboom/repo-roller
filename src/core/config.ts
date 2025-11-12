@@ -1,18 +1,21 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import yaml from 'js-yaml';
 import type {
   CliOptions,
   ResolvedOptions,
   RollerConfig,
   RollerPreset,
   SortMode,
+  RepoRollerYmlConfig,
+  OutputFormat,
 } from './types.js';
 
 /**
  * Default options used as base
  */
-const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName'> = {
+const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'> = {
   outFile: 'source_code.md',
   include: [],
   exclude: [],
@@ -24,6 +27,8 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName'> = {
   sort: 'path',
   interactive: false,
   verbose: false,
+  profile: 'llm-context',
+  format: 'md' as OutputFormat,
 } as const;
 
 /**
@@ -45,6 +50,22 @@ function parseExtensions(ext: string | readonly string[] | undefined): readonly 
     return ext.split(',').map((e: string) => normalizeExtension(e.trim())).filter(Boolean);
   }
   return [];
+}
+
+/**
+ * Load .reporoller.yml configuration file
+ */
+export async function loadRepoRollerYml(rootDir: string): Promise<RepoRollerYmlConfig | undefined> {
+  const configPath = join(rootDir, '.reporoller.yml');
+
+  try {
+    const content = await readFile(configPath, 'utf-8');
+    const parsed = yaml.load(content) as RepoRollerYmlConfig;
+    return parsed;
+  } catch {
+    // File doesn't exist or can't be parsed, return undefined
+    return undefined;
+  }
 }
 
 /**
@@ -111,10 +132,12 @@ function mergePreset(
  * 1. Base defaults
  * 2. Preset from config (if specified)
  * 3. CLI overrides
+ * 4. RepoRoller YAML config
  */
 export function resolveOptions(
   cli: CliOptions,
-  config: RollerConfig | undefined
+  config: RollerConfig | undefined,
+  repoRollerConfig?: RepoRollerYmlConfig
 ): ResolvedOptions {
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
@@ -153,5 +176,8 @@ export function resolveOptions(
     interactive: cli.interactive ?? options.interactive,
     verbose: cli.verbose ?? options.verbose,
     presetName: cli.preset,
+    profile: cli.profile ?? options.profile,
+    format: cli.format ?? options.format,
+    repoRollerConfig,
   };
 }
