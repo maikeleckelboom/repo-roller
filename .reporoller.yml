@@ -1,22 +1,46 @@
 # Configuration for repo-roller intelligent output
 
 architectural_overview: |
-  repo-roller is a CLI tool written in TypeScript for aggregating source code into structured outputs.
+  repo-roller is a TypeScript CLI tool that transforms source code repositories into structured,
+  narrative-driven outputs optimized for LLMs, developers, and documentation workflows.
 
-  **Architecture:**
-  - Entry point: `src/cli.ts` uses `commander` for argument parsing
-  - Core scanning: `src/core/scan.ts` handles file discovery with gitignore support
-  - Core rendering: `src/core/render.ts` provides modular output formats (MD, JSON, YAML, TXT)
-  - Configuration: `src/core/config.ts` manages presets and .reporoller.yml loading
-  - Type definitions: `src/core/types.ts` contains all TypeScript interfaces
-  - Interactive mode: `src/tui.ts` and `src/components/` handle the TUI with React/Ink
+  **Core Architecture:**
+  - **CLI Layer** (`src/cli.ts`): Commander-based CLI with rich argument parsing and info commands
+  - **Configuration System**:
+    - `src/core/config.ts`: Loads and resolves repo-roller.config.{mjs,ts,js} and .reporoller.yml
+    - `src/core/builtInPresets.ts`: 10+ built-in presets (typescript, python, go, rust, llm, minimal, etc.)
+    - Smart defaults with automatic output file naming based on project/date/profile
+  - **File Discovery** (`src/core/scan.ts`): Fast parallel scanning with gitignore support and extension filtering
+  - **Rendering Engine** (`src/core/render.ts`): Multi-format output (Markdown, JSON, YAML, TXT) with modular renderers
+  - **Type System** (`src/core/types.ts`): Strict TypeScript interfaces for all data structures
+  - **Utilities** (`src/core/helpers.ts`): Display functions for presets, profiles, examples, and formatting
+  - **Initialization** (`src/core/init.ts`): Interactive project setup with language-specific templates
+
+  **Interactive Mode (React/Ink TUI):**
+  - `src/tui.ts`: Main TUI orchestrator with step-based workflow
+  - `src/components/`:
+    - `App.tsx`: Root component with state management
+    - `FileTreeSelect.tsx`: Hierarchical file selection with checkboxes
+    - `CustomTreeSelect.tsx`: Enhanced tree view with parent-child reactivity
+    - `Confirm.tsx`: Final confirmation and summary display
+  - Recent enhancements: Pre-selection based on defaults, excluded/ignored file visibility, reactive parent-child selection
 
   **Key Features:**
-  - Multi-format output (Markdown, JSON, YAML, TXT)
-  - Profile-based file ordering via layout patterns
-  - Architectural overview injection
-  - Git-aware with automatic .gitignore respect
-  - Interactive file selection mode
+  - **Multi-format output**: Markdown (default), JSON, YAML, plain text with format-specific options
+  - **Profile system**: Define custom file ordering layouts in .reporoller.yml for narrative control
+  - **Smart filtering**: Language filters (--lang), quick filters (--no-tests, --no-deps, --no-generated)
+  - **DX commands**: --dry-run (preview), --stats-only, --list-presets, --list-profiles, --examples
+  - **Git-aware**: Automatic .gitignore respect with configurable exclusions
+  - **Interactive mode**: Rich TUI with tree view, checkbox selection, and real-time preview
+  - **Architectural overview injection**: Context injection from .reporoller.yml into outputs
+
+  **Workflow:**
+  1. User runs `repo-roller [root] [options]` or init command
+  2. Config system loads repo-roller.config and .reporoller.yml
+  3. Scanner discovers files respecting filters and gitignore
+  4. Interactive mode (if TTY) or direct processing
+  5. Profile-based file ordering or sort-based ordering
+  6. Renderer generates output in selected format with metadata
 
 profiles:
   llm-context:
