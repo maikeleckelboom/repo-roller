@@ -227,10 +227,13 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
   // Find all files - fast-glob doesn't natively support .gitignore, so we:
   // 1. Use explicit ignore patterns to avoid traversing common ignored directories
   // 2. Then filter results through the ignore package for .gitignore patterns
+  // In interactive mode, we don't pass exclude patterns to fast-glob so all files are found
   const allPaths = await fg(patterns, {
     cwd: root,
     ignore: [
-      ...exclude,
+      // In interactive mode, only ignore .git and node_modules (always blacklisted)
+      // In non-interactive mode, also apply user exclude patterns
+      ...(interactive ? [] : exclude),
       '**/.git/**',
       '**/.git',
       '**/node_modules/**',
@@ -261,9 +264,10 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
 
     // Determine if file should be included by default
     const isIgnored = ig.ignores(relativePath);
+    const isExcluded = exclude.some(pattern => minimatch(relativePath, pattern));
     const isSizeExceeded = stats.size > maxFileSizeBytes;
     const isExtensionFiltered = !matchesExtension(relativePath, extensions);
-    const isDefaultIncluded = !isIgnored && !isSizeExceeded && !isExtensionFiltered && !isBinary;
+    const isDefaultIncluded = !isIgnored && !isExcluded && !isSizeExceeded && !isExtensionFiltered && !isBinary;
 
     // In interactive mode, include all files; in non-interactive mode, only include default files
     if (!interactive && !isDefaultIncluded) {
