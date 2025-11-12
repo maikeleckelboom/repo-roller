@@ -125,6 +125,25 @@ export interface CliOptions {
   readonly verbose?: boolean;
   readonly profile?: string;
   readonly format?: OutputFormat;
+  // New DX options
+  readonly dryRun?: boolean;
+  readonly statsOnly?: boolean;
+  readonly lang?: string;
+  readonly noTests?: boolean;
+  readonly noDeps?: boolean;
+  readonly noGenerated?: boolean;
+  readonly changed?: boolean;
+  readonly staged?: boolean;
+  readonly listPresets?: boolean;
+  readonly listProfiles?: boolean;
+  readonly showProfile?: string;
+  readonly examples?: boolean;
+  readonly outTemplate?: string;
+  // Format-specific options
+  readonly compact?: boolean;
+  readonly indent?: number;
+  readonly toc?: boolean;
+  readonly frontMatter?: boolean;
 }
 
 /**
@@ -147,4 +166,12 @@ export interface ResolvedOptions {
   readonly profile: string;
   readonly format: OutputFormat;
   readonly repoRollerConfig?: RepoRollerYmlConfig;
+  // New DX options
+  readonly dryRun: boolean;
+  readonly statsOnly: boolean;
+  // Format-specific options
+  readonly compact: boolean;
+  readonly indent: number;
+  readonly toc: boolean;
+  readonly frontMatter: boolean;
 }

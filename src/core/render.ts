@@ -249,17 +249,60 @@ ${extList}
 }
 
 /**
+ * Generate table of contents for markdown
+ */
+function generateTOC(files: readonly { relativePath: string }[]): string {
+  let toc = `## 📑 Table of Contents
+
+`;
+
+  for (const file of files) {
+    const anchor = file.relativePath.replace(/[^\w-]/g, '-').toLowerCase();
+    toc += `- [\`${file.relativePath}\`](#${anchor})\n`;
+  }
+
+  toc += '\n---\n\n';
+  return toc;
+}
+
+/**
+ * Generate YAML front matter for markdown
+ */
+function generateFrontMatter(scan: ScanResult, profile: string): string {
+  const { files, totalBytes, rootPath } = scan;
+
+  return `---
+title: Source Code Archive
+root: ${rootPath}
+files: ${files.length}
+total_size: ${formatBytes(totalBytes)}
+profile: ${profile}
+generated: ${new Date().toISOString()}
+---
+
+`;
+}
+
+/**
  * Render markdown document from scan results
  */
 export async function renderMarkdown(
   scan: ScanResult,
   opts: RenderOptions,
+  options: ResolvedOptions,
   architecturalOverview?: string
 ): Promise<string> {
   const { files, totalBytes, rootPath } = scan;
   const { withTree, withStats, stripComments: shouldStripComments } = opts;
 
-  let output = `# 📦 Source Code Archive
+  let output = '';
+
+  // Add front matter if requested
+  if (options.frontMatter) {
+    output += generateFrontMatter(scan, options.profile);
+  }
+
+  output += `# 📦 Source Code Archive
 
 **Root**: \`${rootPath}\`
 **Files**: ${files.length}
@@ -278,6 +321,11 @@ ${architecturalOverview}
 ---
 
 `;
+  }
+
+  // Add TOC if requested
+  if (options.toc) {
+    output += generateTOC(files);
   }
 
   // Add tree view if requested
@@ -310,7 +358,10 @@ ${architecturalOverview}
       const filePathComment = `// File: ${file.relativePath}`;
       const contentWithComment = `${filePathComment}\n\n${content}`;
 
-      output += `### \`${file.relativePath}\`
+      // Add anchor-friendly heading
+      const anchorId = file.relativePath.replace(/[^\w-]/g, '-').toLowerCase();
+
+      output += `### \`${file.relativePath}\` {#${anchorId}}
 
 \`\`\`${language}
 ${contentWithComment}
@@ -374,7 +425,12 @@ export async function renderJson(
     ),
   };
 
-  return JSON.stringify(structuredData, null, 2);
+  // Support compact JSON and custom indentation
+  if (options.compact) {
+    return JSON.stringify(structuredData);
+  }
+
+  return JSON.stringify(structuredData, null, options.indent);
 }
 
 /**
@@ -423,6 +479,7 @@ export async function renderYaml(
   return yaml.dump(structuredData, {
     lineWidth: -1,
     noRefs: true,
+    indent: options.indent,
   });
 }
 
@@ -492,6 +549,7 @@ export async function render(
           withStats: options.withStats,
           stripComments: options.stripComments,
         },
+        options,
         architecturalOverview
       );
     }
