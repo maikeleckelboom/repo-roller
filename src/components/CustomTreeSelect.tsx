@@ -273,10 +273,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       } else {
         // Toggle directory and all children
         const allFiles = getAllFilesUnder(node);
-        const allSelected = allFiles.every(f => selected.has(f));
 
         setSelected(prev => {
           const next = new Set(prev);
+          // Check allSelected inside callback to avoid stale closure
+          const allSelected = allFiles.every(f => prev.has(f));
           if (allSelected) {
             // Deselect all
             allFiles.forEach(f => next.delete(f));
