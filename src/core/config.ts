@@ -72,6 +72,8 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   tokenCount: true, // Enable by default
   targetProvider: undefined,
   warnTokens: undefined,
+  // DX improvements: Skip prompts
+  yes: false,
 } as const;
 
 /**
@@ -178,6 +180,7 @@ function mergePreset(
     tokenCount: defaults.tokenCount,
     targetProvider: defaults.targetProvider,
     warnTokens: defaults.warnTokens,
+    yes: defaults.yes,
   };
 }
 
@@ -315,5 +318,7 @@ export function resolveOptions(
     tokenCount: cli.tokenCount ?? options.tokenCount,
     targetProvider: cli.target ?? options.targetProvider,
     warnTokens: cli.warnTokens ?? options.warnTokens,
+    // DX improvements: Skip prompts
+    yes: cli.yes ?? options.yes,
   };
 }

@@ -39,6 +39,7 @@ describe('scanFiles - gitignore handling', () => {
       toc: false,
       frontMatter: false,
       tokenCount: false,
+      yes: false,
     };
   });
 

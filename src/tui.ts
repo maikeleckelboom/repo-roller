@@ -6,6 +6,7 @@ import { scanFiles } from './core/scan.js';
 import { render as renderOutput } from './core/render.js';
 import { App } from './components/App.js';
 import { Confirm } from './components/Confirm.js';
+import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
 
 /**
  * Format bytes to human-readable string
@@ -24,6 +25,9 @@ function formatBytes(bytes: number): string {
 export async function runInteractive(options: ResolvedOptions): Promise<void> {
   console.log('🎨 Interactive Mode\n');
 
+  // Load user preferences for defaults
+  const userSettings = await loadUserSettings();
+
   // Initial scan
   console.log(`🔍 Scanning files in ${options.root}...`);
   let scan = await scanFiles(options);
@@ -35,26 +39,34 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     return;
   }
 
-  // File selection using Ink TUI
-  let inkExitPromise: Promise<void> | undefined;
-  const selectedPaths = await new Promise<string[]>((resolve) => {
-    const { waitUntilExit } = render(
-      React.createElement(App, {
-        files: scan.files,
-        onComplete: (paths: string[]) => {
-          resolve(paths);
-        },
-      })
-    );
+  let selectedPaths: string[];
 
-    inkExitPromise = waitUntilExit().catch(() => {
-      // Ignore exit errors
+  // If --yes flag is set, skip file selection and use all pre-selected files
+  if (options.yes) {
+    selectedPaths = scan.files.filter(f => f.isDefaultIncluded).map(f => f.relativePath);
+    console.log(`⚡ Using ${selectedPaths.length} pre-selected files (--yes mode)\n`);
+  } else {
+    // File selection using Ink TUI
+    let inkExitPromise: Promise<void> | undefined;
+    selectedPaths = await new Promise<string[]>((resolve) => {
+      const { waitUntilExit } = render(
+        React.createElement(App, {
+          files: scan.files,
+          onComplete: (paths: string[]) => {
+            resolve(paths);
+          },
+        })
+      );
+
+      inkExitPromise = waitUntilExit().catch(() => {
+        // Ignore exit errors
+      });
     });
-  });
 
-  // Wait for Ink to fully exit before continuing
-  if (inkExitPromise) {
-    await inkExitPromise;
+    // Wait for Ink to fully exit before continuing
+    if (inkExitPromise) {
+      await inkExitPromise;
+    }
   }
 
   if (selectedPaths.length === 0) {
@@ -98,25 +110,55 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     });
   };
 
-  // Additional options
-  console.log('');
-  const stripComments = await promptConfirm('Strip comments from source files?', options.stripComments);
+  // Determine final options for strip/tree/stats
+  // Priority: user settings > preset/config defaults
+  let stripComments: boolean;
+  let withTree: boolean;
+  let withStats: boolean;
 
-  const withTree = await promptConfirm('Include directory tree view?', options.withTree);
+  if (options.yes) {
+    // Use saved preferences or defaults (skip all prompts)
+    stripComments = userSettings.stripComments ?? options.stripComments;
+    withTree = userSettings.withTree ?? options.withTree;
+    withStats = userSettings.withStats ?? options.withStats;
+    console.log('⚡ Using saved preferences (--yes mode)');
+    console.log(`  Strip comments: ${stripComments ? 'Yes' : 'No'}`);
+    console.log(`  Include tree: ${withTree ? 'Yes' : 'No'}`);
+    console.log(`  Include stats: ${withStats ? 'Yes' : 'No'}\n`);
+  } else {
+    // Interactive prompts with user preferences as defaults
+    console.log('');
+    const defaultStripComments = userSettings.stripComments ?? options.stripComments;
+    stripComments = await promptConfirm('Strip comments from source files?', defaultStripComments);
 
-  const withStats = await promptConfirm('Include statistics section?', options.withStats);
+    const defaultWithTree = userSettings.withTree ?? options.withTree;
+    withTree = await promptConfirm('Include directory tree view?', defaultWithTree);
 
-  // Summary and confirmation
-  console.log('\n📊 Summary:');
-  console.log(`  Files: ${scan.files.length}`);
-  console.log(`  Total size: ${formatBytes(scan.totalBytes)}`);
+    const defaultWithStats = userSettings.withStats ?? options.withStats;
+    withStats = await promptConfirm('Include statistics section?', defaultWithStats);
+
+    // Save user preferences for next time
+    await saveUserSettings({
+      stripComments,
+      withTree,
+      withStats,
+    });
+  }
+
+  // Combined summary and confirmation (Phase 1 improvement)
+  console.log('\n📊 Ready to generate:');
+  console.log(`  Files: ${scan.files.length} | Size: ${formatBytes(scan.totalBytes)} | Format: ${options.format}`);
+  console.log(`  Options: tree=${withTree ? 'yes' : 'no'}, stats=${withStats ? 'yes' : 'no'}, comments=${stripComments ? 'stripped' : 'kept'}`);
   console.log(`  Output: ${options.outFile}`);
-  console.log(`  Format: ${options.format.toUpperCase()}`);
-  console.log(`  Strip comments: ${stripComments ? 'Yes' : 'No'}`);
-  console.log(`  Include tree: ${withTree ? 'Yes' : 'No'}`);
-  console.log(`  Include stats: ${withStats ? 'Yes' : 'No'}`);
 
-  const shouldGenerate = await promptConfirm('\nGenerate output file?', true);
+  let shouldGenerate: boolean;
+  if (options.yes) {
+    // Skip confirmation in --yes mode
+    shouldGenerate = true;
+    console.log('\n⚡ Auto-generating (--yes mode)...');
+  } else {
+    shouldGenerate = await promptConfirm('\nPress ENTER to generate, or N to cancel', true);
+  }
 
   if (!shouldGenerate) {
     console.log('Cancelled.');

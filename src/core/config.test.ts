@@ -152,5 +152,37 @@ describe('config', () => {
         expect(resolved.warnTokens).toBe(100000);
       });
     });
+
+    describe('DX improvements - yes flag', () => {
+      it('should default yes to false', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.yes).toBe(false);
+      });
+
+      it('should respect CLI yes flag', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          yes: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.yes).toBe(true);
+      });
+
+      it('should not affect other options when yes is set', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          yes: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.yes).toBe(true);
+        // Other defaults should remain unchanged
+        expect(resolved.stripComments).toBe(false);
+        expect(resolved.withTree).toBe(true);
+        expect(resolved.withStats).toBe(true);
+      });
+    });
   });
 });

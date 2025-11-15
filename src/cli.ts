@@ -83,6 +83,9 @@ async function main(): Promise<void> {
     .option('--list-providers', 'List all supported LLM providers')
     // Validation options
     .option('--validate', 'Validate configuration files without generating output')
+    // DX improvements: Skip prompts
+    .option('-y, --yes', 'Skip all prompts and use defaults (or saved preferences)')
+    .option('--defaults', 'Alias for --yes')
     .action(async (root: string, options: Record<string, unknown>) => {
       try {
         // Load config files early for info commands
@@ -180,6 +183,8 @@ async function main(): Promise<void> {
           tokenCount: options.tokenCount as boolean | undefined,
           target: options.target as string | undefined,
           warnTokens: options.warnTokens as number | undefined,
+          // DX improvements: Skip prompts
+          yes: (options.yes as boolean | undefined) || (options.defaults as boolean | undefined),
         };
 
         // Resolve final options
