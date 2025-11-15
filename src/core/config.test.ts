@@ -5,42 +5,44 @@ import type { CliOptions, OutputFormat } from './types.js';
 describe('config', () => {
   describe('resolveOptions', () => {
     describe('output file naming based on format', () => {
-      it('should use source_code.md when no format is specified', () => {
+      it('should generate smart filename with project name and date', () => {
         const cliOptions: CliOptions = {
           root: '.',
         };
         const resolved = resolveOptions(cliOptions, undefined);
-        expect(resolved.outFile).toBe('source_code.md');
+        // Smart naming: {project}-{date}.{ext}
+        // Since we're in "." directory, it uses the directory name
+        expect(resolved.outFile).toMatch(/^[\w-]+-\d{4}-\d{2}-\d{2}\.md$/);
         expect(resolved.format).toBe('md');
       });
 
-      it('should use source_code.json when format is json', () => {
+      it('should use correct extension for json format', () => {
         const cliOptions: CliOptions = {
           root: '.',
           format: 'json' as OutputFormat,
         };
         const resolved = resolveOptions(cliOptions, undefined);
-        expect(resolved.outFile).toBe('source_code.json');
+        expect(resolved.outFile).toMatch(/\.json$/);
         expect(resolved.format).toBe('json');
       });
 
-      it('should use source_code.yaml when format is yaml', () => {
+      it('should use correct extension for yaml format', () => {
         const cliOptions: CliOptions = {
           root: '.',
           format: 'yaml' as OutputFormat,
         };
         const resolved = resolveOptions(cliOptions, undefined);
-        expect(resolved.outFile).toBe('source_code.yaml');
+        expect(resolved.outFile).toMatch(/\.yaml$/);
         expect(resolved.format).toBe('yaml');
       });
 
-      it('should use source_code.txt when format is txt', () => {
+      it('should use correct extension for txt format', () => {
         const cliOptions: CliOptions = {
           root: '.',
           format: 'txt' as OutputFormat,
         };
         const resolved = resolveOptions(cliOptions, undefined);
-        expect(resolved.outFile).toBe('source_code.txt');
+        expect(resolved.outFile).toMatch(/\.txt$/);
         expect(resolved.format).toBe('txt');
       });
 
@@ -72,7 +74,25 @@ describe('config', () => {
         };
         const resolved = resolveOptions(cliOptions, undefined);
         expect(resolved.format).toBe('md');
-        expect(resolved.outFile).toBe('source_code.md');
+        expect(resolved.outFile).toMatch(/\.md$/);
+      });
+
+      it('should support custom output template', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          outTemplate: '{project}-context-{date}.{ext}',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.outFile).toMatch(/-context-\d{4}-\d{2}-\d{2}\.md$/);
+      });
+
+      it('should include profile in filename for non-default profiles', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          profile: 'minimal',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.outFile).toContain('-minimal-');
       });
     });
 
@@ -92,7 +112,44 @@ describe('config', () => {
         };
         const resolved = resolveOptions(cliOptions, config);
         expect(resolved.format).toBe('yaml');
-        expect(resolved.outFile).toBe('source_code.yaml');
+        expect(resolved.outFile).toMatch(/\.yaml$/);
+      });
+    });
+
+    describe('token counting options', () => {
+      it('should enable token counting by default', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.tokenCount).toBe(true);
+      });
+
+      it('should respect CLI token count disable', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          tokenCount: false,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.tokenCount).toBe(false);
+      });
+
+      it('should set target provider from CLI', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          target: 'claude-sonnet',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.targetProvider).toBe('claude-sonnet');
+      });
+
+      it('should set warn tokens threshold', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          warnTokens: 100000,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+        expect(resolved.warnTokens).toBe(100000);
       });
     });
   });

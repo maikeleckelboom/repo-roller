@@ -1,37 +1,93 @@
 # 📦 repo-roller
 
-A CLI tool that transforms source code repositories into structured, narrative-driven outputs. Go beyond simple aggregation with intelligent context packaging for LLMs, developers, and documentation.
+**Context Engine for LLMs** - Transform your codebase into optimized, cost-aware context for Claude, GPT-4, Gemini, and other AI assistants.
 
-## ✨ Features
+## Why repo-roller?
 
-- 🎯 **Git-aware**: Automatically respects `.gitignore` patterns
-- 🎨 **Interactive mode**: Checkbox-based file selection with filters
-- 📁 **Directory tree**: Optional visual tree structure of your codebase
-- 📊 **Statistics**: File counts, size breakdowns, extension analysis
-- 🔧 **Configurable**: Presets, glob patterns, size limits, and more
-- 🚀 **Fast**: Efficient file scanning with parallel processing
-- 💪 **Type-safe**: Written in strict TypeScript
-- 📝 **Multi-format**: Output as Markdown, JSON, YAML, or plain text
-- 🏗️ **Profiles**: Control narrative structure and file ordering
-- 🎭 **Architectural Overview**: Inject context about your project's structure
+When working with LLMs, context is everything. repo-roller doesn't just concatenate files—it intelligently packages your codebase with:
+
+- **Token counting & cost estimation** for major LLM providers
+- **Context window awareness** to prevent overflow
+- **Smart file prioritization** based on your needs
+- **Architectural context** that helps LLMs understand your project
 
 ## 🚀 Quick Start
 
 ```bash
-# Run in current directory
-npx repo-roller .
+# Generate context optimized for Claude
+npx repo-roller . --target claude-sonnet
 
-# Interactive mode with file selection
-npx repo-roller . -I
+# Preview token usage before generating
+npx repo-roller . --dry-run
 
-# Specify output file
-npx repo-roller . -o my-code.md
+# List supported LLM providers
+npx repo-roller --list-providers
 
-# Filter by extensions
-npx repo-roller . --ext ts,tsx,md
+# Interactive file selection
+npx repo-roller . --interactive
+```
 
-# Exclude patterns
-npx repo-roller . -x "**/*.test.ts" -x "**/dist/**"
+## ✨ Key Features
+
+### 🎯 LLM-Optimized Output
+- **Token counting** with cost estimates for Claude, GPT-4, Gemini, and more
+- **Context window warnings** when output exceeds provider limits
+- **Smart file naming** with project, profile, and date
+
+### 💰 Cost-Aware Generation
+```bash
+$ repo-roller . --target claude-sonnet
+
+✅ Found 15 files (234.56 KB)
+📝 Rendering MD output...
+✨ Output written to my-project-2025-11-15.md
+
+📊 Token Analysis
+   Estimated tokens: 58,234
+
+   Cost estimates:
+   ✓ Claude 3.5 Sonnet: $0.1747
+   ✓ GPT-4o: $0.1456
+   ✓ Claude 3.5 Haiku: $0.0466
+   ✓ Gemini 1.5 Pro: $0.0728
+
+   💡 Recommendations:
+   • Most cost-effective: Claude 3.5 Haiku at $0.0466
+```
+
+### 🛡️ Configuration Validation
+```bash
+$ repo-roller . --validate
+
+🔍 Validating configuration files...
+
+✅ repo-roller.config is valid
+⚠️  Warnings in .reporoller.yml:
+  profiles
+    Warning: No profiles defined
+    Suggestion: Add profiles to customize file ordering
+```
+
+### 🎨 Multi-Format Output
+- **Markdown** - Rich, readable format for documentation
+- **JSON** - Structured data for programmatic use
+- **YAML** - Human-friendly structured format
+- **Plain Text** - Simple, parseable format
+
+### 🏗️ Profile System
+Control file ordering and context structure:
+
+```yaml
+# .reporoller.yml
+architectural_overview: |
+  This is a TypeScript CLI tool...
+
+profiles:
+  llm-context:
+    layout:
+      - package.json
+      - src/core/types.ts
+      - 'src/**/*.ts'
 ```
 
 ## 📦 Installation
@@ -40,63 +96,112 @@ npx repo-roller . -x "**/*.test.ts" -x "**/dist/**"
 # Global installation
 npm install -g repo-roller
 
-# Use with npx (no installation)
-npx repo-roller
+# Use with npx (no installation required)
+npx repo-roller .
 ```
 
-## 🎯 Usage
+## 🎯 Common Workflows
 
-### Basic Usage
-
+### 1. Create Context for Claude Projects
 ```bash
-repo-roller [root] [options]
+repo-roller . --target claude-sonnet
+# Optimized for 200K context window
+# Shows cost estimate and utilization %
 ```
 
-### Options
+### 2. Budget-Friendly Context Generation
+```bash
+repo-roller . --preset minimal --target claude-haiku
+# Stripped comments, smaller files
+# Uses cheapest provider
+```
 
+### 3. Preview Before Generating
+```bash
+repo-roller . --dry-run
+# See file list, token estimate, and cost
+# without generating output
+```
+
+### 4. TypeScript Project (No Tests)
+```bash
+repo-roller . --lang typescript --no-tests
+# Quick filter for source code only
+```
+
+### 5. Custom Token Threshold
+```bash
+repo-roller . --warn-tokens 100000
+# Warns if output exceeds 100K tokens
+```
+
+### 6. Validate Configuration
+```bash
+repo-roller . --validate
+# Check configs for errors before running
+```
+
+## ⚙️ CLI Options
+
+### Core Options
 | Option | Description | Default |
 |--------|-------------|---------|
-| `[root]` | Root directory to scan | `.` (current directory) |
-| `-o, --out <file>` | Output file path | `source_code.md` |
-| `-i, --include <patterns...>` | Include glob patterns | All files |
-| `-x, --exclude <patterns...>` | Exclude glob patterns | None |
-| `--ext <extensions>` | Comma-separated extensions (e.g., `ts,tsx,md`) | All extensions |
-| `--max-size <kb>` | Maximum file size in KB | 1024 |
-| `--strip-comments` | Remove comments from source files | `false` |
-| `--no-tree` | Disable directory tree view | Tree enabled |
-| `--no-stats` | Disable statistics section | Stats enabled |
-| `--sort <mode>` | Sort mode: `path`, `size`, or `extension` | `path` |
-| `-I, --interactive` | Force interactive mode | Auto-detect TTY |
-| `--preset <name>` | Use preset from config file | None |
-| `--profile <name>` | Use profile from `.reporoller.yml` | `llm-context` |
-| `-f, --format <type>` | Output format: `md`, `json`, `yaml`, `txt` | `md` |
-| `-v, --verbose` | Verbose output | `false` |
+| `[root]` | Root directory to scan | `.` |
+| `-o, --out <file>` | Output file path | `{project}-{date}.{ext}` |
+| `--out-template <template>` | Custom filename template | - |
+| `-f, --format <type>` | Output format: md, json, yaml, txt | `md` |
 
-### Examples
+### Filter Options
+| Option | Description |
+|--------|-------------|
+| `--ext <extensions>` | File extensions (e.g., `ts,tsx`) |
+| `--lang <languages>` | Language shortcut (e.g., `typescript`) |
+| `--max-size <kb>` | Maximum file size in KB |
+| `--no-tests` | Exclude test files |
+| `--no-deps` | Exclude dependency directories |
+| `--no-generated` | Exclude build directories |
 
-**Include only TypeScript files:**
-```bash
-repo-roller . --ext ts,tsx
-```
+### Token & Cost Options
+| Option | Description |
+|--------|-------------|
+| `--target <provider>` | Target LLM provider for cost estimates |
+| `--warn-tokens <number>` | Warn if tokens exceed threshold |
+| `--no-token-count` | Disable token analysis |
+| `--list-providers` | Show all supported providers |
 
-**Exclude test and build files:**
-```bash
-repo-roller . -x "**/*.test.ts" -x "**/dist/**" -x "**/node_modules/**"
-```
+### Preview & Validation
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview files without generating |
+| `--stats-only` | Show statistics only |
+| `--validate` | Validate configuration files |
 
-**Strip comments and sort by size:**
-```bash
-repo-roller . --strip-comments --sort size
-```
+### Preset & Profile Options
+| Option | Description |
+|--------|-------------|
+| `--preset <name>` | Use a preset (llm, minimal, docs, etc.) |
+| `--profile <name>` | Use profile from .reporoller.yml |
+| `--list-presets` | Show available presets |
+| `--list-profiles` | Show available profiles |
 
-**Interactive mode with custom output:**
-```bash
-repo-roller . -I -o codebase-snapshot.md
-```
+## 🤖 Supported LLM Providers
 
-## ⚙️ Configuration File
+| Provider | Context Window | Input Cost (per 1M tokens) |
+|----------|---------------|---------------------------|
+| Claude 3.5 Sonnet | 200,000 | $3.00 |
+| Claude 3 Opus | 200,000 | $15.00 |
+| Claude 3.5 Haiku | 200,000 | $0.80 |
+| GPT-4o | 128,000 | $2.50 |
+| GPT-4 Turbo | 128,000 | $10.00 |
+| GPT-4 | 8,192 | $30.00 |
+| OpenAI o1 | 200,000 | $15.00 |
+| Gemini 1.5 Pro | 2,000,000 | $1.25 |
 
-Create a `repo-roller.config.mjs` (or `.mts`, `.cjs`, `.ts`, `.js`) in your project root:
+## 📁 Configuration Files
+
+### repo-roller.config.mjs
+
+Define custom presets:
 
 ```javascript
 export default {
@@ -105,20 +210,13 @@ export default {
   presets: {
     typescript: {
       extensions: ['ts', 'tsx'],
-      exclude: ['**/*.test.ts', '**/dist/**', '**/node_modules/**'],
+      exclude: ['**/*.test.ts'],
       stripComments: true,
       withTree: true,
-      withStats: true,
-      sort: 'path',
-    },
-    docs: {
-      extensions: ['md', 'mdx'],
-      withTree: false,
-      withStats: false,
     },
     minimal: {
-      extensions: ['ts', 'tsx', 'js', 'jsx'],
-      maxFileSizeBytes: 512 * 1024, // 512 KB
+      extensions: ['ts', 'tsx'],
+      maxFileSizeBytes: 512 * 1024,
       stripComments: true,
       withTree: false,
       withStats: false,
@@ -127,173 +225,63 @@ export default {
 };
 ```
 
-**Use a preset:**
-```bash
-repo-roller . --preset typescript
-```
+### .reporoller.yml
 
-## 🏗️ Profiles & .reporoller.yml
-
-Profiles provide intelligent control over narrative structure and file ordering, perfect for tailoring output to different consumers (LLMs, developers, documentation).
-
-### Creating a `.reporoller.yml` File
-
-Create a `.reporoller.yml` in your project root:
+Define profiles and architectural context:
 
 ```yaml
-# Introductory text injected into the output
 architectural_overview: |
-  repo-roller is a CLI tool written in TypeScript for aggregating source code.
-  The main entry point is `src/cli.ts`, which uses `commander` for argument parsing.
-  Core logic is separated into scanning (`scan.ts`) and rendering (`render.ts`).
-  Interactive mode is handled by `ink` via `tui.ts`.
+  This project is a TypeScript CLI tool that...
 
-# Define profiles with custom file layouts
 profiles:
-  llm-context:  # Optimized for LLM comprehension
+  llm-context:
     layout:
       - package.json
-      - .reporoller.yml
-      - 'src/core/types.ts'
-      - 'src/cli.ts'
-      - 'src/core/**/*.ts'
-      - 'src/**/*.tsx'
+      - README.md
+      - src/core/types.ts
+      - 'src/**/*.ts'
 
-  human-readable:  # Optimized for human developers
+  onboarding:
     layout:
       - README.md
-      - 'src/cli.ts'
-      - 'src/**/*.ts'
-      - 'src/**/*.tsx'
-      - '*.test.ts'
-```
-
-### Using Profiles
-
-```bash
-# Use the llm-context profile (default)
-repo-roller . --profile llm-context
-
-# Use a different profile
-repo-roller . --profile human-readable
-
-# Without a .reporoller.yml, falls back to --sort behavior
-repo-roller . --sort path
-```
-
-**How Profiles Work:**
-- The `layout` array defines glob patterns in priority order
-- Files matching earlier patterns appear first in the output
-- Files not matching any pattern appear at the end, sorted alphabetically
-- The `architectural_overview` is injected into Markdown output
-
-## 📝 Multi-Format Output
-
-Generate structured outputs in different formats for various use cases.
-
-### Available Formats
-
-**Markdown (default)** - Rich, human-readable format with sections
-```bash
-repo-roller . --format md -o output.md
-```
-
-**JSON** - Structured data with metadata
-```bash
-repo-roller . --format json -o output.json
-```
-
-Output structure:
-```json
-{
-  "metadata": {
-    "sourceRepository": "https://github.com/user/repo",
-    "profile": "llm-context",
-    "timestamp": "2025-11-12T02:58:00Z",
-    "fileCount": 15
-  },
-  "architecturalOverview": "...",
-  "files": [
-    {
-      "path": "package.json",
-      "language": "json",
-      "content": "{\n  \"name\": \"repo-roller\"\n}"
-    }
-  ]
-}
-```
-
-**YAML** - Human-friendly structured format
-```bash
-repo-roller . --format yaml -o output.yaml
-```
-
-**Plain Text** - Simple, parseable format
-```bash
-repo-roller . --format txt -o output.txt
-```
-
-Output format:
-```
-==================================================
-File: package.json
-==================================================
-
-{
-  "name": "repo-roller"
-}
-
-==================================================
-File: src/cli.ts
-==================================================
-
-#!/usr/bin/env node
-...
-```
-
-### Combining Features
-
-```bash
-# Use a profile with JSON output for LLM processing
-repo-roller . --profile llm-context --format json -o context.json
-
-# Human-readable YAML for documentation
-repo-roller . --profile human-readable --format yaml -o docs.yaml
-
-# Markdown with custom profile and no stats
-repo-roller . --profile core-only --format md --no-stats -o core.md
+      - CONTRIBUTING.md
+      - 'docs/**/*.md'
+      - src/cli.ts
 ```
 
 ## 🎨 Interactive Mode
 
-Interactive mode provides a rich TUI for selecting files and configuring options:
+Visual file selection with keyboard navigation:
 
-1. **File selection**: Checkbox list grouped by directory
-2. **Options**: Strip comments, include tree, include stats
-3. **Summary**: Review selections before generating
-4. **Confirmation**: Generate or cancel
-
-Enable interactive mode:
 ```bash
-repo-roller . -I
+repo-roller . --interactive
 ```
 
-Interactive mode is automatically enabled when:
-- Running in a TTY (terminal)
-- Not in CI/CD environment
-- Unless explicitly disabled with `--no-interactive`
+Features:
+- Checkbox tree for file selection
+- Directory expand/collapse
+- Toggle hidden/excluded files (H key)
+- Live selection count
 
-## 📄 Markdown Output Format
+## 📊 Example Output
 
-When using `--format md` (default), the generated Markdown includes:
+### Token Analysis Report
 
-1. **Header**: Project metadata (root, file count, total size)
-2. **Architectural Overview** (optional): Injected from `.reporoller.yml`
-3. **Directory Tree** (optional): Visual representation of file structure
-4. **Statistics** (optional): Extension counts and size breakdowns
-5. **File Contents**: Each file in a fenced code block with syntax highlighting
+```
+📊 Token Analysis
+   Estimated tokens: 45,678
 
-Example output structure:
+   Cost estimates:
+   ✓ Claude 3.5 Sonnet: $0.1370
+   ✓ GPT-4o: $0.1142
+   ✓ Claude 3.5 Haiku: $0.0365
+   ✓ Gemini 1.5 Pro: $0.0571
+
+   💡 Recommendations:
+   • Most cost-effective: Claude 3.5 Haiku at $0.0365
+```
+
+### Markdown Output Structure
 
 ```markdown
 # 📦 Source Code Archive
@@ -306,26 +294,57 @@ Example output structure:
 
 ## 🏗️ Architectural Overview
 
-repo-roller is a CLI tool written in TypeScript...
+[Your project description from .reporoller.yml]
 
 ---
 
 ## 📂 Directory Structure
-...
+[Visual tree of your codebase]
 
 ## 📊 Statistics
-...
+[File counts, extensions, sizes]
 
 ## 📄 Files
+[Each file in syntax-highlighted code blocks]
+```
 
-### `src/index.ts`
+## 🔧 Built-in Presets
 
-```typescript
-// File: src/index.ts
+| Preset | Description | Extensions |
+|--------|-------------|------------|
+| `llm` | Optimized for LLMs (2MB limit) | ts, tsx, js, jsx, py, md |
+| `minimal` | Stripped, small files | Code files, 512KB limit |
+| `docs` | Documentation only | md, mdx, txt |
+| `full` | All files | Everything |
+| `ts` | TypeScript only | ts, tsx |
+| `js` | JavaScript only | js, jsx, mjs, cjs |
+| `python` | Python projects | py, pyi |
+| `go` | Go projects | go |
+| `rust` | Rust projects | rs |
 
-export function main() {
-  // File contents here
-}
+## 🚀 Advanced Usage
+
+### Initialize Configuration
+```bash
+repo-roller init
+# Interactive setup for presets and profiles
+```
+
+### Show Examples
+```bash
+repo-roller --examples
+# Comprehensive workflow examples
+```
+
+### JSON Output for Automation
+```bash
+repo-roller . --format json --compact | jq '.metadata.fileCount'
+```
+
+### Custom Filename Template
+```bash
+repo-roller . --out-template "{project}-context-{date}.{ext}"
+# Outputs: my-project-context-2025-11-15.md
 ```
 
 ## 🤝 Contributing
