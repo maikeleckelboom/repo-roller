@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { FileInfo } from '../core/types.js';
+import { getUserSetting, setUserSetting } from '../core/userSettings.js';
 
 interface TreeNode {
   name: string;
@@ -162,6 +163,28 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
   // Toggle for showing/hiding excluded and gitignored files
   const [showExcluded, setShowExcluded] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  // Load persisted setting on mount
+  useEffect(() => {
+    getUserSetting('showExcludedFiles').then(value => {
+      if (value !== undefined) {
+        setShowExcluded(value);
+      }
+      setSettingsLoaded(true);
+    }).catch(() => {
+      setSettingsLoaded(true);
+    });
+  }, []);
+
+  // Save setting when it changes (after initial load)
+  useEffect(() => {
+    if (settingsLoaded) {
+      setUserSetting('showExcludedFiles', showExcluded).catch(() => {
+        // Silently ignore save errors
+      });
+    }
+  }, [showExcluded, settingsLoaded]);
 
   // Filter files based on showExcluded state
   const filteredFiles = useMemo(() => {
