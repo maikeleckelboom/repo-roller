@@ -4,6 +4,10 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
 interface UserSettings {
   showExcludedFiles?: boolean;
+  // DX improvements: Remember user preferences for interactive mode
+  stripComments?: boolean;
+  withTree?: boolean;
+  withStats?: boolean;
 }
 
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');

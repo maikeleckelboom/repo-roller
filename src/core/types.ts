@@ -149,6 +149,8 @@ export interface CliOptions {
   readonly tokenCount?: boolean;
   readonly target?: string;
   readonly warnTokens?: number;
+  // DX improvements: Skip prompts
+  readonly yes?: boolean;
 }
 
 /**
@@ -183,4 +185,6 @@ export interface ResolvedOptions {
   readonly tokenCount: boolean;
   readonly targetProvider?: string;
   readonly warnTokens?: number;
+  // DX improvements: Skip prompts
+  readonly yes: boolean;
 }
