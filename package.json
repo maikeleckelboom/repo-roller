@@ -31,7 +31,9 @@
     "test:ui": "vitest --ui",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:check": "eslint . --max-warnings 0"
+    "lint:check": "eslint . --max-warnings 0",
+    "clean": "rm -rf dist coverage .vitest",
+    "purge": "rm -rf node_modules dist coverage .vitest package-lock.json"
   },
   "keywords": [
     "cli",

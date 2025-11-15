@@ -185,4 +185,7 @@ export interface ResolvedOptions {
   readonly warnTokens?: number;
   // DX improvements: Skip prompts
   readonly yes: boolean;
+  // Tracking what was explicitly specified (for smarter recommendations)
+  readonly profileExplicitlySet?: boolean;
+  readonly maxSizeExplicitlySet?: boolean;
 }

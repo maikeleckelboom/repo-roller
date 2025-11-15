@@ -10,6 +10,7 @@ import { runInteractive } from './tui.js';
 import { displayPresets, displayProfiles, displayProfileDetails, displayExamples, formatBytes } from './core/helpers.js';
 import { runInit } from './core/init.js';
 import { estimateTokens, analyzeTokenUsage, formatNumber, calculateCost, LLM_PROVIDERS } from './core/tokens.js';
+import type { TokenAnalysisContext } from './core/tokens.js';
 import { validateRollerConfig, validateRepoRollerYml, validateCliOptions, formatValidationErrors } from './core/validation.js';
 
 /**
@@ -320,7 +321,11 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
  * Display token analysis and cost estimates
  */
 function displayTokenAnalysis(output: string, options: ResolvedOptions): void {
-  const analysis = analyzeTokenUsage(output);
+  const context: TokenAnalysisContext = {
+    profileUsed: options.profileExplicitlySet,
+    maxSizeUsed: options.maxSizeExplicitlySet,
+  };
+  const analysis = analyzeTokenUsage(output, context);
 
   console.log(`\n📊 Token Analysis`);
   console.log(`   Estimated tokens: ${formatNumber(analysis.estimatedTokens)}`);

@@ -200,10 +200,15 @@ export interface TokenAnalysis {
   readonly recommendations: readonly string[];
 }
 
+export interface TokenAnalysisContext {
+  readonly profileUsed?: boolean;
+  readonly maxSizeUsed?: boolean;
+}
+
 /**
  * Analyze text for token usage and provide recommendations
  */
-export function analyzeTokenUsage(text: string): TokenAnalysis {
+export function analyzeTokenUsage(text: string, context?: TokenAnalysisContext): TokenAnalysis {
   const estimatedTokens = estimateTokens(text);
   const estimates = getAllCostEstimates(estimatedTokens);
   const warnings: string[] = [];
@@ -221,12 +226,18 @@ export function analyzeTokenUsage(text: string): TokenAnalysis {
 
   // Provide recommendations based on size
   if (estimatedTokens > 100000) {
-    recommendations.push(
-      'Consider using --profile minimal or reducing file selection'
-    );
-    recommendations.push(
-      'Use --max-size flag to limit individual file sizes'
-    );
+    // Only suggest profile if not already used
+    if (!context?.profileUsed) {
+      recommendations.push(
+        'Consider using --profile minimal or reducing file selection'
+      );
+    }
+    // Only suggest max-size if not already used
+    if (!context?.maxSizeUsed) {
+      recommendations.push(
+        'Use --max-size flag to limit individual file sizes'
+      );
+    }
   }
 
   if (estimatedTokens > 50000 && estimatedTokens <= 100000) {

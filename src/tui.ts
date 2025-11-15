@@ -147,9 +147,13 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
 
   // Combined summary and confirmation (Phase 1 improvement)
   console.log('\n📊 Ready to generate:');
-  console.log(`  Files: ${scan.files.length} | Size: ${formatBytes(scan.totalBytes)} | Format: ${options.format}`);
-  console.log(`  Options: tree=${withTree ? 'yes' : 'no'}, stats=${withStats ? 'yes' : 'no'}, comments=${stripComments ? 'stripped' : 'kept'}`);
+  console.log(`  Files: ${scan.files.length} | Size: ${formatBytes(scan.totalBytes)} | Format: ${options.format.toUpperCase()}`);
   console.log(`  Output: ${options.outFile}`);
+  console.log('');
+  console.log('  Options:');
+  console.log(`    ${withTree ? '✓' : '✗'} Directory tree view`);
+  console.log(`    ${withStats ? '✓' : '✗'} Statistics section`);
+  console.log(`    ${stripComments ? '✓' : '✗'} Strip comments`);
 
   let shouldGenerate: boolean;
   if (options.yes) {

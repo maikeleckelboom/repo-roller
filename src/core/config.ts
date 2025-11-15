@@ -319,5 +319,8 @@ export function resolveOptions(
     warnTokens: cli.warnTokens ?? options.warnTokens,
     // DX improvements: Skip prompts
     yes: cli.yes ?? options.yes,
+    // Track what was explicitly specified
+    profileExplicitlySet: cli.profile !== undefined,
+    maxSizeExplicitlySet: cli.maxSize !== undefined,
   };
 }
