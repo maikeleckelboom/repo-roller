@@ -28,7 +28,10 @@
     "examples": "tsx src/cli.ts --examples",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:check": "eslint . --max-warnings 0"
   },
   "keywords": [
     "cli",
@@ -52,13 +55,18 @@
     "react": "^19.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.10.0",
     "@vitest/coverage-v8": "^4.0.9",
     "@vitest/ui": "^4.0.8",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
     "ink-testing-library": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
     "vitest": "^4.0.8"
   }
 }

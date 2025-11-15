@@ -12,8 +12,8 @@ export function displayPresets(config?: RollerConfig): void {
   const builtInNames = listBuiltInPresets();
   for (const name of builtInNames) {
     const preset = BUILT_IN_PRESETS[name];
-    if (!preset) continue;
-    const extensions = preset.extensions?.join(', ') || 'all';
+    if (!preset) {continue;}
+    const extensions = preset.extensions?.join(', ') ?? 'all';
     console.log(`  • ${name.padEnd(12)} - ${extensions}`);
   }
 
@@ -21,7 +21,7 @@ export function displayPresets(config?: RollerConfig): void {
   if (config?.presets && Object.keys(config.presets).length > 0) {
     console.log('\nFrom repo-roller.config:');
     for (const [name, preset] of Object.entries(config.presets)) {
-      const extensions = preset.extensions?.join(', ') || 'custom';
+      const extensions = preset.extensions?.join(', ') ?? 'custom';
       console.log(`  • ${name.padEnd(12)} - ${extensions}`);
     }
   }
@@ -35,7 +35,7 @@ export function displayPresets(config?: RollerConfig): void {
 export function displayPresetDetails(name: string, config?: RollerConfig): void {
   const builtInPreset = BUILT_IN_PRESETS[name];
   const configPreset = config?.presets?.[name];
-  const preset = builtInPreset || configPreset;
+  const preset = builtInPreset ?? configPreset;
 
   if (!preset) {
     console.error(`❌ Preset "${name}" not found.`);
@@ -207,7 +207,7 @@ export function displayExamples(): void {
  * Format bytes to human-readable string
  */
 export function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {return '0 B';}
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));

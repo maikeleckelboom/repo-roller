@@ -17,7 +17,7 @@ describe('CustomTreeSelect', () => {
   const createMockFile = (relativePath: string, isDefaultIncluded = true): FileInfo => ({
     relativePath,
     absolutePath: `/root/${relativePath}`,
-    extension: relativePath.split('.').pop() || '',
+    extension: relativePath.split('.').pop() ?? '',
     sizeBytes: 1000,
     isBinary: false,
     isDefaultIncluded,
@@ -48,7 +48,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      const output = lastFrame() || '';
+      const output = lastFrame() ?? '';
       // Should show file selection header
       expect(output).toContain('File Selection');
       // Should show file count
@@ -87,7 +87,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // Tree should be built with directories first
-      const output = lastFrame() || '';
+      const output = lastFrame() ?? '';
       expect(output).toContain('File Selection');
     });
   });
@@ -156,7 +156,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      const output = lastFrame() || '';
+      const output = lastFrame() ?? '';
       expect(output).toContain('Navigate');
       expect(output).toContain('Toggle');
       expect(output).toContain('Confirm');
@@ -242,7 +242,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      const output = lastFrame() || '';
+      const output = lastFrame() ?? '';
       expect(output).toContain('Toggle excluded');
       expect(output).toContain('H:');
     });
@@ -337,7 +337,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      const output = lastFrame() || '';
+      const output = lastFrame() ?? '';
       expect(output).toContain('📁');
     });
   });

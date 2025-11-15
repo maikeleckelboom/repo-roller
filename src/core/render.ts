@@ -1,11 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { dirname, basename, sep } from 'node:path';
+import { sep } from 'node:path';
 import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import type {
   ScanResult,
   RenderOptions,
-  OutputFormat,
   ResolvedOptions,
   StructuredOutput
 } from './types.js';
@@ -14,7 +13,7 @@ import type {
  * Format bytes to human-readable string
  */
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {return '0 B';}
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -171,7 +170,7 @@ function buildTree(files: readonly { relativePath: string }[]): TreeNode {
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (!part) continue;
+      if (!part) {continue;}
 
       if (!current.children.has(part)) {
         current.children.set(part, {
@@ -181,7 +180,10 @@ function buildTree(files: readonly { relativePath: string }[]): TreeNode {
         });
       }
 
-      current = current.children.get(part)!;
+      const nextNode = current.children.get(part);
+      if (nextNode) {
+        current = nextNode;
+      }
     }
   }
 

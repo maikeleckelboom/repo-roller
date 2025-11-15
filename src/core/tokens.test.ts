@@ -192,13 +192,13 @@ describe('Token Estimation', () => {
 
   describe('LLM_PROVIDERS', () => {
     it('should have valid context windows', () => {
-      for (const provider of Object.values(LLM_PROVIDERS) as Array<{ contextWindow: number; inputCostPerMillion: number; outputCostPerMillion: number }>) {
+      for (const provider of Object.values(LLM_PROVIDERS) as { contextWindow: number; inputCostPerMillion: number; outputCostPerMillion: number }[]) {
         expect(provider.contextWindow).toBeGreaterThan(0);
       }
     });
 
     it('should have valid pricing', () => {
-      for (const provider of Object.values(LLM_PROVIDERS) as Array<{ contextWindow: number; inputCostPerMillion: number; outputCostPerMillion: number }>) {
+      for (const provider of Object.values(LLM_PROVIDERS) as { contextWindow: number; inputCostPerMillion: number; outputCostPerMillion: number }[]) {
         expect(provider.inputCostPerMillion).toBeGreaterThan(0);
         expect(provider.outputCostPerMillion).toBeGreaterThan(0);
       }
@@ -207,7 +207,7 @@ describe('Token Estimation', () => {
     it('should include major providers', () => {
       expect(LLM_PROVIDERS['claude-sonnet']).toBeDefined();
       expect(LLM_PROVIDERS['gpt-4o']).toBeDefined();
-      expect(LLM_PROVIDERS['gemini']).toBeDefined();
+      expect(LLM_PROVIDERS.gemini).toBeDefined();
     });
   });
 });

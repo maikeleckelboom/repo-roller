@@ -81,12 +81,9 @@ export function estimateTokens(text: string): number {
   // Count characters
   const charCount = text.length;
 
-  // Count whitespace (tokens often break on whitespace)
-  const whitespaceCount = (text.match(/\s+/g) || []).length;
-
   // Count special characters (often separate tokens in code)
   const specialChars = (
-    text.match(/[{}()\[\]<>:;,.!?@#$%^&*+=|\\/'"`~-]/g) || []
+    text.match(/[{}()[\]<>:;,.!?@#$%^&*+=|\\/'"`~-]/g) ?? []
   ).length;
 
   // Heuristic: base estimate + adjustment for code structure
@@ -119,7 +116,7 @@ export function estimateTokensDetailed(
     }
 
     // Add extra tokens for punctuation attached to words
-    const punctuation = word.match(/[{}()\[\]<>:;,.!?@#$%^&*+=|\\/'"`~-]/g);
+    const punctuation = word.match(/[{}()[\]<>:;,.!?@#$%^&*+=|\\/'"`~-]/g);
     if (punctuation) {
       tokenCount += punctuation.length * 0.5;
     }

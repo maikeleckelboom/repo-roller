@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -12,7 +12,7 @@ describe('render module', () => {
   // Helper to safely get a test file by index
   const getTestFile = (index: number) => {
     const file = testFiles[index];
-    if (!file) throw new Error(`Test file at index ${index} not found`);
+    if (!file) {throw new Error(`Test file at index ${index} not found`);}
     return file;
   };
 
@@ -394,7 +394,7 @@ def helper():
       const result = await renderJson(scan, options);
 
       // Should have 4-space indentation
-      expect(result).toMatch(/^    "/m);
+      expect(result).toMatch(/^ {4}"/m);
     });
 
     it('should handle multiple files', async () => {
@@ -545,7 +545,7 @@ def helper():
       const result = await renderTxt(scan, options);
 
       // Should have separators for each file
-      const separatorCount = (result.match(/={50}/g) || []).length;
+      const separatorCount = (result.match(/={50}/g) ?? []).length;
       expect(separatorCount).toBe(6); // 2 separators per file (header)
     });
   });
