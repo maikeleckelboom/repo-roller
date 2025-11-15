@@ -18,9 +18,7 @@ export interface ProfileLayout {
 /**
  * Profile configuration with layout for file ordering
  */
-export interface ProfileConfig extends ProfileLayout {
-  // Future options for profiles can be added here
-}
+export type ProfileConfig = ProfileLayout;
 
 /**
  * Configuration for .reporoller.yml

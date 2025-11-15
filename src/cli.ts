@@ -120,7 +120,7 @@ async function main(): Promise<void> {
 
         // Handle validation command
         if (options.validate) {
-          await validateConfigs(root, config, repoRollerConfig);
+          validateConfigs(root, config, repoRollerConfig);
           return;
         }
 
@@ -184,7 +184,7 @@ async function main(): Promise<void> {
           target: options.target as string | undefined,
           warnTokens: options.warnTokens as number | undefined,
           // DX improvements: Skip prompts
-          yes: (options.yes as boolean | undefined) || (options.defaults as boolean | undefined),
+          yes: (options.yes as boolean | undefined) ?? (options.defaults as boolean | undefined),
         };
 
         // Resolve final options
@@ -393,11 +393,11 @@ function displayProviders(): void {
 /**
  * Validate configuration files
  */
-async function validateConfigs(
-  root: string,
+function validateConfigs(
+  _root: string,
   config: RollerConfig | undefined,
   repoRollerConfig: RepoRollerYmlConfig | undefined
-): Promise<void> {
+): void {
   console.log('🔍 Validating configuration files...\n');
 
   let hasErrors = false;
@@ -408,7 +408,7 @@ async function validateConfigs(
     foundConfigs = true;
     const result = validateRollerConfig(config);
     console.log(formatValidationErrors(result, 'repo-roller.config'));
-    if (!result.valid) hasErrors = true;
+    if (!result.valid) {hasErrors = true;}
   }
 
   // Validate .reporoller.yml
@@ -416,7 +416,7 @@ async function validateConfigs(
     foundConfigs = true;
     const result = validateRepoRollerYml(repoRollerConfig);
     console.log(formatValidationErrors(result, '.reporoller.yml'));
-    if (!result.valid) hasErrors = true;
+    if (!result.valid) {hasErrors = true;}
   }
 
   if (!foundConfigs) {

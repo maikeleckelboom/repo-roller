@@ -43,7 +43,7 @@ function buildTreeStructure(files: readonly FileInfo[]): TreeNode {
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (!part) continue;
+      if (!part) {continue;}
 
       const parentPath = currentPath || '.';
       currentPath = currentPath ? `${currentPath}/${part}` : part;
@@ -200,12 +200,21 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Flatten tree based on expansion state
   const flatNodes = useMemo(() => flattenTree(showExcluded ? tree : filteredTree, expanded), [tree, filteredTree, expanded, showExcluded]);
 
-  // Ensure cursor stays in bounds when flatNodes changes
-  useEffect(() => {
-    if (flatNodes.length > 0 && cursor >= flatNodes.length) {
-      setCursor(flatNodes.length - 1);
+  // Ensure cursor stays in bounds when flatNodes changes (use bounded cursor)
+  const boundedCursor = useMemo(() => {
+    if (flatNodes.length === 0) {
+      return 0;
     }
-  }, [flatNodes.length, cursor]);
+    return Math.min(cursor, flatNodes.length - 1);
+  }, [cursor, flatNodes.length]);
+
+  // Sync cursor state if it needs adjustment (only when actually out of bounds)
+  useEffect(() => {
+    if (boundedCursor !== cursor) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCursor(boundedCursor);
+    }
+  }, [boundedCursor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { exit } = useApp();
 
@@ -257,7 +266,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     if (input === ' ') {
       // Toggle selection
       const node = flatNodes[cursor];
-      if (!node) return;
+      if (!node) {return;}
 
       if (node.isFile) {
         // Toggle single file

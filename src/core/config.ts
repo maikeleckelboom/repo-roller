@@ -7,7 +7,6 @@ import type {
   ResolvedOptions,
   RollerConfig,
   RollerPreset,
-  SortMode,
   RepoRollerYmlConfig,
   OutputFormat,
 } from './types.js';
@@ -87,7 +86,7 @@ function normalizeExtension(ext: string): string {
  * Parse extensions from comma-separated string or array
  */
 function parseExtensions(ext: string | readonly string[] | undefined): readonly string[] {
-  if (!ext) return [];
+  if (!ext) {return [];}
   if (Array.isArray(ext)) {
     return ext.map(normalizeExtension);
   }
@@ -133,8 +132,8 @@ export async function loadConfig(rootDir: string): Promise<RollerConfig | undefi
 
       // Import as ES module
       const configUrl = pathToFileURL(configPath).href;
-      const module = await import(configUrl);
-      const config = module.default as RollerConfig;
+      const module = (await import(configUrl)) as { default: RollerConfig };
+      const config = module.default;
 
       if (config && typeof config === 'object') {
         return config;
@@ -155,7 +154,7 @@ function mergePreset(
   defaults: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'>,
   preset: RollerPreset | undefined
 ): Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'> {
-  if (!preset) return defaults;
+  if (!preset) {return defaults;}
 
   return {
     outFile: defaults.outFile,

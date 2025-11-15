@@ -150,7 +150,7 @@ export async function runInit(rootDir: string): Promise<void> {
   });
 
   // Ask for output format
-  const format = await select({
+  const _format = await select({
     message: 'Default output format?',
     choices: [
       { name: 'Markdown (best for LLMs)', value: 'md' },

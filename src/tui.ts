@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { render } from 'ink';
 import React from 'react';
-import type { ResolvedOptions, FileInfo } from './core/types.js';
+import type { ResolvedOptions } from './core/types.js';
 import { scanFiles } from './core/scan.js';
 import { render as renderOutput } from './core/render.js';
 import { App } from './components/App.js';
@@ -12,7 +12,7 @@ import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
  * Format bytes to human-readable string
  */
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {return '0 B';}
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));

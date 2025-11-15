@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import { join, relative, extname, resolve } from 'node:path';
+import { join, extname, resolve } from 'node:path';
 import fg from 'fast-glob';
 import ignorePackage from 'ignore';
 import { minimatch } from 'minimatch';
@@ -148,7 +148,7 @@ function normalizeExtension(ext: string): string {
  * Check if file matches extension filter
  */
 function matchesExtension(filePath: string, extensions: readonly string[]): boolean {
-  if (extensions.length === 0) return true;
+  if (extensions.length === 0) {return true;}
 
   const ext = normalizeExtension(extname(filePath));
   return extensions.includes(ext);
@@ -170,7 +170,7 @@ function sortFiles(files: FileInfo[], mode: 'path' | 'size' | 'extension'): File
     case 'extension':
       sorted.sort((a, b) => {
         const extCompare = a.extension.localeCompare(b.extension);
-        if (extCompare !== 0) return extCompare;
+        if (extCompare !== 0) {return extCompare;}
         return a.relativePath.localeCompare(b.relativePath);
       });
       break;
