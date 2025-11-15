@@ -4,8 +4,8 @@ import {
   validateRepoRollerYml,
   validateCliOptions,
   formatValidationErrors,
-} from './validation';
-import type { RollerConfig, RepoRollerYmlConfig } from './types';
+} from './validation.js';
+import type { RollerConfig, RepoRollerYmlConfig } from './types.js';
 
 describe('Configuration Validation', () => {
   describe('validateRollerConfig', () => {
@@ -41,7 +41,7 @@ describe('Configuration Validation', () => {
       const result = validateRollerConfig(config);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].message).toContain('should not start with a dot');
+      expect(result.errors[0]!.message).toContain('should not start with a dot');
     });
 
     it('should detect glob patterns in extensions', () => {
@@ -56,7 +56,7 @@ describe('Configuration Validation', () => {
 
       const result = validateRollerConfig(config);
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('invalid characters');
+      expect(result.errors[0]!.message).toContain('invalid characters');
     });
 
     it('should detect invalid sort mode', () => {
@@ -71,7 +71,7 @@ describe('Configuration Validation', () => {
 
       const result = validateRollerConfig(config);
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('Invalid sort mode');
+      expect(result.errors[0]!.message).toContain('Invalid sort mode');
     });
 
     it('should detect missing default preset', () => {
@@ -87,7 +87,7 @@ describe('Configuration Validation', () => {
 
       const result = validateRollerConfig(config);
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('is not defined in presets');
+      expect(result.errors[0]!.message).toContain('is not defined in presets');
     });
 
     it('should detect conflicting include/exclude patterns', () => {
@@ -103,7 +103,7 @@ describe('Configuration Validation', () => {
 
       const result = validateRollerConfig(config);
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('both include and exclude');
+      expect(result.errors[0]!.message).toContain('both include and exclude');
     });
 
     it('should warn about unusually large max file size', () => {
@@ -118,7 +118,7 @@ describe('Configuration Validation', () => {
 
       const result = validateRollerConfig(config);
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('unusually large');
+      expect(result.errors[0]!.message).toContain('unusually large');
     });
   });
 
@@ -149,7 +149,7 @@ describe('Configuration Validation', () => {
 
       const result = validateRepoRollerYml(config);
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('empty layout array');
+      expect(result.errors[0]!.message).toContain('empty layout array');
     });
 
     it('should warn when no profiles defined', () => {
@@ -160,7 +160,7 @@ describe('Configuration Validation', () => {
       const result = validateRepoRollerYml(config);
       expect(result.valid).toBe(true);
       expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings[0].message).toContain('No profiles defined');
+      expect(result.warnings[0]!.message).toContain('No profiles defined');
     });
   });
 
@@ -183,7 +183,7 @@ describe('Configuration Validation', () => {
       });
 
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('glob patterns');
+      expect(result.errors[0]!.message).toContain('glob patterns');
     });
 
     it('should warn about dots in extensions', () => {
@@ -193,7 +193,7 @@ describe('Configuration Validation', () => {
 
       expect(result.valid).toBe(true);
       expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings[0].message).toContain('should not include dots');
+      expect(result.warnings[0]!.message).toContain('should not include dots');
     });
 
     it('should detect invalid format', () => {
@@ -202,7 +202,7 @@ describe('Configuration Validation', () => {
       });
 
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('Invalid format');
+      expect(result.errors[0]!.message).toContain('Invalid format');
     });
 
     it('should warn about unknown provider', () => {
@@ -212,7 +212,7 @@ describe('Configuration Validation', () => {
 
       expect(result.valid).toBe(true);
       expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings[0].message).toContain('Unknown provider');
+      expect(result.warnings[0]!.message).toContain('Unknown provider');
     });
 
     it('should detect negative max size', () => {
@@ -221,7 +221,7 @@ describe('Configuration Validation', () => {
       });
 
       expect(result.valid).toBe(false);
-      expect(result.errors[0].message).toContain('must be positive');
+      expect(result.errors[0]!.message).toContain('must be positive');
     });
   });
 
