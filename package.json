@@ -47,6 +47,7 @@
   "dependencies": {
     "@inquirer/prompts": "^7.2.0",
     "@types/react": "^19.2.2",
+    "chalk": "^5.6.2",
     "commander": "^12.1.0",
     "fast-glob": "^3.3.3",
     "ignore": "^6.0.2",
