@@ -193,16 +193,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       return;
     }
 
-    // Toggle showing/hiding excluded and gitignored files with Shift
-    if (key.shift && !input && !key.upArrow && !key.downArrow && !key.leftArrow && !key.rightArrow && !key.return) {
+    // Toggle showing/hiding excluded and gitignored files with H (Shift+h)
+    if (input === 'H') {
       setShowExcluded(prev => !prev);
-      // Adjust cursor if it's out of bounds after filtering
-      setCursor(prev => {
-        const newLength = showExcluded
-          ? filteredFiles.length
-          : files.length;
-        return Math.min(prev, Math.max(0, newLength - 1));
-      });
       return;
     }
 
@@ -335,7 +328,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
           ↑/↓: Navigate | ←/→: Collapse/Expand | Space: Toggle | Enter: Confirm | Q: Cancel
         </Text>
         <Text dimColor>
-          Shift: Toggle excluded/ignored files {showExcluded ? '(currently shown)' : '(currently hidden)'}
+          H: Toggle excluded/ignored files {showExcluded ? '(currently shown)' : '(currently hidden)'}
         </Text>
       </Box>
 
