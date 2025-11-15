@@ -8,7 +8,7 @@ import {
   analyzeTokenUsage,
   LLM_PROVIDERS,
   formatNumber,
-} from './tokens';
+} from './tokens.js';
 
 describe('Token Estimation', () => {
   describe('estimateTokens', () => {
@@ -164,7 +164,7 @@ describe('Token Estimation', () => {
       const largeText = 'word '.repeat(50000); // ~50K words ≈ 60K+ tokens
       const analysis = analyzeTokenUsage(largeText);
       expect(analysis.warnings.length).toBeGreaterThan(0);
-      expect(analysis.warnings.some((w) => w.includes('exceeds'))).toBe(true);
+      expect(analysis.warnings.some((w: string) => w.includes('exceeds'))).toBe(true);
     });
 
     it('should provide recommendations for large content', () => {
@@ -177,7 +177,7 @@ describe('Token Estimation', () => {
       const text = 'Some moderate content';
       const analysis = analyzeTokenUsage(text);
       expect(
-        analysis.recommendations.some((r) => r.includes('cost-effective'))
+        analysis.recommendations.some((r: string) => r.includes('cost-effective'))
       ).toBe(true);
     });
   });
@@ -192,13 +192,13 @@ describe('Token Estimation', () => {
 
   describe('LLM_PROVIDERS', () => {
     it('should have valid context windows', () => {
-      for (const provider of Object.values(LLM_PROVIDERS)) {
+      for (const provider of Object.values(LLM_PROVIDERS) as Array<{ contextWindow: number; inputCostPerMillion: number; outputCostPerMillion: number }>) {
         expect(provider.contextWindow).toBeGreaterThan(0);
       }
     });
 
     it('should have valid pricing', () => {
-      for (const provider of Object.values(LLM_PROVIDERS)) {
+      for (const provider of Object.values(LLM_PROVIDERS) as Array<{ contextWindow: number; inputCostPerMillion: number; outputCostPerMillion: number }>) {
         expect(provider.inputCostPerMillion).toBeGreaterThan(0);
         expect(provider.outputCostPerMillion).toBeGreaterThan(0);
       }
