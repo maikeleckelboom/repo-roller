@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { FileInfo } from '../core/types.js';
 
@@ -160,8 +160,29 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Current cursor position
   const [cursor, setCursor] = useState(0);
 
+  // Toggle for showing/hiding excluded and gitignored files
+  const [showExcluded, setShowExcluded] = useState(true);
+
+  // Filter files based on showExcluded state
+  const filteredFiles = useMemo(() => {
+    if (showExcluded) {
+      return files;
+    }
+    return files.filter(f => f.isDefaultIncluded);
+  }, [files, showExcluded]);
+
+  // Build tree from filtered files
+  const filteredTree = useMemo(() => buildTreeStructure(filteredFiles), [filteredFiles]);
+
   // Flatten tree based on expansion state
-  const flatNodes = useMemo(() => flattenTree(tree, expanded), [tree, expanded]);
+  const flatNodes = useMemo(() => flattenTree(showExcluded ? tree : filteredTree, expanded), [tree, filteredTree, expanded, showExcluded]);
+
+  // Ensure cursor stays in bounds when flatNodes changes
+  useEffect(() => {
+    if (flatNodes.length > 0 && cursor >= flatNodes.length) {
+      setCursor(flatNodes.length - 1);
+    }
+  }, [flatNodes.length, cursor]);
 
   const { exit } = useApp();
 
@@ -169,6 +190,19 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     if (input === 'q' || input === 'Q') {
       onComplete([]);
       exit();
+      return;
+    }
+
+    // Toggle showing/hiding excluded and gitignored files with Shift
+    if (key.shift && !input && !key.upArrow && !key.downArrow && !key.leftArrow && !key.rightArrow && !key.return) {
+      setShowExcluded(prev => !prev);
+      // Adjust cursor if it's out of bounds after filtering
+      setCursor(prev => {
+        const newLength = showExcluded
+          ? filteredFiles.length
+          : files.length;
+        return Math.min(prev, Math.max(0, newLength - 1));
+      });
       return;
     }
 
@@ -300,6 +334,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         <Text dimColor>
           ↑/↓: Navigate | ←/→: Collapse/Expand | Space: Toggle | Enter: Confirm | Q: Cancel
         </Text>
+        <Text dimColor>
+          Shift: Toggle excluded/ignored files {showExcluded ? '(currently shown)' : '(currently hidden)'}
+        </Text>
       </Box>
 
       <Box flexDirection="column" paddingBottom={1}>
@@ -310,6 +347,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         <Text bold color="green">
           ✓ {selected.size} / {files.length} files selected
         </Text>
+        {!showExcluded && files.length !== filteredFiles.length && (
+          <Text dimColor>
+            {' '}| {files.length - filteredFiles.length} excluded/ignored files hidden
+          </Text>
+        )}
       </Box>
     </Box>
   );
