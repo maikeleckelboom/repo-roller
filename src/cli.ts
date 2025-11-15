@@ -12,6 +12,7 @@ import { runInit } from './core/init.js';
 import { estimateTokens, analyzeTokenUsage, formatNumber, calculateCost, LLM_PROVIDERS } from './core/tokens.js';
 import type { TokenAnalysisContext } from './core/tokens.js';
 import { validateRollerConfig, validateRepoRollerYml, validateCliOptions, formatValidationErrors } from './core/validation.js';
+import * as ui from './core/ui.js';
 
 /**
  * Main CLI function
@@ -135,18 +136,22 @@ async function main(): Promise<void> {
         });
 
         if (!cliValidation.valid) {
-          console.error('❌ Invalid CLI options:\n');
+          console.error('');
+          console.error(ui.error('Invalid CLI options'));
+          console.error('');
           for (const error of cliValidation.errors) {
-            console.error(`  ${error.field}: ${error.message}`);
-            console.error(`  Fix: ${error.suggestion}\n`);
+            console.error(ui.colors.error(`  ${error.field}: ${error.message}`));
+            console.error(ui.bullet(ui.colors.dim(`Fix: ${error.suggestion}`)));
+            console.error('');
           }
           process.exit(1);
         }
 
         if (cliValidation.warnings.length > 0) {
           for (const warning of cliValidation.warnings) {
-            console.warn(`⚠️  ${warning.field}: ${warning.message}`);
-            console.warn(`   Suggestion: ${warning.suggestion}\n`);
+            console.warn(ui.warning(`${warning.field}: ${warning.message}`));
+            console.warn(ui.bullet(ui.colors.dim(`Suggestion: ${warning.suggestion}`)));
+            console.warn('');
           }
         }
 
@@ -225,7 +230,9 @@ async function main(): Promise<void> {
  * Run preview mode (dry-run or stats-only)
  */
 async function runPreview(options: ResolvedOptions): Promise<void> {
-  console.log(`🔍 Scanning files in ${options.root}...\n`);
+  console.log(ui.header());
+  console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));
+  console.log('');
 
   // Scan files
   const scan = await scanFiles(options);
@@ -237,59 +244,74 @@ async function runPreview(options: ResolvedOptions): Promise<void> {
 
   if (options.statsOnly) {
     // Stats only mode
-    console.log('📊 Statistics:\n');
-    console.log(`Total files: ${scan.files.length}`);
-    console.log(`Total size: ${formatBytes(scan.totalBytes)}\n`);
+    console.log(ui.section('Statistics'));
+    console.log(ui.keyValue('Total files', ui.colors.primary(scan.files.length.toString())));
+    console.log(ui.keyValue('Total size', formatBytes(scan.totalBytes)));
+    console.log('');
 
     if (Object.keys(scan.extensionCounts).length > 0) {
-      console.log('Extensions:');
+      console.log(ui.colors.dim('  Extensions'));
+      console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(30)));
       const sorted = Object.entries(scan.extensionCounts)
         .sort(([, a], [, b]) => b - a);
       for (const [ext, count] of sorted) {
         const extLabel = ext || '(no extension)';
-        console.log(`  - ${extLabel}: ${count} file${count !== 1 ? 's' : ''}`);
+        console.log(ui.keyValue(`  ${extLabel}`, `${count} file${count !== 1 ? 's' : ''}`));
       }
     }
   } else {
     // Dry run mode - show what would be included
-    console.log(`📋 Preview (would include ${scan.files.length} files):\n`);
+    console.log(ui.section('Preview'));
+    console.log(ui.colors.dim(`  Would include ${ui.colors.primary(scan.files.length.toString())} files`));
+    console.log('');
 
     const maxDisplay = 20;
     const filesToShow = scan.files.slice(0, maxDisplay);
 
     for (const file of filesToShow) {
-      console.log(`✓ ${file.relativePath} (${formatBytes(file.sizeBytes)})`);
+      console.log(`  ${ui.colors.success(ui.symbols.check)} ${ui.colors.muted(file.relativePath)} ${ui.colors.dim(`(${formatBytes(file.sizeBytes)})`)}`);
     }
 
     if (scan.files.length > maxDisplay) {
-      console.log(`\n... and ${scan.files.length - maxDisplay} more files`);
+      console.log('');
+      console.log(ui.colors.dim(`  ${ui.symbols.ellipsis} and ${scan.files.length - maxDisplay} more files`));
     }
 
-    console.log(`\nTotal: ${scan.files.length} files, ${formatBytes(scan.totalBytes)}`);
+    console.log('');
+    console.log(ui.keyValue('Total', `${scan.files.length} files, ${formatBytes(scan.totalBytes)}`));
 
     // Show estimated token count
     if (options.tokenCount) {
       const output = await render(scan, options);
       const tokens = estimateTokens(output);
-      console.log(`Estimated tokens: ${formatNumber(tokens)}`);
+      console.log(ui.keyValue('Estimated tokens', ui.tokenCount(tokens)));
 
       // Quick provider check
       const claudeEstimate = calculateCost(tokens, 'claude-sonnet');
       if (claudeEstimate) {
-        const status = claudeEstimate.withinContextWindow ? '✓' : '✗';
-        console.log(`${status} Claude Sonnet: $${claudeEstimate.inputCost.toFixed(4)} (${claudeEstimate.utilizationPercent.toFixed(1)}% of context)`);
+        console.log(ui.providerRow(
+          'Claude Sonnet',
+          `$${claudeEstimate.inputCost.toFixed(4)} (${claudeEstimate.utilizationPercent.toFixed(1)}% of context)`,
+          claudeEstimate.withinContextWindow,
+          true
+        ));
       }
     }
 
-    console.log('\nRun without --dry-run to generate output');
+    console.log('');
+    console.log(ui.colors.dim('  Run without --dry-run to generate output'));
   }
+  console.log('');
 }
 
 /**
  * Run non-interactive mode
  */
 async function runNonInteractive(options: ResolvedOptions): Promise<void> {
-  console.log(`🔍 Scanning files in ${options.root}...`);
+  // Show modern header
+  console.log(ui.header());
+
+  console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));
 
   // Scan files
   const scan = await scanFiles(options);
@@ -299,17 +321,18 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
     process.exit(1);
   }
 
-  console.log(`✅ Found ${scan.files.length} files (${formatBytes(scan.totalBytes)})`);
+  console.log(ui.success(`Found ${ui.colors.primary(scan.files.length.toString())} files ${ui.colors.dim(`(${formatBytes(scan.totalBytes)})`)}`));
 
   // Render output
   const formatLabel = options.format.toUpperCase();
-  console.log(`📝 Rendering ${formatLabel} output...`);
+  console.log(ui.status('render', `Rendering ${ui.colors.accent(formatLabel)} output`));
   const output = await render(scan, options);
 
   // Write output
   await writeFile(options.outFile, output, 'utf-8');
 
-  console.log(`✨ Output written to ${options.outFile}`);
+  console.log(ui.status('write', `Output written to ${ui.colors.success(options.outFile)}`));
+  console.log('');
 
   // Display token analysis if enabled
   if (options.tokenCount) {
@@ -327,72 +350,99 @@ function displayTokenAnalysis(output: string, options: ResolvedOptions): void {
   };
   const analysis = analyzeTokenUsage(output, context);
 
-  console.log(`\n📊 Token Analysis`);
-  console.log(`   Estimated tokens: ${formatNumber(analysis.estimatedTokens)}`);
+  // Token Analysis Section
+  console.log(ui.section('Token Analysis'));
+  console.log(ui.keyValue('Estimated tokens', ui.tokenCount(analysis.estimatedTokens)));
+  console.log('');
 
   // Show specific provider if targeted
   if (options.targetProvider) {
     const estimate = calculateCost(analysis.estimatedTokens, options.targetProvider);
     if (estimate) {
-      const status = estimate.withinContextWindow ? '✓' : '✗';
-      console.log(`   ${status} ${estimate.displayName}: $${estimate.inputCost.toFixed(4)} (${estimate.utilizationPercent.toFixed(1)}% of ${formatNumber(estimate.contextWindow)} context)`);
+      console.log(ui.providerRow(
+        estimate.displayName,
+        `$${estimate.inputCost.toFixed(4)} (${estimate.utilizationPercent.toFixed(1)}% context)`,
+        estimate.withinContextWindow,
+        true
+      ));
     } else {
-      console.log(`   ⚠️ Unknown provider: ${options.targetProvider}`);
+      console.log(ui.warning(`Unknown provider: ${options.targetProvider}`));
     }
   } else {
-    // Show top providers
-    console.log(`\n   Cost estimates:`);
+    // Show top providers in a clean table with utilization bars
+    console.log(ui.colors.dim('  Provider             Cost         Context Utilization'));
+    console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(58)));
+
     const topProviders = ['claude-sonnet', 'gpt-4o', 'claude-haiku', 'gemini'];
-    for (const providerName of topProviders) {
-      const estimate = calculateCost(analysis.estimatedTokens, providerName);
-      if (estimate) {
-        const status = estimate.withinContextWindow ? '✓' : '✗';
-        console.log(`   ${status} ${estimate.displayName}: $${estimate.inputCost.toFixed(4)}`);
-      }
+    const estimates = topProviders
+      .map(name => calculateCost(analysis.estimatedTokens, name))
+      .filter((e): e is NonNullable<typeof e> => e !== null && e !== undefined)
+      .sort((a, b) => a.inputCost - b.inputCost);
+
+    // Find cheapest fitting provider
+    const cheapestFitting = estimates.find(e => e.withinContextWindow);
+
+    for (const estimate of estimates) {
+      const isCheapest = cheapestFitting && estimate.provider === cheapestFitting.provider;
+      console.log(ui.providerRowWithBar(
+        estimate.displayName,
+        `$${estimate.inputCost.toFixed(4)}`,
+        estimate.utilizationPercent,
+        estimate.withinContextWindow,
+        isCheapest
+      ));
     }
   }
 
-  // Display warnings
+  // Display warnings in a distinct section
   if (analysis.warnings.length > 0) {
-    console.log(`\n   ⚠️  Warnings:`);
+    console.log('');
+    console.log(ui.colors.warning.bold('  Warnings'));
     for (const warning of analysis.warnings) {
-      console.log(`   • ${warning}`);
+      console.log(ui.bullet(ui.colors.warning(warning)));
     }
   }
 
   // Check custom token warning threshold
   if (options.warnTokens && analysis.estimatedTokens > options.warnTokens) {
-    console.log(`\n   ⚠️  Output exceeds ${formatNumber(options.warnTokens)} token threshold`);
+    console.log('');
+    console.log(ui.warning(`Output exceeds ${formatNumber(options.warnTokens)} token threshold`));
   }
 
   // Display recommendations
   if (analysis.recommendations.length > 0) {
-    console.log(`\n   💡 Recommendations:`);
+    console.log('');
+    console.log(ui.colors.info.bold('  Recommendations'));
     for (const rec of analysis.recommendations) {
-      console.log(`   • ${rec}`);
+      console.log(ui.bullet(ui.colors.dim(rec)));
     }
   }
+
+  console.log('');
+  console.log(ui.separator());
 }
 
 /**
  * Display all supported LLM providers
  */
 function displayProviders(): void {
-  console.log('📋 Supported LLM Providers:\n');
+  console.log(ui.header());
+  console.log(ui.section('Supported LLM Providers'));
 
   const providers = Object.values(LLM_PROVIDERS);
   for (const provider of providers) {
-    console.log(`${provider.name}`);
-    console.log(`  Display Name: ${provider.displayName}`);
-    console.log(`  Context Window: ${formatNumber(provider.contextWindow)} tokens`);
-    console.log(`  Input Cost: $${provider.inputCostPerMillion.toFixed(2)}/1M tokens`);
-    console.log(`  Output Cost: $${provider.outputCostPerMillion.toFixed(2)}/1M tokens`);
+    console.log(ui.colors.primary.bold(`  ${provider.displayName}`));
+    console.log(ui.keyValue('    ID', ui.colors.dim(provider.name)));
+    console.log(ui.keyValue('    Context', `${formatNumber(provider.contextWindow)} tokens`));
+    console.log(ui.keyValue('    Input', `$${provider.inputCostPerMillion.toFixed(2)}/1M tokens`));
+    console.log(ui.keyValue('    Output', `$${provider.outputCostPerMillion.toFixed(2)}/1M tokens`));
     console.log('');
   }
 
-  console.log('Usage:');
-  console.log('  repo-roller . --target claude-sonnet');
-  console.log('  repo-roller . --target gpt-4o --warn-tokens 100000');
+  console.log(ui.colors.dim('  Usage:'));
+  console.log(ui.bullet(ui.colors.muted('repo-roller . --target claude-sonnet')));
+  console.log(ui.bullet(ui.colors.muted('repo-roller . --target gpt-4o --warn-tokens 100000')));
+  console.log('');
 }
 
 /**
@@ -403,7 +453,9 @@ function validateConfigs(
   config: RollerConfig | undefined,
   repoRollerConfig: RepoRollerYmlConfig | undefined
 ): void {
-  console.log('🔍 Validating configuration files...\n');
+  console.log(ui.header());
+  console.log(ui.status('scan', 'Validating configuration files'));
+  console.log('');
 
   let hasErrors = false;
   let foundConfigs = false;
@@ -425,8 +477,8 @@ function validateConfigs(
   }
 
   if (!foundConfigs) {
-    console.log('ℹ️  No configuration files found.');
-    console.log('   Run "repo-roller init" to create configuration files.');
+    console.log(ui.info('No configuration files found.'));
+    console.log(ui.bullet(ui.colors.dim('Run "repo-roller init" to create configuration files.')));
     return;
   }
 
@@ -439,19 +491,25 @@ function validateConfigs(
  * Display helpful error message when no files are found
  */
 function displayNoFilesError(options: ResolvedOptions): void {
-  console.error('❌ No files found!\n');
-  console.error('💡 Possible reasons:');
-  console.error('  • All files are excluded by .gitignore or exclude patterns');
-  console.error('  • Extension filter too restrictive (--ext or --lang)');
-  console.error('  • Files exceed size limit (--max-size)');
-  console.error('  • No files match include patterns\n');
-  console.error('Try:');
-  console.error('  repo-roller . --dry-run         # Preview what would be included');
-  console.error('  repo-roller . --verbose         # See detailed filtering');
-  console.error('  repo-roller . --preset full     # Include all files');
+  console.error('');
+  console.error(ui.error('No files found'));
+  console.error('');
+
+  console.error(ui.colors.warning.bold('  Possible reasons'));
+  console.error(ui.bullet('All files are excluded by .gitignore or exclude patterns'));
+  console.error(ui.bullet('Extension filter too restrictive (--ext or --lang)'));
+  console.error(ui.bullet('Files exceed size limit (--max-size)'));
+  console.error(ui.bullet('No files match include patterns'));
+  console.error('');
+
+  console.error(ui.colors.info.bold('  Try'));
+  console.error(ui.bullet(ui.colors.muted('repo-roller . --dry-run') + ui.colors.dim('    Preview what would be included')));
+  console.error(ui.bullet(ui.colors.muted('repo-roller . --verbose') + ui.colors.dim('    See detailed filtering')));
+  console.error(ui.bullet(ui.colors.muted('repo-roller . --preset full') + ui.colors.dim(' Include all files')));
   if (options.extensions.length > 0) {
-    console.error(`  repo-roller . --ext ""          # Remove extension filter (current: ${options.extensions.join(',')})`);
+    console.error(ui.bullet(ui.colors.muted('repo-roller . --ext ""') + ui.colors.dim(`     Remove extension filter (current: ${options.extensions.join(',')})`)));
   }
+  console.error('');
 }
 
 // Run main
