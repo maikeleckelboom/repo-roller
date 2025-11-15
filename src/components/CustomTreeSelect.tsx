@@ -121,26 +121,30 @@ function getAllFilesUnder(node: TreeNode): string[] {
 /**
  * Check if all children of a node are selected
  */
-function areAllChildrenSelected(node: TreeNode, selected: Set<string>): boolean {
+function areAllChildrenSelected(node: TreeNode, selected: Set<string>, selectableFiles: Set<string>): boolean {
   if (node.isFile) {
     return selected.has(node.fullPath);
   }
 
   const allFiles = getAllFilesUnder(node);
-  return allFiles.length > 0 && allFiles.every(f => selected.has(f));
+  // Only consider files that are selectable (isDefaultIncluded === true)
+  const relevantFiles = allFiles.filter(f => selectableFiles.has(f));
+  return relevantFiles.length > 0 && relevantFiles.every(f => selected.has(f));
 }
 
 /**
  * Check if some (but not all) children are selected
  */
-function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean {
+function areSomeChildrenSelected(node: TreeNode, selected: Set<string>, selectableFiles: Set<string>): boolean {
   if (node.isFile) {
     return false;
   }
 
   const allFiles = getAllFilesUnder(node);
-  const selectedCount = allFiles.filter(f => selected.has(f)).length;
-  return selectedCount > 0 && selectedCount < allFiles.length;
+  // Only consider files that are selectable (isDefaultIncluded === true)
+  const relevantFiles = allFiles.filter(f => selectableFiles.has(f));
+  const selectedCount = relevantFiles.filter(f => selected.has(f)).length;
+  return selectedCount > 0 && selectedCount < relevantFiles.length;
 }
 
 export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete }) => {
@@ -160,6 +164,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
   // Current cursor position
   const [cursor, setCursor] = useState(0);
+
+  // Set of files that should be selectable (only files with isDefaultIncluded === true)
+  const selectableFiles = useMemo(() => {
+    return new Set(files.filter(f => f.isDefaultIncluded).map(f => f.relativePath));
+  }, [files]);
 
   // Toggle for showing/hiding excluded and gitignored files
   const [showExcluded, setShowExcluded] = useState(true);
@@ -260,29 +269,32 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       if (!node) return;
 
       if (node.isFile) {
-        // Toggle single file
-        setSelected(prev => {
-          const next = new Set(prev);
-          if (next.has(node.fullPath)) {
-            next.delete(node.fullPath);
-          } else {
-            next.add(node.fullPath);
-          }
-          return next;
-        });
+        // Toggle single file - only allow toggling if file is selectable (isDefaultIncluded)
+        if (selectableFiles.has(node.fullPath)) {
+          setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(node.fullPath)) {
+              next.delete(node.fullPath);
+            } else {
+              next.add(node.fullPath);
+            }
+            return next;
+          });
+        }
       } else {
-        // Toggle directory and all children
+        // Toggle directory and all children - only selectable files
         const allFiles = getAllFilesUnder(node);
-        const allSelected = allFiles.every(f => selected.has(f));
+        const relevantFiles = allFiles.filter(f => selectableFiles.has(f));
+        const allSelected = relevantFiles.length > 0 && relevantFiles.every(f => selected.has(f));
 
         setSelected(prev => {
           const next = new Set(prev);
           if (allSelected) {
-            // Deselect all
-            allFiles.forEach(f => next.delete(f));
+            // Deselect all selectable files
+            relevantFiles.forEach(f => next.delete(f));
           } else {
-            // Select all
-            allFiles.forEach(f => next.add(f));
+            // Select all selectable files
+            relevantFiles.forEach(f => next.add(f));
           }
           return next;
         });
@@ -303,10 +315,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     return flatNodes.map((node, index) => {
       const isCursor = index === cursor;
       const isExpanded = expanded.has(node.fullPath);
+      const isSelectable = node.isFile ? selectableFiles.has(node.fullPath) : true;
       const isFullySelected = node.isFile
         ? selected.has(node.fullPath)
-        : areAllChildrenSelected(node, selected);
-      const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected);
+        : areAllChildrenSelected(node, selected, selectableFiles);
+      const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected, selectableFiles);
 
       // Build indentation
       const indent = '  '.repeat(node.depth - 1);
@@ -314,7 +327,12 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       // Icon
       let icon = '';
       if (node.isFile) {
-        icon = isFullySelected ? '■ ' : '□ ';
+        if (!isSelectable) {
+          // Excluded/ignored file - show as disabled
+          icon = '○ ';
+        } else {
+          icon = isFullySelected ? '■ ' : '□ ';
+        }
       } else {
         if (isFullySelected) {
           icon = '■ ';
@@ -329,12 +347,18 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       // Name
       const name = node.isFile ? node.name : `${node.name}/`;
 
-      // Color
-      const color = isCursor ? 'cyan' : isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : undefined;
+      // Color - dim color for excluded files
+      let color: string | undefined;
+      if (!isSelectable) {
+        color = isCursor ? 'cyan' : 'gray';
+      } else {
+        color = isCursor ? 'cyan' : isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : undefined;
+      }
       const bold = isCursor;
+      const dimColor = !isSelectable && !isCursor;
 
       return (
-        <Text key={node.fullPath} color={color} bold={bold}>
+        <Text key={node.fullPath} color={color} bold={bold} dimColor={dimColor}>
           {indent}{icon}{name}
         </Text>
       );
