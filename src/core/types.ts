@@ -145,6 +145,10 @@ export interface CliOptions {
   readonly indent?: number;
   readonly toc?: boolean;
   readonly frontMatter?: boolean;
+  // Token counting options
+  readonly tokenCount?: boolean;
+  readonly target?: string;
+  readonly warnTokens?: number;
 }
 
 /**
@@ -175,4 +179,8 @@ export interface ResolvedOptions {
   readonly indent: number;
   readonly toc: boolean;
   readonly frontMatter: boolean;
+  // Token counting options
+  readonly tokenCount: boolean;
+  readonly targetProvider?: string;
+  readonly warnTokens?: number;
 }

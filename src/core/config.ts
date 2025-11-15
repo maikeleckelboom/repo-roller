@@ -68,6 +68,10 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   indent: 2,
   toc: false,
   frontMatter: false,
+  // Token counting options
+  tokenCount: true, // Enable by default
+  targetProvider: undefined,
+  warnTokens: undefined,
 } as const;
 
 /**
@@ -171,6 +175,9 @@ function mergePreset(
     indent: defaults.indent,
     toc: defaults.toc,
     frontMatter: defaults.frontMatter,
+    tokenCount: defaults.tokenCount,
+    targetProvider: defaults.targetProvider,
+    warnTokens: defaults.warnTokens,
   };
 }
 
@@ -304,5 +311,9 @@ export function resolveOptions(
     indent: cli.indent ?? options.indent,
     toc: cli.toc ?? options.toc,
     frontMatter: cli.frontMatter ?? options.frontMatter,
+    // Token counting options
+    tokenCount: cli.tokenCount ?? options.tokenCount,
+    targetProvider: cli.target ?? options.targetProvider,
+    warnTokens: cli.warnTokens ?? options.warnTokens,
   };
 }

@@ -2,13 +2,15 @@
 
 import { writeFile } from 'node:fs/promises';
 import { Command } from 'commander';
-import type { CliOptions, SortMode, ResolvedOptions, OutputFormat } from './core/types.js';
+import type { CliOptions, SortMode, ResolvedOptions, OutputFormat, RollerConfig, RepoRollerYmlConfig } from './core/types.js';
 import { loadConfig, loadRepoRollerYml, resolveOptions } from './core/config.js';
 import { scanFiles } from './core/scan.js';
 import { render } from './core/render.js';
 import { runInteractive } from './tui.js';
 import { displayPresets, displayProfiles, displayProfileDetails, displayExamples, formatBytes } from './core/helpers.js';
 import { runInit } from './core/init.js';
+import { estimateTokens, analyzeTokenUsage, formatNumber, calculateCost, LLM_PROVIDERS } from './core/tokens.js';
+import { validateRollerConfig, validateRepoRollerYml, validateCliOptions, formatValidationErrors } from './core/validation.js';
 
 /**
  * Main CLI function
@@ -74,6 +76,13 @@ async function main(): Promise<void> {
     .option('--show-profile <name>', 'Show details of a specific profile')
     .option('--examples', 'Show usage examples')
     .option('-v, --verbose', 'Verbose output')
+    // Token counting options
+    .option('--no-token-count', 'Disable token counting and cost estimation')
+    .option('--target <provider>', 'Target LLM provider (claude-sonnet, gpt-4o, etc.)')
+    .option('--warn-tokens <number>', 'Warn if output exceeds this token count', parseInt)
+    .option('--list-providers', 'List all supported LLM providers')
+    // Validation options
+    .option('--validate', 'Validate configuration files without generating output')
     .action(async (root: string, options: Record<string, unknown>) => {
       try {
         // Load config files early for info commands
@@ -99,6 +108,42 @@ async function main(): Promise<void> {
         if (options.examples) {
           displayExamples();
           return;
+        }
+
+        if (options.listProviders) {
+          displayProviders();
+          return;
+        }
+
+        // Handle validation command
+        if (options.validate) {
+          await validateConfigs(root, config, repoRollerConfig);
+          return;
+        }
+
+        // Validate CLI options early
+        const cliValidation = validateCliOptions({
+          ext: options.ext as string | undefined,
+          lang: options.lang as string | undefined,
+          maxSize: options.maxSize as number | undefined,
+          format: options.format as string | undefined,
+          target: options.target as string | undefined,
+        });
+
+        if (!cliValidation.valid) {
+          console.error('❌ Invalid CLI options:\n');
+          for (const error of cliValidation.errors) {
+            console.error(`  ${error.field}: ${error.message}`);
+            console.error(`  Fix: ${error.suggestion}\n`);
+          }
+          process.exit(1);
+        }
+
+        if (cliValidation.warnings.length > 0) {
+          for (const warning of cliValidation.warnings) {
+            console.warn(`⚠️  ${warning.field}: ${warning.message}`);
+            console.warn(`   Suggestion: ${warning.suggestion}\n`);
+          }
         }
 
         // Build CLI options object
@@ -131,6 +176,10 @@ async function main(): Promise<void> {
           indent: options.indent as number | undefined,
           toc: options.toc as boolean | undefined,
           frontMatter: options.frontMatter as boolean | undefined,
+          // Token counting options
+          tokenCount: options.tokenCount as boolean | undefined,
+          target: options.target as string | undefined,
+          warnTokens: options.warnTokens as number | undefined,
         };
 
         // Resolve final options
@@ -211,6 +260,21 @@ async function runPreview(options: ResolvedOptions): Promise<void> {
     }
 
     console.log(`\nTotal: ${scan.files.length} files, ${formatBytes(scan.totalBytes)}`);
+
+    // Show estimated token count
+    if (options.tokenCount) {
+      const output = await render(scan, options);
+      const tokens = estimateTokens(output);
+      console.log(`Estimated tokens: ${formatNumber(tokens)}`);
+
+      // Quick provider check
+      const claudeEstimate = calculateCost(tokens, 'claude-sonnet');
+      if (claudeEstimate) {
+        const status = claudeEstimate.withinContextWindow ? '✓' : '✗';
+        console.log(`${status} Claude Sonnet: $${claudeEstimate.inputCost.toFixed(4)} (${claudeEstimate.utilizationPercent.toFixed(1)}% of context)`);
+      }
+    }
+
     console.log('\nRun without --dry-run to generate output');
   }
 }
@@ -240,6 +304,125 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
   await writeFile(options.outFile, output, 'utf-8');
 
   console.log(`✨ Output written to ${options.outFile}`);
+
+  // Display token analysis if enabled
+  if (options.tokenCount) {
+    displayTokenAnalysis(output, options);
+  }
+}
+
+/**
+ * Display token analysis and cost estimates
+ */
+function displayTokenAnalysis(output: string, options: ResolvedOptions): void {
+  const analysis = analyzeTokenUsage(output);
+
+  console.log(`\n📊 Token Analysis`);
+  console.log(`   Estimated tokens: ${formatNumber(analysis.estimatedTokens)}`);
+
+  // Show specific provider if targeted
+  if (options.targetProvider) {
+    const estimate = calculateCost(analysis.estimatedTokens, options.targetProvider);
+    if (estimate) {
+      const status = estimate.withinContextWindow ? '✓' : '✗';
+      console.log(`   ${status} ${estimate.displayName}: $${estimate.inputCost.toFixed(4)} (${estimate.utilizationPercent.toFixed(1)}% of ${formatNumber(estimate.contextWindow)} context)`);
+    } else {
+      console.log(`   ⚠️ Unknown provider: ${options.targetProvider}`);
+    }
+  } else {
+    // Show top providers
+    console.log(`\n   Cost estimates:`);
+    const topProviders = ['claude-sonnet', 'gpt-4o', 'claude-haiku', 'gemini'];
+    for (const providerName of topProviders) {
+      const estimate = calculateCost(analysis.estimatedTokens, providerName);
+      if (estimate) {
+        const status = estimate.withinContextWindow ? '✓' : '✗';
+        console.log(`   ${status} ${estimate.displayName}: $${estimate.inputCost.toFixed(4)}`);
+      }
+    }
+  }
+
+  // Display warnings
+  if (analysis.warnings.length > 0) {
+    console.log(`\n   ⚠️  Warnings:`);
+    for (const warning of analysis.warnings) {
+      console.log(`   • ${warning}`);
+    }
+  }
+
+  // Check custom token warning threshold
+  if (options.warnTokens && analysis.estimatedTokens > options.warnTokens) {
+    console.log(`\n   ⚠️  Output exceeds ${formatNumber(options.warnTokens)} token threshold`);
+  }
+
+  // Display recommendations
+  if (analysis.recommendations.length > 0) {
+    console.log(`\n   💡 Recommendations:`);
+    for (const rec of analysis.recommendations) {
+      console.log(`   • ${rec}`);
+    }
+  }
+}
+
+/**
+ * Display all supported LLM providers
+ */
+function displayProviders(): void {
+  console.log('📋 Supported LLM Providers:\n');
+
+  const providers = Object.values(LLM_PROVIDERS);
+  for (const provider of providers) {
+    console.log(`${provider.name}`);
+    console.log(`  Display Name: ${provider.displayName}`);
+    console.log(`  Context Window: ${formatNumber(provider.contextWindow)} tokens`);
+    console.log(`  Input Cost: $${provider.inputCostPerMillion.toFixed(2)}/1M tokens`);
+    console.log(`  Output Cost: $${provider.outputCostPerMillion.toFixed(2)}/1M tokens`);
+    console.log('');
+  }
+
+  console.log('Usage:');
+  console.log('  repo-roller . --target claude-sonnet');
+  console.log('  repo-roller . --target gpt-4o --warn-tokens 100000');
+}
+
+/**
+ * Validate configuration files
+ */
+async function validateConfigs(
+  root: string,
+  config: RollerConfig | undefined,
+  repoRollerConfig: RepoRollerYmlConfig | undefined
+): Promise<void> {
+  console.log('🔍 Validating configuration files...\n');
+
+  let hasErrors = false;
+  let foundConfigs = false;
+
+  // Validate repo-roller.config
+  if (config) {
+    foundConfigs = true;
+    const result = validateRollerConfig(config);
+    console.log(formatValidationErrors(result, 'repo-roller.config'));
+    if (!result.valid) hasErrors = true;
+  }
+
+  // Validate .reporoller.yml
+  if (repoRollerConfig) {
+    foundConfigs = true;
+    const result = validateRepoRollerYml(repoRollerConfig);
+    console.log(formatValidationErrors(result, '.reporoller.yml'));
+    if (!result.valid) hasErrors = true;
+  }
+
+  if (!foundConfigs) {
+    console.log('ℹ️  No configuration files found.');
+    console.log('   Run "repo-roller init" to create configuration files.');
+    return;
+  }
+
+  if (hasErrors) {
+    process.exit(1);
+  }
 }
 
 /**
