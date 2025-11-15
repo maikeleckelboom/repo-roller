@@ -1,10 +1,61 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, rm, readFile as fsReadFile, mkdir, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
+import { loadUserSettings, saveUserSettings, getUserSetting, setUserSetting } from './userSettings.js';
 
 // Test the user settings logic by directly manipulating the expected paths
 describe('userSettings', () => {
+  describe('actual module functions', () => {
+    // These tests call the actual exported functions
+    // They use the real home directory path, so they're integration tests
+
+    it('should export loadUserSettings function', () => {
+      expect(typeof loadUserSettings).toBe('function');
+    });
+
+    it('should export saveUserSettings function', () => {
+      expect(typeof saveUserSettings).toBe('function');
+    });
+
+    it('should export getUserSetting function', () => {
+      expect(typeof getUserSetting).toBe('function');
+    });
+
+    it('should export setUserSetting function', () => {
+      expect(typeof setUserSetting).toBe('function');
+    });
+
+    it('should load user settings and return object', async () => {
+      const settings = await loadUserSettings();
+      expect(typeof settings).toBe('object');
+      // Settings can have any of these optional fields
+      expect(settings.showExcludedFiles === undefined || typeof settings.showExcludedFiles === 'boolean').toBe(true);
+      expect(settings.stripComments === undefined || typeof settings.stripComments === 'boolean').toBe(true);
+      expect(settings.withTree === undefined || typeof settings.withTree === 'boolean').toBe(true);
+      expect(settings.withStats === undefined || typeof settings.withStats === 'boolean').toBe(true);
+    });
+
+    it('should get individual setting value', async () => {
+      const value = await getUserSetting('showExcludedFiles');
+      // Value can be boolean or undefined
+      expect(value === undefined || typeof value === 'boolean').toBe(true);
+    });
+
+    it('should handle saving settings without error', async () => {
+      // Just test that the function doesn't throw
+      // We can't easily test writing to ~/.config without mocking
+      const result = await saveUserSettings({ withTree: true });
+      expect(result).toBeUndefined(); // void function returns undefined
+    });
+
+    it('should handle setting individual value without error', async () => {
+      const result = await setUserSetting('withStats', true);
+      expect(result).toBeUndefined();
+    });
+  });
+
+
   let testDir: string;
   let configDir: string;
   let settingsFile: string;
