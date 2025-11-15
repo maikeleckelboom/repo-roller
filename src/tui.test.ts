@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 
 // Tests for the interactive TUI module
 // These tests document expected behavior and prevent regression of the race condition bug
