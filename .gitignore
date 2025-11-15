@@ -8,6 +8,10 @@ dist
 test-output.md
 test.md
 source_code.md
+repo-roller-*.md
+repo-roller-*.json
+repo-roller-*.yaml
+repo-roller-*.txt
 
 # code coverage
 coverage
