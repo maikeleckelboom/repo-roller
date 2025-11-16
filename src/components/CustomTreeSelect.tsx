@@ -2,6 +2,7 @@ import React, { useReducer, useMemo, useEffect, useCallback } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { FileInfo } from '../core/types.js';
 import { getUserSetting, setUserSetting } from '../core/userSettings.js';
+import { categorizeFileRole, calculateLanguageBreakdown, calculateRoleBreakdown, formatBytes } from '../core/helpers.js';
 
 interface TreeNode {
   name: string;
@@ -389,6 +390,17 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     }
   });
 
+  // Get role badge for a file
+  const getRoleBadge = (filePath: string, ext: string): string => {
+    const role = categorizeFileRole(filePath, ext);
+    switch (role) {
+      case 'test': return '◎'; // test file
+      case 'docs': return '✎'; // documentation
+      case 'config': return '⚙'; // configuration
+      default: return ''; // source files don't get a badge
+    }
+  };
+
   // Render tree
   const renderTree = () => {
     return flatNodes.map((node, index) => {
@@ -417,8 +429,15 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         icon += isExpanded ? '▼ ' : '▶ ';
       }
 
-      // Name
-      const name = node.isFile ? node.name : `${node.name}/`;
+      // Name with role badge for files
+      let name = node.isFile ? node.name : `${node.name}/`;
+      if (node.isFile) {
+        const ext = node.name.split('.').pop() ?? '';
+        const badge = getRoleBadge(node.fullPath, ext);
+        if (badge) {
+          name = `${badge} ${name}`;
+        }
+      }
 
       // Color
       const color = isCursor ? 'cyan' : isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : undefined;
@@ -450,15 +469,49 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         {renderTree()}
       </Box>
 
-      <Box marginTop={1}>
+      <Box marginTop={1} flexDirection="column">
         <Text bold color="green">
           ✓ {selected.size} / {files.length} files selected
         </Text>
         {!showExcluded && files.length !== filteredFiles.length && (
           <Text dimColor>
-            {' '}| {files.length - filteredFiles.length} excluded/ignored files hidden
+            {files.length - filteredFiles.length} excluded/ignored files hidden
           </Text>
         )}
+
+        {/* Selection composition summary */}
+        {selected.size > 0 && (() => {
+          // Calculate stats for selected files only
+          const selectedFileInfos = files.filter(f => selected.has(f.relativePath));
+          const totalBytes = selectedFileInfos.reduce((sum, f) => sum + f.sizeBytes, 0);
+          const langBreakdown = calculateLanguageBreakdown(selectedFileInfos);
+          const roleBreakdown = calculateRoleBreakdown(selectedFileInfos);
+
+          // Format language breakdown (top 3)
+          const langString = langBreakdown
+            .slice(0, 3)
+            .map(lang => `${lang.name}(${Math.round(lang.percent)}%)`)
+            .join(' ');
+
+          // Format role breakdown
+          const roleString = [
+            roleBreakdown.source > 0 ? `Src(${Math.round(roleBreakdown.source)}%)` : '',
+            roleBreakdown.test > 0 ? `Tests(${Math.round(roleBreakdown.test)}%)` : '',
+            roleBreakdown.docs > 0 ? `Docs(${Math.round(roleBreakdown.docs)}%)` : '',
+            roleBreakdown.config > 0 ? `Cfg(${Math.round(roleBreakdown.config)}%)` : '',
+          ].filter(Boolean).join(' ');
+
+          return (
+            <Box flexDirection="column" marginTop={1}>
+              <Text dimColor>
+                Size: {formatBytes(totalBytes)} | {langString}
+              </Text>
+              <Text dimColor>
+                Roles: {roleString}
+              </Text>
+            </Box>
+          );
+        })()}
       </Box>
     </Box>
   );
