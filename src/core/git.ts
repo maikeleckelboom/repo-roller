@@ -100,8 +100,8 @@ export async function getMostRecentFiles(root: string, count: number): Promise<s
  * Check if the current directory is a git repository
  */
 export async function isGitRepository(root: string): Promise<boolean> {
-  const git: SimpleGit = simpleGit(root);
   try {
+    const git: SimpleGit = simpleGit(root);
     return await git.checkIsRepo();
   } catch {
     return false;
