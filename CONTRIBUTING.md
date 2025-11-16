@@ -76,10 +76,71 @@ tests/
 
 ### Code Style
 
-- We use ESLint with TypeScript rules
-- Run `npm run lint:fix` before committing
-- Use TypeScript strict mode
-- Follow existing patterns in the codebase
+We use TypeScript strict mode with no compromises. Here are the key rules:
+
+**No `any` types:**
+```typescript
+// BAD
+function process(data: any) { ... }
+
+// GOOD
+function process(data: FileInfo) { ... }
+```
+
+**Readonly by default:**
+```typescript
+// BAD
+interface Config {
+  files: string[];
+}
+
+// GOOD
+interface Config {
+  readonly files: readonly string[];
+}
+```
+
+**Pure functions when possible:**
+```typescript
+// BAD: Function with side effects
+function formatFiles(files: FileInfo[]): void {
+  files.sort((a, b) => a.sizeBytes - b.sizeBytes);
+  console.log(files);
+}
+
+// GOOD: Pure function
+function sortFilesBySize(files: readonly FileInfo[]): FileInfo[] {
+  return [...files].sort((a, b) => a.sizeBytes - b.sizeBytes);
+}
+```
+
+**Descriptive naming:**
+```typescript
+// BAD
+function proc(f: FileInfo[]): string[] { ... }
+
+// GOOD
+function extractFilePaths(files: readonly FileInfo[]): string[] { ... }
+```
+
+Run `npm run lint:fix` before committing.
+
+### Module Organization
+
+Each core module has a JSDoc header explaining its responsibilities. Check the header to understand:
+- What the module **OWNS** (its responsibilities)
+- What it **DOES NOT OWN** (defer to other modules)
+- **TYPICAL USAGE** examples
+
+When adding code, respect these boundaries. If you're unsure where something belongs, check the related module headers first.
+
+### Adding a Feature
+
+1. **Identify the domain** - Which module is responsible?
+2. **Add types first** in `src/core/types.ts`
+3. **Implement logic** in the appropriate core module
+4. **Add tests** alongside your implementation
+5. **Wire into CLI** if it's a user-facing feature
 
 ### Testing
 
@@ -94,7 +155,27 @@ npm test -- src/core/tokens.test.ts
 
 # Run tests with coverage
 npm test -- --coverage
+
+# Watch mode for development
+npm run test:watch
 ```
+
+**Test structure:**
+```typescript
+describe('Token Estimation', () => {
+  it('estimates ~1 token per 4 characters for typical code', () => {
+    const code = 'function add(a, b) { return a + b; }';
+    const tokens = estimateTokens(code);
+    expect(tokens).toBeCloseTo(code.length / 4, 1);
+  });
+});
+```
+
+**What to test:**
+- Happy path (typical usage)
+- Edge cases (empty input, large input)
+- Error conditions
+- Boundary values
 
 ### Type Checking
 
@@ -125,6 +206,18 @@ npm run typecheck
    ```
 
 4. Open a Pull Request on GitHub
+
+### PR Checklist
+
+Before submitting, ensure:
+
+- [ ] **Build passes**: `npm run build`
+- [ ] **Lint passes**: `npm run lint`
+- [ ] **Tests pass**: `npm test`
+- [ ] **No `any` types**: TypeScript strict mode
+- [ ] **Tests added**: New features have tests
+- [ ] **Types are readonly**: Immutable by default
+- [ ] **JSDoc added**: Public functions have documentation
 
 ### Commit Messages
 

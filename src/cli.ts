@@ -126,6 +126,23 @@ async function main(): Promise<void> {
     .description('Aggregate source code into LLM-friendly bundles')
     .version('1.0.0')
     .argument('[root]', 'Root directory to scan', '.')
+    .addHelpText('after', `
+Quick Reference:
+  Basic:      repo-roller .                        # Bundle current directory
+  TypeScript: repo-roller . --preset ts --no-tests # TS files only, no tests
+  Preview:    repo-roller . --dry-run              # See what would be included
+  Interactive: repo-roller . -I                    # Visual file picker
+  Token info: repo-roller . --target claude-sonnet # Show token/cost estimates
+  Copy:       repo-roller . --copy                 # Copy to clipboard
+
+Common Workflows:
+  --examples                Show detailed usage examples
+  --list-presets            See available presets
+  --list-providers          See LLM provider costs
+  --validate                Check configuration files
+
+Documentation: https://github.com/maikeleckelboom/repo-roller
+`)
     .option('-o, --out <file>', 'Output file path')
     .option('--out-template <template>', 'Output filename template')
     .option('-f, --format <type>', 'Output format: md, json, yaml, txt')

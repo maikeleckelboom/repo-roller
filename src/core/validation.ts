@@ -1,5 +1,36 @@
 /**
- * Configuration validation with actionable error messages
+ * @module core/validation
+ *
+ * Configuration validation with actionable error messages.
+ *
+ * OWNS:
+ * - Validating RollerConfig from config files
+ * - Validating RepoRollerYml structure
+ * - Validating CLI options
+ * - Providing actionable suggestions for fixing errors
+ * - Distinguishing between errors and warnings
+ *
+ * DOES NOT OWN:
+ * - Loading configuration (that's config.ts)
+ * - Type definitions (that's types.ts)
+ * - CLI argument parsing (that's Commander)
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { validateRollerConfig, formatValidationErrors } from './validation.js';
+ *
+ * const result = validateRollerConfig(config);
+ * if (!result.valid) {
+ *   console.error(formatValidationErrors(result.errors));
+ *   process.exit(1);
+ * }
+ * ```
+ *
+ * ERROR PHILOSOPHY:
+ * Each error includes:
+ * - field: what's wrong
+ * - message: why it's wrong
+ * - suggestion: how to fix it
  */
 
 import type {

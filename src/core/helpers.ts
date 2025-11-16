@@ -1,3 +1,36 @@
+/**
+ * @module core/helpers
+ *
+ * Pure utility functions with no side effects.
+ *
+ * OWNS:
+ * - Byte formatting (formatBytes)
+ * - Extension normalization
+ * - Language detection from file extensions
+ * - File role classification (code, test, config, docs)
+ * - Directory size analysis
+ *
+ * DOES NOT OWN:
+ * - File I/O operations
+ * - Token counting (that's tokens.ts)
+ * - Configuration logic
+ *
+ * DESIGN PRINCIPLES:
+ * - Pure functions only (no side effects)
+ * - No async operations
+ * - No file system access
+ * - Easily testable
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { formatBytes, getLanguageFromExtension, getFileRole } from './helpers.js';
+ *
+ * formatBytes(1024);           // '1.00 KB'
+ * getLanguageFromExtension('ts');  // 'TypeScript'
+ * getFileRole('src/app.test.ts');  // 'test'
+ * ```
+ */
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;

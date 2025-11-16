@@ -1,3 +1,38 @@
+/**
+ * @module core/scan
+ *
+ * File system scanner for discovering and filtering repository files.
+ *
+ * OWNS:
+ * - Walking the file tree using fast-glob
+ * - Applying .gitignore rules (respects project boundaries)
+ * - Filtering by size, extension, and glob patterns
+ * - Binary file detection (samples first 8KB)
+ * - Building FileInfo metadata for each discovered file
+ *
+ * DOES NOT OWN:
+ * - Reading file contents (files are loaded lazily by render.ts)
+ * - Token counting (that's tokens.ts)
+ * - Output rendering (that's render.ts)
+ * - Configuration resolution (that's config.ts)
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { scanFiles } from './scan.js';
+ * import { resolveOptions } from './config.js';
+ *
+ * const options = await resolveOptions(cliOptions);
+ * const result = await scanFiles(options);
+ * // result.files is FileInfo[] ready for rendering
+ * ```
+ *
+ * PERFORMANCE NOTES:
+ * - Uses fast-glob for efficient pattern matching
+ * - Filters early (gitignore first, then patterns, then size)
+ * - Does not load file contents during scan (metadata only)
+ * - Handles repos with 10,000+ files efficiently
+ */
+
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import fg from 'fast-glob';

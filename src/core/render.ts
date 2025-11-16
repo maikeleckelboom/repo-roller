@@ -1,3 +1,39 @@
+/**
+ * @module core/render
+ *
+ * Output renderer that transforms scanned files into various formats.
+ *
+ * OWNS:
+ * - Generating Markdown output with code blocks, tree view, and stats
+ * - Generating JSON/YAML structured output
+ * - Generating plain text output
+ * - Mapping file extensions to syntax highlighting languages
+ * - Optional comment stripping (basic regex-based)
+ * - Adding table of contents, front matter, headers/footers
+ *
+ * DOES NOT OWN:
+ * - File discovery (that's scan.ts)
+ * - Token counting (that's tokens.ts)
+ * - Writing to disk (that's the caller's responsibility)
+ * - Budget constraints (that's budget.ts)
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { render } from './render.js';
+ * import { scanFiles } from './scan.js';
+ *
+ * const scanResult = await scanFiles(options);
+ * const output = await render(scanResult, options);
+ * // output is a string ready to write to file
+ * ```
+ *
+ * SUPPORTED FORMATS:
+ * - 'md'   - Markdown with code blocks, syntax highlighting
+ * - 'json' - Structured JSON with metadata
+ * - 'yaml' - Same as JSON but in YAML format
+ * - 'txt'  - Plain text with file separators
+ */
+
 import { readFile } from 'node:fs/promises';
 import { sep } from 'node:path';
 import { execSync } from 'node:child_process';
