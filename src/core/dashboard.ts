@@ -283,8 +283,8 @@ function renderSideBySideColumns(
 ): string[] {
   const lines: string[] = [];
   const barWidth = 8;
-  const nameWidth = 10;
-  const colWidth = 28;
+  const nameWidth = 12;
+  const colWidth = 30; // nameWidth + barWidth + space + 4 (percentage) + padding
 
   // Headers
   const leftHeader = ui.colors.dim(leftTitle.padEnd(colWidth));
@@ -306,12 +306,13 @@ function renderSideBySideColumns(
         const empty = barWidth - filled;
         const bar = getBarColor(item.type)('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
         const pctStr = `${item.percent.toFixed(0)}%`.padStart(4);
-        leftCol = `${item.name.padEnd(nameWidth)}${bar} ${ui.colors.dim(pctStr)}`;
-        // Pad to column width (accounting for ANSI codes)
-        const visibleLength = item.name.length + barWidth + 1 + pctStr.length;
-        const paddingNeeded = colWidth - visibleLength;
-        if (paddingNeeded > 0) {
-          leftCol += ' '.repeat(paddingNeeded);
+        // Build column with consistent padding: name (padEnd to nameWidth) + bar + space + percentage
+        const paddedName = item.name.padEnd(nameWidth);
+        leftCol = `${paddedName}${bar} ${ui.colors.dim(pctStr)}`;
+        // Add trailing padding to reach colWidth (visual width = nameWidth + barWidth + 1 + 4 = 25)
+        const trailingPad = colWidth - (nameWidth + barWidth + 1 + 4);
+        if (trailingPad > 0) {
+          leftCol += ' '.repeat(trailingPad);
         }
       }
     }
@@ -324,7 +325,8 @@ function renderSideBySideColumns(
         const empty = barWidth - filled;
         const bar = getBarColor(item.type)('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
         const pctStr = `${item.percent.toFixed(0)}%`.padStart(4);
-        rightCol = `${item.name.padEnd(nameWidth)}${bar} ${ui.colors.dim(pctStr)}`;
+        const paddedName = item.name.padEnd(nameWidth);
+        rightCol = `${paddedName}${bar} ${ui.colors.dim(pctStr)}`;
       }
     }
 
