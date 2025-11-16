@@ -19,6 +19,124 @@ import {
 } from '../core/helpers.js';
 
 /**
+ * Summary model for generation summary rendering
+ */
+export interface GenerationSummaryModel {
+  readonly filesSelected: number;
+  readonly totalBytes: number;
+  readonly estimatedLines: number;
+  readonly outputFile: string;
+  readonly composition: ui.CompositionData;
+  readonly options: readonly ui.OptionItem[];
+  readonly tokenInfo?: {
+    readonly tokens: number;
+    readonly targetProvider?: string;
+  };
+}
+
+/**
+ * Pure function to render generation summary as array of lines
+ * Used by both interactive and non-interactive modes
+ */
+export function renderGenerationSummary(model: GenerationSummaryModel): string[] {
+  const lines: string[] = [];
+
+  // Section header
+  lines.push('');
+  lines.push(ui.section('Generation Summary'));
+
+  // Bundle Profile - Key-value grid
+  const profileRows: ui.GridRow[] = [
+    {
+      label: ui.colors.dim('Files selected'),
+      value: ui.colors.primary(model.filesSelected.toString()),
+    },
+    {
+      label: ui.colors.dim('Total size'),
+      value: formatBytes(model.totalBytes),
+    },
+    {
+      label: ui.colors.dim('Lines of code'),
+      value: `~${formatNumber(model.estimatedLines)}`,
+    },
+    {
+      label: ui.colors.dim('Output file'),
+      value: ui.colors.success(model.outputFile),
+    },
+  ];
+
+  lines.push(...ui.renderGrid(profileRows));
+  lines.push('');
+
+  // Code Composition with colored bars
+  lines.push(...ui.renderCompositionSection(model.composition));
+  lines.push('');
+
+  // Options summary
+  lines.push(`  ${ui.colors.dim('Options')}`);
+  lines.push(`  ${ui.colors.muted(ui.symbols.line.repeat(30))}`);
+  lines.push(...ui.renderOptionsList(model.options));
+  lines.push('');
+
+  // Context Fit (if token info provided)
+  if (model.tokenInfo) {
+    lines.push(...renderContextFitLines(model.tokenInfo.tokens, model.tokenInfo.targetProvider));
+  }
+
+  return lines;
+}
+
+/**
+ * Render context fit information as array of lines
+ */
+function renderContextFitLines(estimatedTokens: number, targetProvider?: string): string[] {
+  const lines: string[] = [];
+
+  lines.push(`  ${ui.colors.dim('Context Fit')}`);
+  lines.push(`  ${ui.colors.muted(ui.symbols.line.repeat(45))}`);
+
+  // Token count with context fit indicators
+  const tokenStr = ui.tokenCount(estimatedTokens);
+
+  // Check common context window sizes
+  const fits128k = estimatedTokens <= 128_000;
+  const fits32k = estimatedTokens <= 32_000;
+
+  let contextInfo = '';
+  if (fits32k) {
+    contextInfo = ui.colors.success('fits 32K ctx');
+  } else if (fits128k) {
+    contextInfo = ui.colors.accent('fits 128K ctx; too large for 32K');
+  } else {
+    contextInfo = ui.colors.warning('exceeds 128K ctx');
+  }
+
+  // Use grid for aligned token row
+  const tokenRow: ui.GridRow = {
+    label: ui.colors.dim('Estimated tokens'),
+    value: tokenStr,
+    note: ui.colors.dim(`(${contextInfo})`),
+  };
+  lines.push(...ui.renderGrid([tokenRow]));
+
+  // If targeting a specific provider, show that
+  if (targetProvider) {
+    const estimate = calculateCost(estimatedTokens, targetProvider);
+    if (estimate) {
+      const costStr = `$${estimate.inputCost.toFixed(4)}`;
+      const utilStr = `${estimate.utilizationPercent.toFixed(0)}% of context`;
+      const icon = estimate.withinContextWindow
+        ? ui.colors.success(ui.symbols.check)
+        : ui.colors.error(ui.symbols.cross);
+      lines.push(`  ${icon} ${ui.padVisible(estimate.displayName, 18)} ${costStr}  ${ui.colors.dim(utilStr)}`);
+    }
+  }
+
+  lines.push('');
+  return lines;
+}
+
+/**
  * Display token analysis and cost estimates
  */
 export function displayTokenAnalysis(output: string, options: ResolvedOptions): void {
@@ -166,6 +284,63 @@ export function displayNoFilesError(options: ResolvedOptions): void {
 }
 
 /**
+ * Build a GenerationSummaryModel from scan results and options
+ */
+export function buildSummaryModel(
+  scan: ScanResult,
+  options: ResolvedOptions,
+  estimatedTokens: number
+): GenerationSummaryModel {
+  // Calculate language breakdown
+  const languages = calculateLanguageBreakdown(scan.files);
+  const langItems = languages.slice(0, 4).map(l => ({ name: l.name, percent: l.percent }));
+
+  // Calculate role breakdown
+  const roles = calculateRoleBreakdown(scan.files);
+  const roleItems: { name: string; percent: number }[] = [];
+  if (roles.source > 0) {
+    roleItems.push({ name: 'Src', percent: roles.source });
+  }
+  if (roles.test > 0) {
+    roleItems.push({ name: 'Tests', percent: roles.test });
+  }
+  if (roles.docs > 0) {
+    roleItems.push({ name: 'Docs', percent: roles.docs });
+  }
+  if (roles.config > 0) {
+    roleItems.push({ name: 'Config', percent: roles.config });
+  }
+
+  // Build options list
+  const optionItems: ui.OptionItem[] = [
+    { label: 'Strip comments', enabled: options.stripComments },
+    { label: 'Directory tree view', enabled: options.withTree },
+    { label: 'Statistics section', enabled: options.withStats },
+  ];
+
+  // Build token info if enabled
+  const tokenInfo = options.tokenCount
+    ? {
+        tokens: estimatedTokens,
+        targetProvider: options.targetProvider,
+      }
+    : undefined;
+
+  return {
+    filesSelected: scan.files.length,
+    totalBytes: scan.totalBytes,
+    estimatedLines: estimateLinesOfCode(scan.totalBytes),
+    outputFile: options.outFile,
+    composition: {
+      languages: langItems,
+      roles: roleItems,
+    },
+    options: optionItems,
+    tokenInfo,
+  };
+}
+
+/**
  * Display generation summary with repo-first layout
  * This puts bundle profile at the top and LLM info as secondary
  */
@@ -174,50 +349,11 @@ export function displayGenerationSummary(
   options: ResolvedOptions,
   estimatedTokens: number
 ): void {
-  console.log('');
-  console.log(ui.section('Generation Summary'));
+  const model = buildSummaryModel(scan, options, estimatedTokens);
+  const lines = renderGenerationSummary(model);
 
-  // Bundle Profile - Primary information
-  console.log(ui.keyValue('Files selected', ui.colors.primary(scan.files.length.toString())));
-  console.log(ui.keyValue('Total size', formatBytes(scan.totalBytes)));
-  console.log(ui.keyValue('Lines of code', `~${formatNumber(estimateLinesOfCode(scan.totalBytes))}`));
-  console.log(ui.keyValue('Output file', ui.colors.success(options.outFile)));
-  console.log('');
-
-  // Code Composition
-  console.log(ui.colors.dim('  Code Composition'));
-  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(45)));
-
-  // Language breakdown
-  const languages = calculateLanguageBreakdown(scan.files);
-  if (languages.length > 0) {
-    const langItems = languages.slice(0, 4).map(l => ({ name: l.name, percent: l.percent }));
-    console.log(`  Languages: ${ui.inlinePercentages(langItems)}`);
-  }
-
-  // Role breakdown
-  const roles = calculateRoleBreakdown(scan.files);
-  const roleItems = [];
-  if (roles.source > 0) {roleItems.push({ name: 'Src', percent: roles.source });}
-  if (roles.test > 0) {roleItems.push({ name: 'Tests', percent: roles.test });}
-  if (roles.docs > 0) {roleItems.push({ name: 'Docs', percent: roles.docs });}
-  if (roles.config > 0) {roleItems.push({ name: 'Config', percent: roles.config });}
-  if (roleItems.length > 0) {
-    console.log(`  Roles:     ${ui.inlinePercentages(roleItems)}`);
-  }
-  console.log('');
-
-  // Options summary
-  console.log(ui.colors.dim('  Options'));
-  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(30)));
-  console.log(`  ${options.stripComments ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Strip comments`);
-  console.log(`  ${options.withTree ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Directory tree view`);
-  console.log(`  ${options.withStats ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Statistics section`);
-  console.log('');
-
-  // Context Fit - Secondary LLM information (minimal by default)
-  if (options.tokenCount) {
-    displayContextFit(estimatedTokens, options);
+  for (const line of lines) {
+    console.log(line);
   }
 }
 

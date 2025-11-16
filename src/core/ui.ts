@@ -386,9 +386,66 @@ export function tokenCount(tokens: number): string {
 /**
  * Strip ANSI codes from string (for calculating width)
  */
-function stripAnsi(str: string): string {
+export function stripAnsi(str: string): string {
   // eslint-disable-next-line no-control-regex
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+}
+
+/**
+ * Get visible length of string (excluding ANSI codes)
+ */
+export function visibleLength(str: string): number {
+  return stripAnsi(str).length;
+}
+
+/**
+ * Pad string to target visible length (ANSI-aware)
+ */
+export function padVisible(str: string, targetLength: number, align: 'left' | 'right' = 'left'): string {
+  const currentLength = visibleLength(str);
+  const padding = Math.max(0, targetLength - currentLength);
+  if (align === 'right') {
+    return ' '.repeat(padding) + str;
+  }
+  return str + ' '.repeat(padding);
+}
+
+/**
+ * Create an aligned grid from key-value pairs
+ */
+export interface GridRow {
+  readonly label: string;
+  readonly value: string;
+  readonly note?: string;
+}
+
+export function renderGrid(rows: readonly GridRow[], indent = 2): string[] {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  // Calculate max label width (ANSI-aware)
+  const maxLabelWidth = Math.max(...rows.map(r => visibleLength(r.label)));
+  const minGap = 2;
+
+  // Calculate value column width for notes alignment
+  const rowsWithNotes = rows.filter(r => r.note);
+  const maxValueWidth = rowsWithNotes.length > 0
+    ? Math.max(...rows.map(r => visibleLength(r.value)))
+    : 0;
+
+  const indentStr = ' '.repeat(indent);
+
+  return rows.map(row => {
+    const paddedLabel = padVisible(row.label, maxLabelWidth);
+    const gap = ' '.repeat(minGap);
+
+    if (row.note && maxValueWidth > 0) {
+      const paddedValue = padVisible(row.value, maxValueWidth);
+      return `${indentStr}${paddedLabel}${gap}${paddedValue}  ${row.note}`;
+    }
+    return `${indentStr}${paddedLabel}${gap}${row.value}`;
+  });
 }
 
 /**
@@ -455,10 +512,124 @@ export function languageBar(name: string, percent: number, barWidth = 14): strin
 /**
  * Format a compact inline percentage list
  */
-export function inlinePercentages(items: Array<{ name: string; percent: number }>): string {
+export function inlinePercentages(items: { name: string; percent: number }[]): string {
   return items
     .map(({ name, percent }) => `${name}(${percent.toFixed(0)}%)`)
     .join('  ');
+}
+
+/**
+ * Language color mapping (GitHub-inspired)
+ */
+const languageColors: Record<string, ReturnType<typeof chalk.hex>> = {
+  TypeScript: chalk.hex('#3178C6'),  // TypeScript blue
+  JavaScript: chalk.hex('#F7DF1E'),  // JS yellow
+  Python: chalk.hex('#3776AB'),      // Python blue
+  Rust: chalk.hex('#DEA584'),        // Rust orange
+  Go: chalk.hex('#00ADD8'),          // Go cyan
+  Java: chalk.hex('#B07219'),        // Java brown
+  Markdown: chalk.hex('#083FA1'),    // Markdown blue
+  JSON: chalk.hex('#292929'),        // JSON dark
+  YAML: chalk.hex('#CB171E'),        // YAML red
+  Other: chalk.hex('#6B7280'),       // Muted gray
+};
+
+/**
+ * Role color mapping
+ */
+const roleColors: Record<string, ReturnType<typeof chalk.hex>> = {
+  Src: chalk.hex('#10B981'),    // Green - source
+  Tests: chalk.hex('#8B5CF6'),  // Purple - tests
+  Docs: chalk.hex('#3B82F6'),   // Blue - docs
+  Config: chalk.hex('#F59E0B'), // Amber - config
+};
+
+/**
+ * Render a horizontal percentage bar with label
+ */
+export function compositionBar(
+  label: string,
+  percent: number,
+  barWidth: number,
+  color: ReturnType<typeof chalk.hex>
+): string {
+  const filledWidth = Math.round((percent / 100) * barWidth);
+  const emptyWidth = barWidth - filledWidth;
+
+  const bar = color('█'.repeat(filledWidth)) + colors.dim('░'.repeat(emptyWidth));
+  const percentStr = colors.dim(`${percent.toFixed(0)}%`.padStart(4));
+
+  return `${label} ${bar} ${percentStr}`;
+}
+
+/**
+ * Render Code Composition section as mini-dashboard with colored bars
+ */
+export interface CompositionData {
+  readonly languages: readonly { name: string; percent: number }[];
+  readonly roles: readonly { name: string; percent: number }[];
+}
+
+export function renderCompositionSection(data: CompositionData, indent = 2): string[] {
+  const lines: string[] = [];
+  const indentStr = ' '.repeat(indent);
+  const barWidth = 20;
+
+  // Section header
+  lines.push(`${indentStr}${colors.dim('Code Composition')}`);
+  lines.push(`${indentStr}${colors.muted(symbols.line.repeat(45))}`);
+
+  // Languages sub-section
+  if (data.languages.length > 0) {
+    lines.push(`${indentStr}${colors.dim('Languages')}`);
+
+    // Calculate max label width for alignment
+    const langLabelWidth = Math.max(...data.languages.map(l => l.name.length)) + 2;
+
+    for (const lang of data.languages) {
+      const colorFn = languageColors[lang.name] ?? languageColors.Other ?? colors.muted;
+      const label = colors.dim(lang.name.padEnd(langLabelWidth));
+      const bar = compositionBar('', lang.percent, barWidth, colorFn);
+      lines.push(`${indentStr}  ${label}${bar}`);
+    }
+  }
+
+  // Roles sub-section
+  if (data.roles.length > 0) {
+    lines.push('');
+    lines.push(`${indentStr}${colors.dim('Roles')}`);
+
+    // Calculate max label width for alignment
+    const roleLabelWidth = Math.max(...data.roles.map(r => r.name.length)) + 2;
+
+    for (const role of data.roles) {
+      const colorFn = roleColors[role.name] ?? colors.muted;
+      const label = colors.dim(role.name.padEnd(roleLabelWidth));
+      const bar = compositionBar('', role.percent, barWidth, colorFn);
+      lines.push(`${indentStr}  ${label}${bar}`);
+    }
+  }
+
+  return lines;
+}
+
+/**
+ * Render options list with consistent alignment
+ */
+export interface OptionItem {
+  readonly label: string;
+  readonly enabled: boolean;
+}
+
+export function renderOptionsList(options: readonly OptionItem[], indent = 2): string[] {
+  const indentStr = ' '.repeat(indent);
+
+  return options.map(opt => {
+    const icon = opt.enabled
+      ? colors.success(symbols.check)
+      : colors.error(symbols.cross);
+    return `${indentStr}${icon} ${opt.label}`;
+  });
 }
 
 /**
