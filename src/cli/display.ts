@@ -297,11 +297,19 @@ export function buildSummaryModel(
 
   // Calculate role breakdown
   const roles = calculateRoleBreakdown(scan.files);
-  const roleItems: Array<{ name: string; percent: number }> = [];
-  if (roles.source > 0) roleItems.push({ name: 'Src', percent: roles.source });
-  if (roles.test > 0) roleItems.push({ name: 'Tests', percent: roles.test });
-  if (roles.docs > 0) roleItems.push({ name: 'Docs', percent: roles.docs });
-  if (roles.config > 0) roleItems.push({ name: 'Config', percent: roles.config });
+  const roleItems: { name: string; percent: number }[] = [];
+  if (roles.source > 0) {
+    roleItems.push({ name: 'Src', percent: roles.source });
+  }
+  if (roles.test > 0) {
+    roleItems.push({ name: 'Tests', percent: roles.test });
+  }
+  if (roles.docs > 0) {
+    roleItems.push({ name: 'Docs', percent: roles.docs });
+  }
+  if (roles.config > 0) {
+    roleItems.push({ name: 'Config', percent: roles.config });
+  }
 
   // Build options list
   const optionItems: ui.OptionItem[] = [

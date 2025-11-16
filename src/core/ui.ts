@@ -420,7 +420,9 @@ export interface GridRow {
 }
 
 export function renderGrid(rows: readonly GridRow[], indent = 2): string[] {
-  if (rows.length === 0) return [];
+  if (rows.length === 0) {
+    return [];
+  }
 
   // Calculate max label width (ANSI-aware)
   const maxLabelWidth = Math.max(...rows.map(r => visibleLength(r.label)));
@@ -510,7 +512,7 @@ export function languageBar(name: string, percent: number, barWidth = 14): strin
 /**
  * Format a compact inline percentage list
  */
-export function inlinePercentages(items: Array<{ name: string; percent: number }>): string {
+export function inlinePercentages(items: { name: string; percent: number }[]): string {
   return items
     .map(({ name, percent }) => `${name}(${percent.toFixed(0)}%)`)
     .join('  ');
@@ -564,8 +566,8 @@ export function compositionBar(
  * Render Code Composition section as mini-dashboard with colored bars
  */
 export interface CompositionData {
-  readonly languages: ReadonlyArray<{ name: string; percent: number }>;
-  readonly roles: ReadonlyArray<{ name: string; percent: number }>;
+  readonly languages: readonly { name: string; percent: number }[];
+  readonly roles: readonly { name: string; percent: number }[];
 }
 
 export function renderCompositionSection(data: CompositionData, indent = 2): string[] {
