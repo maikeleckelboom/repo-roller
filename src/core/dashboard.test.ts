@@ -209,6 +209,236 @@ describe('Dashboard', () => {
       const content = lines.join('\n');
       expect(content).toContain('High avg tokens/file');
     });
+
+    describe('display settings - conditional rendering', () => {
+      it('should hide entire summary when showGenerationSummary is false', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: false,
+              showCodeComposition: true,
+              showContextFit: true,
+              showHealthHints: true,
+              showTokenWarnings: true,
+              showCostEstimates: true,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        // Should return empty or minimal output
+        expect(lines.length).toBe(0);
+      });
+
+      it('should hide code composition when showCodeComposition is false', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: true,
+              showCodeComposition: false,
+              showContextFit: true,
+              showHealthHints: true,
+              showTokenWarnings: true,
+              showCostEstimates: true,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        const content = lines.join('\n');
+        expect(content).not.toContain('Code Composition');
+        // Should still have other sections
+        expect(content).toContain('Generation Summary');
+        expect(content).toContain('Context Fit');
+      });
+
+      it('should hide context fit when showContextFit is false', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: true,
+              showCodeComposition: true,
+              showContextFit: false,
+              showHealthHints: true,
+              showTokenWarnings: true,
+              showCostEstimates: true,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        const content = lines.join('\n');
+        expect(content).not.toContain('Context Fit');
+        // Should still have other sections
+        expect(content).toContain('Generation Summary');
+        expect(content).toContain('Code Composition');
+      });
+
+      it('should hide health hints when showHealthHints is false', () => {
+        const largeFiles = Array.from({ length: 150 }, (_, i) => ({
+          absolutePath: `/project/src/file${i}.ts`,
+          relativePath: `src/file${i}.ts`,
+          sizeBytes: 1000,
+          extension: 'ts',
+          isBinary: false,
+          isDefaultIncluded: true,
+        }));
+
+        const scan: ScanResult = {
+          files: largeFiles,
+          totalBytes: 150000,
+          rootPath: '/project',
+          extensionCounts: { ts: 150 },
+        };
+
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 50000 },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: true,
+              showCodeComposition: true,
+              showContextFit: true,
+              showHealthHints: false,
+              showTokenWarnings: true,
+              showCostEstimates: true,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        const content = lines.join('\n');
+        // Should NOT show health hints even though they would normally appear
+        expect(content).not.toContain('Health Hints');
+      });
+
+      it('should hide cost estimates when showCostEstimates is false', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const modelPreset = getModelPreset('claude-3.5-sonnet');
+
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000, modelPreset },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: true,
+              showCodeComposition: true,
+              showContextFit: true,
+              showHealthHints: true,
+              showTokenWarnings: true,
+              showCostEstimates: false,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        const content = lines.join('\n');
+        // Should show context fit but not cost
+        expect(content).toContain('Context Fit');
+        expect(content).not.toContain('Cost:');
+      });
+
+      it('should show all sections with default display settings', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: true,
+              showCodeComposition: true,
+              showContextFit: true,
+              showHealthHints: true,
+              showTokenWarnings: true,
+              showCostEstimates: true,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        const content = lines.join('\n');
+        expect(content).toContain('Generation Summary');
+        expect(content).toContain('Code Composition');
+        expect(content).toContain('Context Fit');
+      });
+
+      it('should allow hiding multiple sections independently', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          {
+            mode: 'compact',
+            displaySettings: {
+              showGenerationSummary: true,
+              showCodeComposition: false, // Hide composition
+              showContextFit: false, // Hide context fit
+              showHealthHints: true,
+              showTokenWarnings: true,
+              showCostEstimates: true,
+              showRecommendations: true,
+            },
+          }
+        );
+
+        const content = lines.join('\n');
+        // Should have summary but not composition or context fit
+        expect(content).toContain('Generation Summary');
+        expect(content).not.toContain('Code Composition');
+        expect(content).not.toContain('Context Fit');
+      });
+
+      it('should use defaults when displaySettings not provided', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          { mode: 'compact' } // No displaySettings provided
+        );
+
+        const content = lines.join('\n');
+        // Should show all sections by default
+        expect(content).toContain('Generation Summary');
+        expect(content).toContain('Code Composition');
+        expect(content).toContain('Context Fit');
+      });
+
+      it('should render two-column layout in compact mode', () => {
+        const scan = createMockScan();
+        const options = createMockOptions();
+        const lines = renderGenerationSummary(
+          { scan, options, estimatedTokens: 10000 },
+          { mode: 'compact' }
+        );
+
+        const content = lines.join('\n');
+        // Compact mode should have the Code Composition section
+        // which uses the two-column grid layout
+        expect(content).toContain('Code Composition');
+        // The grid layout includes multiple items per line (checking indentation pattern)
+        const codeCompLines = lines.filter(l => l.includes('█') || l.includes('░'));
+        // If we have items, they should be in grid format
+        if (codeCompLines.length > 0) {
+          // Grid items should have substantial indentation
+          expect(codeCompLines.some(l => l.includes('    '))).toBe(true);
+        }
+      });
+    });
   });
 
   describe('createRunDataRecord', () => {

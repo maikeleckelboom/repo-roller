@@ -160,7 +160,7 @@ describe('CustomTreeSelect', () => {
       expect(output).toContain('Navigate');
       expect(output).toContain('Toggle');
       expect(output).toContain('Confirm');
-      expect(output).toContain('Cancel');
+      expect(output).toContain('Quit');
     });
 
     it('should handle quit command (Q)', async () => {
@@ -243,8 +243,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('Toggle excluded');
-      expect(output).toContain('H:');
+      expect(output).toContain('Show/Hide');
+      expect(output).toContain('H');
     });
   });
 

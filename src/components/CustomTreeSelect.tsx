@@ -389,6 +389,34 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     }
   });
 
+  // Get file type icon based on extension
+  const getFileTypeIcon = (name: string): string => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    const iconMap: Record<string, string> = {
+      ts: '🔷',
+      tsx: '⚛️',
+      js: '🟨',
+      jsx: '⚛️',
+      json: '📋',
+      md: '📝',
+      yaml: '⚙️',
+      yml: '⚙️',
+      toml: '⚙️',
+      py: '🐍',
+      go: '🔵',
+      rs: '🦀',
+      java: '☕',
+      css: '🎨',
+      scss: '🎨',
+      html: '🌐',
+      sh: '💻',
+      bash: '💻',
+      sql: '🗄️',
+      env: '🔒',
+    };
+    return iconMap[ext] || '📄';
+  };
+
   // Render tree
   const renderTree = () => {
     return flatNodes.map((node, index) => {
@@ -399,35 +427,66 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         : areAllChildrenSelected(node, selected);
       const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected);
 
-      // Build indentation
-      const indent = '  '.repeat(node.depth - 1);
+      // Build tree connector lines for better visual hierarchy
+      const indentParts: string[] = [];
+      for (let i = 0; i < node.depth - 1; i++) {
+        indentParts.push('│  ');
+      }
+      const indent = indentParts.join('');
 
-      // Icon
-      let icon = '';
+      // Selection indicator with modern checkbox style
+      let selectionIcon = '';
       if (node.isFile) {
-        icon = isFullySelected ? '■ ' : '□ ';
+        selectionIcon = isFullySelected ? '✓ ' : '○ ';
       } else {
         if (isFullySelected) {
-          icon = '■ ';
+          selectionIcon = '✓ ';
         } else if (isPartiallySelected) {
-          icon = '◧ ';
+          selectionIcon = '◐ ';
         } else {
-          icon = '□ ';
+          selectionIcon = '○ ';
         }
-        icon += isExpanded ? '▼ ' : '▶ ';
       }
 
-      // Name
-      const name = node.isFile ? node.name : `${node.name}/`;
+      // Directory/file indicator
+      let typeIcon = '';
+      if (node.isFile) {
+        typeIcon = getFileTypeIcon(node.name);
+      } else {
+        typeIcon = isExpanded ? '📂' : '📁';
+      }
 
-      // Color
-      const color = isCursor ? 'cyan' : isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : undefined;
+      // Expand/collapse indicator for directories
+      const expandIcon = !node.isFile ? (isExpanded ? ' ▾' : ' ▸') : '';
+
+      // Name with visual distinction
+      const name = node.isFile ? node.name : `${node.name}`;
+
+      // Color scheme
+      let color: string | undefined;
+      if (isCursor) {
+        color = 'cyan';
+      } else if (isFullySelected) {
+        color = 'green';
+      } else if (isPartiallySelected) {
+        color = 'yellow';
+      } else {
+        color = undefined;
+      }
       const bold = isCursor;
 
       return (
-        <Text key={node.fullPath} color={color} bold={bold}>
-          {indent}{icon}{name}
-        </Text>
+        <Box key={node.fullPath} flexDirection="row">
+          <Text dimColor>{indent}</Text>
+          <Text color={isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : 'gray'}>
+            {selectionIcon}
+          </Text>
+          <Text>{typeIcon} </Text>
+          <Text color={color} bold={bold}>
+            {name}
+          </Text>
+          <Text dimColor>{expandIcon}</Text>
+        </Box>
       );
     });
   };
@@ -436,13 +495,28 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     <Box flexDirection="column">
       <Box marginBottom={1} flexDirection="column">
         <Text bold color="cyan">
-          📁 File Selection
+          ╭─────────────────────────────────────────────────────╮
+        </Text>
+        <Text bold color="cyan">
+          │  🌳 Interactive File Selection                      │
+        </Text>
+        <Text bold color="cyan">
+          ╰─────────────────────────────────────────────────────╯
+        </Text>
+      </Box>
+
+      <Box marginBottom={1} flexDirection="column">
+        <Text dimColor>
+          ┌─ Navigation ──────────────────────────────────────┐
         </Text>
         <Text dimColor>
-          ↑/↓: Navigate | ←/→: Collapse/Expand | Space: Toggle | Enter: Confirm | Q: Cancel
+          │ ↑↓ Navigate    ←→ Collapse/Expand    Space Toggle │
         </Text>
         <Text dimColor>
-          H: Toggle excluded/ignored files {showExcluded ? '(currently shown)' : '(currently hidden)'}
+          │ Enter Confirm  Q Quit                H Show/Hide  │
+        </Text>
+        <Text dimColor>
+          └───────────────────────────────────────────────────┘
         </Text>
       </Box>
 
@@ -450,15 +524,28 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         {renderTree()}
       </Box>
 
-      <Box marginTop={1}>
-        <Text bold color="green">
-          ✓ {selected.size} / {files.length} files selected
+      <Box marginTop={1} flexDirection="column">
+        <Text dimColor>
+          ────────────────────────────────────────────────────
         </Text>
-        {!showExcluded && files.length !== filteredFiles.length && (
-          <Text dimColor>
-            {' '}| {files.length - filteredFiles.length} excluded/ignored files hidden
+        <Box>
+          <Text bold color="green">
+            ✓ {selected.size}
           </Text>
-        )}
+          <Text> / </Text>
+          <Text bold color="blue">
+            {files.length}
+          </Text>
+          <Text> files selected</Text>
+          {!showExcluded && files.length !== filteredFiles.length && (
+            <Text dimColor>
+              {' '}• {files.length - filteredFiles.length} hidden
+            </Text>
+          )}
+        </Box>
+        <Text dimColor>
+          {showExcluded ? '👁️  Showing all files' : '🙈 Excluded files hidden'}
+        </Text>
       </Box>
     </Box>
   );
