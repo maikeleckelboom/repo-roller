@@ -16,6 +16,7 @@ import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displa
 import { renderGenerationSummary } from '../core/dashboard.js';
 import { getModelPreset } from '../core/modelPresets.js';
 import { renderPromptHelper } from '../core/promptHelper.js';
+import { recordHistoryEntry } from '../core/history.js';
 
 /**
  * Run preview mode (dry-run or stats-only)
@@ -106,6 +107,8 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   // Show modern header
   console.log(ui.header());
 
+  const startTime = Date.now();
+
   console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));
 
   // Scan files
@@ -144,6 +147,28 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
 
   // Get model preset if specified
   const modelPreset = options.modelPreset ? getModelPreset(options.modelPreset) : undefined;
+
+  // Calculate cost for history
+  const costEstimate = modelPreset
+    ? calculateCost(estimatedTokens, modelPreset.name)
+    : calculateCost(estimatedTokens, 'claude-sonnet');
+  const estimatedCost = costEstimate?.inputCost;
+
+  // Record to history
+  const duration = Date.now() - startTime;
+  await recordHistoryEntry({
+    resolvedOptions: options,
+    cliArgs: process.argv.slice(2),
+    selectedFiles: scan.files,
+    estimatedTokens,
+    estimatedCost,
+    duration,
+  }).catch((err) => {
+    // Don't fail on history errors, just log if verbose
+    if (options.verbose) {
+      console.log(ui.colors.dim(`  (History recording failed: ${err instanceof Error ? err.message : 'unknown error'})`));
+    }
+  });
 
   // Render the new dashboard
   const dashboardLines = renderGenerationSummary(

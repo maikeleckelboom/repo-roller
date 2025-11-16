@@ -59,5 +59,61 @@ export {
   validateCliOptions,
 } from "./core/validation.js";
 
+// History
+export {
+  loadHistory,
+  recordHistoryEntry,
+  queryHistory,
+  getHistoryEntry,
+  tagHistoryEntry,
+  annotateHistoryEntry,
+  clearHistory,
+  diffHistory,
+  entryToCliArgs,
+  exportHistory,
+  getHistoryStats,
+} from "./core/history.js";
+
+export type {
+  HistoryEntry,
+  HistoryQueryOptions,
+  HistoryDiff,
+  HistoryStats,
+  HistoryExportFormat,
+} from "./core/history.js";
+
+// Schema introspection
+export {
+  generateCliSchema,
+  generateLlmToolDefinition,
+  generateShellCompletions,
+  generateOpenApiDocs,
+} from "./core/schema.js";
+
+export type {
+  CliSchema,
+  CliCommand,
+  CliOption,
+  CliArgument,
+  SchemaProperty,
+  LlmToolDefinition,
+} from "./core/schema.js";
+
+// Daemon
+export {
+  startDaemon,
+  sendRequest,
+  isDaemonRunning,
+  getDaemonPid,
+  getDefaultSocketPath,
+  generateRequestId,
+} from "./core/daemon.js";
+
+export type {
+  DaemonRequest,
+  DaemonResponse,
+  DaemonConfig,
+} from "./core/daemon.js";
+
 // Version
 export const VERSION = "1.0.0";

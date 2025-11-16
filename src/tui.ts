@@ -8,18 +8,21 @@ import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { Confirm } from './components/Confirm.js';
 import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
 import * as ui from './core/ui.js';
-import { estimateTokens } from './core/tokens.js';
+import { estimateTokens, calculateCost } from './core/tokens.js';
 import { formatBytes } from './core/helpers.js';
 import { displayDetailedLLMAnalysis } from './cli/display.js';
 import { renderGenerationSummary } from './core/dashboard.js';
 import { getModelPreset } from './core/modelPresets.js';
 import { renderPromptHelper } from './core/promptHelper.js';
+import { recordHistoryEntry } from './core/history.js';
 
 /**
  * Run interactive TUI mode
  */
 export async function runInteractive(options: ResolvedOptions): Promise<void> {
   console.log('🎨 Interactive Mode\n');
+
+  const startTime = Date.now();
 
   // Load user preferences for defaults
   const userSettings = await loadUserSettings();
@@ -189,6 +192,26 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   await writeFile(options.outFile, output, 'utf-8');
 
   console.log(ui.status('write', `Output written to ${ui.colors.success(options.outFile)}`));
+
+  // Calculate cost for history
+  const costEstimate = modelPreset
+    ? calculateCost(estimatedTokens, modelPreset.name)
+    : calculateCost(estimatedTokens, 'claude-sonnet');
+  const estimatedCost = costEstimate?.inputCost;
+
+  // Record to history
+  const duration = Date.now() - startTime;
+  await recordHistoryEntry({
+    resolvedOptions: updatedOptions,
+    cliArgs: process.argv.slice(2),
+    selectedFiles: scan.files,
+    estimatedTokens,
+    estimatedCost,
+    duration,
+  }).catch(() => {
+    // Don't fail on history errors in interactive mode
+  });
+
   console.log('');
 
   // Display detailed LLM analysis only if --llm flag is set
