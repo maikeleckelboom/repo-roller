@@ -87,6 +87,10 @@ export async function getMostRecentFiles(root: string, count: number): Promise<s
       if (error.message.includes('not a git repository')) {
         throw new Error('Not a git repository. The --most-recent flag requires a git repository.');
       }
+      // Handle empty repository with no commits
+      if (error.message.includes('does not have any commits yet')) {
+        return [];
+      }
     }
     throw error;
   }
