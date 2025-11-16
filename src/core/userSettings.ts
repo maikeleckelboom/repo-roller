@@ -100,3 +100,23 @@ export async function resetDisplaySettings(): Promise<void> {
   await ensureConfigDir();
   await writeFile(SETTINGS_FILE, JSON.stringify(rest, null, 2), 'utf-8');
 }
+
+export const DEFAULT_INTERACTIVE_SETTINGS = {
+  stripComments: false,
+  withTree: true,
+  withStats: true,
+};
+
+export async function resetAllSettings(): Promise<void> {
+  await ensureConfigDir();
+  // Clear all settings by writing an empty object
+  await writeFile(SETTINGS_FILE, JSON.stringify({}, null, 2), 'utf-8');
+}
+
+export async function resetInteractiveSettings(): Promise<void> {
+  const current = await loadUserSettings();
+  // Remove interactive mode settings to use defaults
+  const { stripComments: _, withTree: __, withStats: ___, ...rest } = current;
+  await ensureConfigDir();
+  await writeFile(SETTINGS_FILE, JSON.stringify(rest, null, 2), 'utf-8');
+}

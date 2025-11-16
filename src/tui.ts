@@ -7,7 +7,7 @@ import { scanFiles } from './core/scan.js';
 import { render as renderOutput } from './core/render.js';
 import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { Confirm } from './components/Confirm.js';
-import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
+import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost } from './core/tokens.js';
 import { formatBytes } from './core/helpers.js';
@@ -184,23 +184,72 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     console.log(`  Include tree: ${withTree ? 'Yes' : 'No'}`);
     console.log(`  Include stats: ${withStats ? 'Yes' : 'No'}\n`);
   } else {
-    // Interactive prompts with user preferences as defaults
-    console.log('');
-    const defaultStripComments = userSettings.stripComments ?? options.stripComments;
-    stripComments = await promptConfirm('Strip comments from source files?', defaultStripComments);
+    // Check if user has saved preferences
+    const hasSavedPreferences =
+      userSettings.stripComments !== undefined ||
+      userSettings.withTree !== undefined ||
+      userSettings.withStats !== undefined;
 
-    const defaultWithTree = userSettings.withTree ?? options.withTree;
-    withTree = await promptConfirm('Include directory tree view?', defaultWithTree);
+    if (hasSavedPreferences) {
+      console.log('');
+      console.log(ui.colors.accent('  💾 Saved preferences detected'));
+      console.log(ui.colors.dim(`     Strip comments: ${userSettings.stripComments ?? DEFAULT_INTERACTIVE_SETTINGS.stripComments ? 'Yes' : 'No'}`));
+      console.log(ui.colors.dim(`     Include tree: ${userSettings.withTree ?? DEFAULT_INTERACTIVE_SETTINGS.withTree ? 'Yes' : 'No'}`));
+      console.log(ui.colors.dim(`     Include stats: ${userSettings.withStats ?? DEFAULT_INTERACTIVE_SETTINGS.withStats ? 'Yes' : 'No'}`));
+      console.log('');
 
-    const defaultWithStats = userSettings.withStats ?? options.withStats;
-    withStats = await promptConfirm('Include statistics section?', defaultWithStats);
+      const shouldReset = await promptConfirm('Reset preferences to defaults?', false);
+      if (shouldReset) {
+        await resetInteractiveSettings();
+        console.log(ui.colors.success('  ✓ Preferences reset to defaults'));
+        console.log(ui.colors.dim(`     Strip comments: ${DEFAULT_INTERACTIVE_SETTINGS.stripComments ? 'Yes' : 'No'}`));
+        console.log(ui.colors.dim(`     Include tree: ${DEFAULT_INTERACTIVE_SETTINGS.withTree ? 'Yes' : 'No'}`));
+        console.log(ui.colors.dim(`     Include stats: ${DEFAULT_INTERACTIVE_SETTINGS.withStats ? 'Yes' : 'No'}`));
+        // Use defaults after reset
+        stripComments = DEFAULT_INTERACTIVE_SETTINGS.stripComments;
+        withTree = DEFAULT_INTERACTIVE_SETTINGS.withTree;
+        withStats = DEFAULT_INTERACTIVE_SETTINGS.withStats;
+      } else {
+        // Interactive prompts with user preferences as defaults
+        console.log('');
+        const defaultStripComments = userSettings.stripComments ?? options.stripComments;
+        stripComments = await promptConfirm('Strip comments from source files?', defaultStripComments);
 
-    // Save user preferences for next time
-    await saveUserSettings({
-      stripComments,
-      withTree,
-      withStats,
-    });
+        const defaultWithTree = userSettings.withTree ?? options.withTree;
+        withTree = await promptConfirm('Include directory tree view?', defaultWithTree);
+
+        const defaultWithStats = userSettings.withStats ?? options.withStats;
+        withStats = await promptConfirm('Include statistics section?', defaultWithStats);
+
+        // Save user preferences for next time
+        await saveUserSettings({
+          stripComments,
+          withTree,
+          withStats,
+        });
+      }
+    } else {
+      // No saved preferences - use standard flow
+      console.log('');
+      const defaultStripComments = userSettings.stripComments ?? options.stripComments;
+      stripComments = await promptConfirm('Strip comments from source files?', defaultStripComments);
+
+      const defaultWithTree = userSettings.withTree ?? options.withTree;
+      withTree = await promptConfirm('Include directory tree view?', defaultWithTree);
+
+      const defaultWithStats = userSettings.withStats ?? options.withStats;
+      withStats = await promptConfirm('Include statistics section?', defaultWithStats);
+
+      // Save user preferences for next time
+      await saveUserSettings({
+        stripComments,
+        withTree,
+        withStats,
+      });
+
+      console.log(ui.colors.dim('  💾 Your preferences have been saved for next time'));
+      console.log(ui.colors.dim('     To reset: run with -I again and choose "Reset preferences to defaults"'));
+    }
   }
 
   // Update options with user selections
