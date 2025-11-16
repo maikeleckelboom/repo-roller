@@ -90,7 +90,7 @@ const defaultMarkers: TreeMarkers = {
   partial: '[-]',
   expanded: '▾',
   collapsed: '▸',
-  leaf: '•',
+  leaf: ' ',
 };
 
 /**
@@ -154,57 +154,58 @@ const nerdFontGlyphs: Record<FileIconId, string> = {
  * - Intentionally chosen short codes for quick visual recognition
  */
 const asciiIcons: Record<FileIconId, string> = {
+  // All badges removed - rely on color and suffixes for file type indication
   // Source files
-  'file-icons:typescript': 'TS',
-  'file-icons:typescript-alt': 'TS',
-  'file-icons:jsx': 'RX',
-  'file-icons:jsx-alt': 'RX',
-  'file-icons:javascript': 'JS',
-  'file-icons:python': 'PY',
-  'file-icons:go': 'GO',
-  'file-icons:rust': 'RS',
-  'file-icons:java': 'JV',
-  'file-icons:html': 'HT',
-  'file-icons:shell': 'SH',
-  'file-icons:sql': 'SQ',
+  'file-icons:typescript': '',
+  'file-icons:typescript-alt': '',
+  'file-icons:jsx': '',
+  'file-icons:jsx-alt': '',
+  'file-icons:javascript': '',
+  'file-icons:python': '',
+  'file-icons:go': '',
+  'file-icons:rust': '',
+  'file-icons:java': '',
+  'file-icons:html': '',
+  'file-icons:shell': '',
+  'file-icons:sql': '',
 
   // Test files
-  'file-icons:test-js': 'TJ',
-  'file-icons:test-typescript': 'TT',
+  'file-icons:test-js': '',
+  'file-icons:test-typescript': '',
 
   // Config & data
-  'file-icons:json': 'JN',
-  'file-icons:yaml': 'YM',
-  'file-icons:config': 'CF',
-  'file-icons:npm': 'NP',
-  'file-icons:env': 'EV',
-  'file-icons:docker': 'DK',
+  'file-icons:json': '',
+  'file-icons:yaml': '',
+  'file-icons:config': '',
+  'file-icons:npm': '',
+  'file-icons:env': '',
+  'file-icons:docker': '',
 
   // Tooling
-  'file-icons:git': 'GT',
-  'file-icons:eslint': 'ES',
-  'file-icons:prettier': 'PR',
-  'file-icons:editorconfig': 'EC',
+  'file-icons:git': '',
+  'file-icons:eslint': '',
+  'file-icons:prettier': '',
+  'file-icons:editorconfig': '',
 
   // Styles
-  'file-icons:css': 'CS',
-  'file-icons:scss': 'SC',
+  'file-icons:css': '',
+  'file-icons:scss': '',
 
   // Documentation
-  'file-icons:markdown': 'MD',
-  'file-icons:readme': 'RM',
-  'file-icons:changelog': 'CL',
-  'file-icons:license': 'LC',
+  'file-icons:markdown': '',
+  'file-icons:readme': '',
+  'file-icons:changelog': '',
+  'file-icons:license': '',
 
   // Package & locks
-  'file-icons:lock': 'LK',
+  'file-icons:lock': '',
 
-  // Folders - blank badges (chevron handles expand/collapse indicator)
-  'file-icons:folder': '  ',
-  'file-icons:folder-open': '  ',
+  // Folders
+  'file-icons:folder': '',
+  'file-icons:folder-open': '',
 
   // Generic files
-  'file-icons:file': '  ',
+  'file-icons:file': '',
 };
 
 /**
