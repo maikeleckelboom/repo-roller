@@ -149,39 +149,23 @@ function renderCodeComposition(
   const languages = calculateLanguageBreakdown(files);
   const roles = calculateRoleBreakdown(files);
 
-  if (mode === 'detailed') {
-    // Show languages and roles side-by-side in two columns
-    const langItems: Array<{ name: string; percent: number; type: string }> = [];
-    const roleItems: Array<{ name: string; percent: number; type: string }> = [];
+  // Both modes use side-by-side columns for clarity
+  const langItems: Array<{ name: string; percent: number; type: string }> = [];
+  const roleItems: Array<{ name: string; percent: number; type: string }> = [];
 
-    for (const lang of languages.slice(0, 4)) {
-      langItems.push({ name: lang.name, percent: lang.percent, type: 'language' });
-    }
-
-    if (roles.source > 0) roleItems.push({ name: 'Source', percent: roles.source, type: 'role-source' });
-    if (roles.test > 0) roleItems.push({ name: 'Tests', percent: roles.test, type: 'role-test' });
-    if (roles.docs > 0) roleItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
-    if (roles.config > 0) roleItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
-
-    // Render side-by-side columns
-    const sideBySideLines = renderSideBySideColumns(langItems, roleItems, 'Languages', 'File Roles');
-    lines.push(...sideBySideLines);
-  } else {
-    // Compact two-column grid (mix languages and roles)
-    const allItems: Array<{ name: string; percent: number; type: string }> = [];
-
-    for (const lang of languages.slice(0, 3)) {
-      allItems.push({ name: lang.name, percent: lang.percent, type: 'language' });
-    }
-
-    if (roles.source > 0) allItems.push({ name: 'Source', percent: roles.source, type: 'role-source' });
-    if (roles.test > 0) allItems.push({ name: 'Tests', percent: roles.test, type: 'role-test' });
-    if (roles.docs > 0) allItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
-    if (roles.config > 0) allItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
-
-    const gridLines = compactColoredBarsGrid(allItems);
-    lines.push(...gridLines);
+  const maxLangs = mode === 'detailed' ? 4 : 3;
+  for (const lang of languages.slice(0, maxLangs)) {
+    langItems.push({ name: lang.name, percent: lang.percent, type: 'language' });
   }
+
+  if (roles.source > 0) roleItems.push({ name: 'Source', percent: roles.source, type: 'role-source' });
+  if (roles.test > 0) roleItems.push({ name: 'Tests', percent: roles.test, type: 'role-test' });
+  if (roles.docs > 0) roleItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
+  if (roles.config > 0) roleItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
+
+  // Render side-by-side columns
+  const sideBySideLines = renderSideBySideColumns(langItems, roleItems, 'Languages', 'File Roles');
+  lines.push(...sideBySideLines);
 
   return lines;
 }
