@@ -462,6 +462,20 @@ export function inlinePercentages(items: Array<{ name: string; percent: number }
 }
 
 /**
+ * Format compact inline bars with percentages (multiple items per line)
+ */
+export function inlineBars(items: Array<{ name: string; percent: number }>, barWidth = 8): string {
+  return items
+    .map(({ name, percent }) => {
+      const filled = Math.round((percent / 100) * barWidth);
+      const empty = barWidth - filled;
+      const bar = colors.primary('█'.repeat(filled)) + colors.dim('░'.repeat(empty));
+      return `${name} ${bar} ${colors.dim(`${percent.toFixed(0)}%`.padStart(3))}`;
+    })
+    .join('  ');
+}
+
+/**
  * Format directory size breakdown
  */
 export function directoryBreakdown(dir: string, percent: number): string {
