@@ -84,6 +84,45 @@ function getGitRepositoryUrl(rootPath: string): string | undefined {
 
 /**
  * Simple comment stripping (handles //, /*, #)
+ *
+ * This is a naive line-by-line implementation that does NOT parse the full syntax of each language.
+ * It works well for most common cases but has known limitations.
+ *
+ * SUPPORTED COMMENT STYLES:
+ * - Slash-based (ts, tsx, js, jsx, java, c, cpp, cs, go, rs): // and block comments
+ * - Hash-based (py, sh, bash, yaml, yml, toml, rb): hash symbol
+ *
+ * KNOWN EDGE CASES AND LIMITATIONS:
+ *
+ * 1. Comments Inside String Literals - The function does NOT parse string boundaries,
+ *    so comment-like sequences inside strings will be incorrectly removed.
+ *    Example: const url = "https://example.com" - the "//" in URL is incorrectly treated as comment start.
+ *
+ * 2. Comments in Regular Expression Literals - "//" in regex patterns are incorrectly treated as comments.
+ *    Example: const pattern = /https?:\/\//g would have issues.
+ *
+ * 3. Template Literals and Multi-line Strings - Comment markers inside template literals are stripped.
+ *
+ * 4. Hash in Non-Comment Contexts (Python/Ruby) - Hash characters in strings are treated as comments.
+ *    Example: color = "0xFF0000" - the hash in hex color is treated as comment start.
+ *
+ * 5. Multiple Block Comments on Same Line - Handled correctly for sequential block comments.
+ *
+ * 6. JSDoc and Documentation Comments - All comment styles stripped equally, including JSDoc.
+ *
+ * 7. Escape Sequences - Escaped comment characters in strings are not handled correctly.
+ *
+ * WHEN TO USE:
+ * - Quick token reduction where perfect accuracy isn't critical
+ * - Codebases with standard comment patterns (comments on their own lines)
+ * - Preview/estimation purposes
+ *
+ * For production use cases requiring perfect comment removal, consider using
+ * language-specific parsers (e.g., TypeScript compiler API, Babel, etc.)
+ *
+ * @param content - File content to process
+ * @param extension - File extension (without dot) to determine comment style
+ * @returns Content with comments removed and empty lines filtered out
  */
 function stripComments(content: string, extension: string): string {
   const lines = content.split('\n');

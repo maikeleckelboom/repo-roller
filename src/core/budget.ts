@@ -186,7 +186,7 @@ export async function selectFilesWithinBudget(
   files: readonly FileInfo[],
   config: BudgetConfig,
   middleware: FileSelectionMiddleware = defaultSizeBasedMiddleware,
-  rootPath: string = '.'
+  rootPath = '.'
 ): Promise<BudgetSelectionResult> {
   // Validate config
   if (config.type !== 'tokens' && !config.provider) {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useReducer, useMemo, useEffect, useCallback } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { FileInfo } from '../core/types.js';
 import { getUserSetting, setUserSetting } from '../core/userSettings.js';
@@ -14,6 +14,106 @@ interface TreeNode {
 interface CustomTreeSelectProps {
   files: readonly FileInfo[];
   onComplete: (selectedPaths: string[]) => void;
+}
+
+// State type for the reducer
+interface TreeSelectState {
+  expanded: Set<string>;
+  selected: Set<string>;
+  cursor: number;
+  showExcluded: boolean;
+  settingsLoaded: boolean;
+}
+
+// Action types for the reducer
+type TreeSelectAction =
+  | { type: 'SET_EXPANDED'; payload: Set<string> }
+  | { type: 'EXPAND_NODE'; payload: string }
+  | { type: 'COLLAPSE_NODE'; payload: string }
+  | { type: 'SET_SELECTED'; payload: Set<string> }
+  | { type: 'TOGGLE_FILE'; payload: string }
+  | { type: 'SELECT_FILES'; payload: string[] }
+  | { type: 'DESELECT_FILES'; payload: string[] }
+  | { type: 'SET_CURSOR'; payload: number }
+  | { type: 'MOVE_CURSOR_UP' }
+  | { type: 'MOVE_CURSOR_DOWN'; payload: { maxIndex: number } }
+  | { type: 'SET_SHOW_EXCLUDED'; payload: boolean }
+  | { type: 'TOGGLE_SHOW_EXCLUDED' }
+  | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
+  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } };
+
+// Reducer function to manage complex state
+function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): TreeSelectState {
+  switch (action.type) {
+    case 'SET_EXPANDED':
+      return { ...state, expanded: action.payload };
+
+    case 'EXPAND_NODE': {
+      const newExpanded = new Set(state.expanded);
+      newExpanded.add(action.payload);
+      return { ...state, expanded: newExpanded };
+    }
+
+    case 'COLLAPSE_NODE': {
+      const newExpanded = new Set(state.expanded);
+      newExpanded.delete(action.payload);
+      return { ...state, expanded: newExpanded };
+    }
+
+    case 'SET_SELECTED':
+      return { ...state, selected: action.payload };
+
+    case 'TOGGLE_FILE': {
+      const newSelected = new Set(state.selected);
+      if (newSelected.has(action.payload)) {
+        newSelected.delete(action.payload);
+      } else {
+        newSelected.add(action.payload);
+      }
+      return { ...state, selected: newSelected };
+    }
+
+    case 'SELECT_FILES': {
+      const newSelected = new Set(state.selected);
+      action.payload.forEach(f => newSelected.add(f));
+      return { ...state, selected: newSelected };
+    }
+
+    case 'DESELECT_FILES': {
+      const newSelected = new Set(state.selected);
+      action.payload.forEach(f => newSelected.delete(f));
+      return { ...state, selected: newSelected };
+    }
+
+    case 'SET_CURSOR':
+      return { ...state, cursor: action.payload };
+
+    case 'MOVE_CURSOR_UP':
+      return { ...state, cursor: Math.max(0, state.cursor - 1) };
+
+    case 'MOVE_CURSOR_DOWN':
+      return { ...state, cursor: Math.min(action.payload.maxIndex, state.cursor + 1) };
+
+    case 'SET_SHOW_EXCLUDED':
+      return { ...state, showExcluded: action.payload };
+
+    case 'TOGGLE_SHOW_EXCLUDED':
+      return { ...state, showExcluded: !state.showExcluded };
+
+    case 'SET_SETTINGS_LOADED':
+      return { ...state, settingsLoaded: action.payload };
+
+    case 'BOUND_CURSOR': {
+      if (action.payload.maxIndex < 0) {
+        return state.cursor !== 0 ? { ...state, cursor: 0 } : state;
+      }
+      const boundedCursor = Math.min(state.cursor, action.payload.maxIndex);
+      return boundedCursor !== state.cursor ? { ...state, cursor: boundedCursor } : state;
+    }
+
+    default:
+      return state;
+  }
 }
 
 /**
@@ -43,7 +143,9 @@ function buildTreeStructure(files: readonly FileInfo[]): TreeNode {
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (!part) {continue;}
+      if (!part) {
+        continue;
+      }
 
       const parentPath = currentPath || '.';
       currentPath = currentPath ? `${currentPath}/${part}` : part;
@@ -146,34 +248,26 @@ function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean
 export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete }) => {
   const tree = useMemo(() => buildTreeStructure(files), [files]);
 
-  // Track which directories are expanded
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    // Start with root expanded
-    const initial = new Set<string>(['.']);
-    return initial;
+  // Initialize state with useReducer
+  const [state, dispatch] = useReducer(treeSelectReducer, {
+    expanded: new Set(['.']),
+    selected: new Set(files.filter(f => f.isDefaultIncluded).map(f => f.relativePath)),
+    cursor: 0,
+    showExcluded: true,
+    settingsLoaded: false,
   });
 
-  // Track which files are selected - initialize with only default included files
-  const [selected, setSelected] = useState<Set<string>>(() => {
-    return new Set(files.filter(f => f.isDefaultIncluded).map(f => f.relativePath));
-  });
-
-  // Current cursor position
-  const [cursor, setCursor] = useState(0);
-
-  // Toggle for showing/hiding excluded and gitignored files
-  const [showExcluded, setShowExcluded] = useState(true);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const { expanded, selected, cursor, showExcluded, settingsLoaded } = state;
 
   // Load persisted setting on mount
   useEffect(() => {
     getUserSetting('showExcludedFiles').then(value => {
       if (value !== undefined) {
-        setShowExcluded(value);
+        dispatch({ type: 'SET_SHOW_EXCLUDED', payload: value });
       }
-      setSettingsLoaded(true);
+      dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
     }).catch(() => {
-      setSettingsLoaded(true);
+      dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
     });
   }, []);
 
@@ -200,7 +294,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Flatten tree based on expansion state
   const flatNodes = useMemo(() => flattenTree(showExcluded ? tree : filteredTree, expanded), [tree, filteredTree, expanded, showExcluded]);
 
-  // Ensure cursor stays in bounds when flatNodes changes (use bounded cursor)
+  // Ensure cursor stays in bounds when flatNodes changes
   const boundedCursor = useMemo(() => {
     if (flatNodes.length === 0) {
       return 0;
@@ -211,12 +305,23 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Sync cursor state if it needs adjustment (only when actually out of bounds)
   useEffect(() => {
     if (boundedCursor !== cursor) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCursor(boundedCursor);
+      dispatch({ type: 'SET_CURSOR', payload: boundedCursor });
     }
   }, [boundedCursor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { exit } = useApp();
+
+  // Handle directory toggle (select all or deselect all children)
+  const handleDirectoryToggle = useCallback((node: TreeNode) => {
+    const allFiles = getAllFilesUnder(node);
+    const allSelected = allFiles.every(f => selected.has(f));
+
+    if (allSelected) {
+      dispatch({ type: 'DESELECT_FILES', payload: allFiles });
+    } else {
+      dispatch({ type: 'SELECT_FILES', payload: allFiles });
+    }
+  }, [selected]);
 
   useInput((input, key) => {
     if (input === 'q' || input === 'Q') {
@@ -227,17 +332,17 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
     // Toggle showing/hiding excluded and gitignored files with H (Shift+h)
     if (input === 'H') {
-      setShowExcluded(prev => !prev);
+      dispatch({ type: 'TOGGLE_SHOW_EXCLUDED' });
       return;
     }
 
     if (key.upArrow) {
-      setCursor(prev => Math.max(0, prev - 1));
+      dispatch({ type: 'MOVE_CURSOR_UP' });
       return;
     }
 
     if (key.downArrow) {
-      setCursor(prev => Math.min(flatNodes.length - 1, prev + 1));
+      dispatch({ type: 'MOVE_CURSOR_DOWN', payload: { maxIndex: flatNodes.length - 1 } });
       return;
     }
 
@@ -245,7 +350,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       // Expand directory
       const node = flatNodes[cursor];
       if (node && !node.isFile) {
-        setExpanded(prev => new Set([...prev, node.fullPath]));
+        dispatch({ type: 'EXPAND_NODE', payload: node.fullPath });
       }
       return;
     }
@@ -254,11 +359,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       // Collapse directory
       const node = flatNodes[cursor];
       if (node && !node.isFile) {
-        setExpanded(prev => {
-          const next = new Set(prev);
-          next.delete(node.fullPath);
-          return next;
-        });
+        dispatch({ type: 'COLLAPSE_NODE', payload: node.fullPath });
       }
       return;
     }
@@ -266,36 +367,16 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     if (input === ' ') {
       // Toggle selection
       const node = flatNodes[cursor];
-      if (!node) {return;}
+      if (!node) {
+        return;
+      }
 
       if (node.isFile) {
         // Toggle single file
-        setSelected(prev => {
-          const next = new Set(prev);
-          if (next.has(node.fullPath)) {
-            next.delete(node.fullPath);
-          } else {
-            next.add(node.fullPath);
-          }
-          return next;
-        });
+        dispatch({ type: 'TOGGLE_FILE', payload: node.fullPath });
       } else {
         // Toggle directory and all children
-        const allFiles = getAllFilesUnder(node);
-
-        setSelected(prev => {
-          const next = new Set(prev);
-          // Check allSelected inside callback to avoid stale closure
-          const allSelected = allFiles.every(f => prev.has(f));
-          if (allSelected) {
-            // Deselect all
-            allFiles.forEach(f => next.delete(f));
-          } else {
-            // Select all
-            allFiles.forEach(f => next.add(f));
-          }
-          return next;
-        });
+        handleDirectoryToggle(node);
       }
       return;
     }

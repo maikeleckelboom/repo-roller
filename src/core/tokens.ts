@@ -115,7 +115,9 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
  * For large files (100KB+), accuracy is typically within ±2%.
  */
 export function estimateTokens(text: string): number {
-  if (text.length === 0) return 0;
+  if (text.length === 0) {
+    return 0;
+  }
 
   const charCount = text.length;
 
