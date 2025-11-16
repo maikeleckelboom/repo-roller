@@ -6,7 +6,7 @@ import chalk from 'chalk';
 
 // Color palette - modern, muted, professional
 const colors = {
-  primary: chalk.hex('#7C3AED'),      // Purple
+  primary: chalk.hex('#FBBF24'),      // Yellow (brand color)
   secondary: chalk.hex('#06B6D4'),    // Cyan
   accent: chalk.hex('#F59E0B'),       // Amber
   success: chalk.hex('#10B981'),      // Green
@@ -414,10 +414,10 @@ export function rightAlign(text: string, width: number = 60): string {
  */
 export function gradientText(text: string): string {
   const gradientColors = [
-    chalk.hex('#7C3AED'),
-    chalk.hex('#6D28D9'),
-    chalk.hex('#5B21B6'),
-    chalk.hex('#4C1D95'),
+    chalk.hex('#FBBF24'),
+    chalk.hex('#F59E0B'),
+    chalk.hex('#D97706'),
+    chalk.hex('#B45309'),
   ];
 
   let result = '';
