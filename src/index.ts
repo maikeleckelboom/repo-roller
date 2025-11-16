@@ -99,5 +99,21 @@ export type {
   LlmToolDefinition,
 } from "./core/schema.js";
 
+// Daemon
+export {
+  startDaemon,
+  sendRequest,
+  isDaemonRunning,
+  getDaemonPid,
+  getDefaultSocketPath,
+  generateRequestId,
+} from "./core/daemon.js";
+
+export type {
+  DaemonRequest,
+  DaemonResponse,
+  DaemonConfig,
+} from "./core/daemon.js";
+
 // Version
 export const VERSION = "1.0.0";

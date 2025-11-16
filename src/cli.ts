@@ -31,6 +31,16 @@ import {
   displayOpenApiDocs,
 } from './cli/schema.js';
 import { clearHistory, tagHistoryEntry, annotateHistoryEntry, entryToCliArgs, getHistoryEntry } from './core/history.js';
+import {
+  displayDaemonStatus,
+  daemonScan,
+  daemonBundle,
+  daemonTokenEstimate,
+  displayCacheStats,
+  clearDaemonCache,
+  sendDaemonRpc,
+} from './cli/daemon.js';
+import { startDaemon, isDaemonRunning, getDaemonPid, getDefaultSocketPath } from './core/daemon.js';
 
 /**
  * Main CLI function
@@ -170,6 +180,86 @@ async function main(): Promise<void> {
         } else {
           // Default: summary
           displaySchemaSummary();
+        }
+      } catch (error) {
+        console.error('Error:', error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
+  // Daemon command
+  program
+    .command('daemon')
+    .description('Run repo-roller as a background daemon with warm cache and RPC interface')
+    .option('--start', 'Start the daemon')
+    .option('--stop', 'Stop the daemon')
+    .option('--status', 'Show daemon status (default)')
+    .option('--scan [root]', 'Quick scan via daemon (uses cache)')
+    .option('--bundle [root]', 'Generate bundle via daemon')
+    .option('--tokens [root]', 'Quick token estimate via daemon')
+    .option('--cache', 'Show cache statistics')
+    .option('--cache-clear [project]', 'Clear daemon cache')
+    .option('--force', 'Force refresh (skip cache)')
+    .option('--preset <name>', 'Preset for daemon operations')
+    .option('--format <type>', 'Output format for daemon bundle')
+    .option('--rpc <method>', 'Send raw RPC method')
+    .option('--params <json>', 'JSON params for RPC method')
+    .action(async (options: {
+      start?: boolean;
+      stop?: boolean;
+      status?: boolean;
+      scan?: string | boolean;
+      bundle?: string | boolean;
+      tokens?: string | boolean;
+      cache?: boolean;
+      cacheClear?: string | boolean;
+      force?: boolean;
+      preset?: string;
+      format?: string;
+      rpc?: string;
+      params?: string;
+    }) => {
+      try {
+        if (options.start) {
+          console.log(ui.info('Starting daemon...'));
+          await startDaemon();
+        } else if (options.stop) {
+          const running = await isDaemonRunning();
+          if (!running) {
+            console.log(ui.warning('Daemon is not running'));
+            return;
+          }
+          const pid = await getDaemonPid();
+          if (pid) {
+            process.kill(pid, 'SIGTERM');
+            console.log(ui.success(`Sent stop signal to daemon (PID ${pid})`));
+          } else {
+            console.error(ui.error('Could not find daemon PID'));
+          }
+        } else if (options.scan !== undefined) {
+          const root = typeof options.scan === 'string' ? options.scan : '.';
+          await daemonScan(root, options.force ?? false);
+        } else if (options.bundle !== undefined) {
+          const root = typeof options.bundle === 'string' ? options.bundle : '.';
+          await daemonBundle({
+            root,
+            preset: options.preset,
+            format: options.format,
+          });
+        } else if (options.tokens !== undefined) {
+          const root = typeof options.tokens === 'string' ? options.tokens : '.';
+          await daemonTokenEstimate(root);
+        } else if (options.cache) {
+          await displayCacheStats();
+        } else if (options.cacheClear !== undefined) {
+          const project = typeof options.cacheClear === 'string' ? options.cacheClear : undefined;
+          await clearDaemonCache(project);
+        } else if (options.rpc) {
+          const params = options.params ? JSON.parse(options.params) : {};
+          await sendDaemonRpc(options.rpc, params);
+        } else {
+          // Default: status
+          await displayDaemonStatus();
         }
       } catch (error) {
         console.error('Error:', error instanceof Error ? error.message : String(error));
