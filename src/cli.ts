@@ -98,6 +98,11 @@ async function main(): Promise<void> {
     // LLM report display options
     .option('--llm', 'Show detailed LLM provider/cost breakdown')
     .option('--llm-report', 'Alias for --llm')
+    // Git-aware selection options
+    .option('--since <commit>', 'Include only files changed since commit/tag/branch')
+    .option('--staged', 'Include only staged files')
+    .option('--unstaged', 'Include only unstaged modified files')
+    .option('--changed', 'Include only changed files (staged + unstaged)')
     .action(async (root: string, options: CommanderOptions) => {
       try {
         // Load config files early for info commands
@@ -218,6 +223,11 @@ async function main(): Promise<void> {
           yes: options.yes ?? options.defaults,
           // LLM report display options
           showLLMReport: options.llm ?? options.llmReport,
+          // Git-aware selection options
+          since: options.since,
+          staged: options.staged,
+          unstaged: options.unstaged,
+          changed: options.changed,
         };
 
         // Resolve final options

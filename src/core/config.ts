@@ -81,6 +81,11 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   presetFooter: undefined,
   presetDescription: undefined,
   addOutlines: false,
+  // Git-aware selection options (default to none)
+  gitSince: undefined,
+  gitStaged: undefined,
+  gitUnstaged: undefined,
+  gitChanged: undefined,
 } as const;
 
 /**
@@ -346,5 +351,10 @@ export function resolveOptions(
     presetFooter: options.presetFooter,
     presetDescription: options.presetDescription,
     addOutlines: options.addOutlines,
+    // Git-aware selection options
+    gitSince: cli.since ?? options.gitSince,
+    gitStaged: cli.staged ?? options.gitStaged,
+    gitUnstaged: cli.unstaged ?? options.gitUnstaged,
+    gitChanged: cli.changed ?? options.gitChanged,
   };
 }

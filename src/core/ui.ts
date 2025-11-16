@@ -140,12 +140,13 @@ export function headerInline(): string {
 /**
  * Status indicator with icon
  */
-export function status(type: 'scan' | 'render' | 'write' | 'analyze', message: string): string {
+export function status(type: 'scan' | 'render' | 'write' | 'analyze' | 'git', message: string): string {
   const icons: Record<string, string> = {
     scan: colors.secondary(symbols.pointer),
     render: colors.accent(symbols.pointer),
     write: colors.success(symbols.pointer),
     analyze: colors.info(symbols.pointer),
+    git: colors.warning(symbols.pointer),
   };
 
   return `${icons[type]} ${colors.dim(message)}`;

@@ -22,6 +22,18 @@ import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displa
 export async function runPreview(options: ResolvedOptions): Promise<void> {
   console.log(ui.header());
   console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));
+
+  // Show git filtering status if active
+  if (options.gitSince) {
+    console.log(ui.status('git', `Filtering to files changed since ${ui.colors.accent(options.gitSince)}`));
+  } else if (options.gitStaged) {
+    console.log(ui.status('git', `Filtering to ${ui.colors.accent('staged')} files only`));
+  } else if (options.gitUnstaged) {
+    console.log(ui.status('git', `Filtering to ${ui.colors.accent('unstaged')} changes only`));
+  } else if (options.gitChanged) {
+    console.log(ui.status('git', `Filtering to ${ui.colors.accent('changed')} files (staged + unstaged)`));
+  }
+
   console.log('');
 
   // Scan files
@@ -104,6 +116,17 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   console.log(ui.header());
 
   console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));
+
+  // Show git filtering status if active
+  if (options.gitSince) {
+    console.log(ui.status('git', `Filtering to files changed since ${ui.colors.accent(options.gitSince)}`));
+  } else if (options.gitStaged) {
+    console.log(ui.status('git', `Filtering to ${ui.colors.accent('staged')} files only`));
+  } else if (options.gitUnstaged) {
+    console.log(ui.status('git', `Filtering to ${ui.colors.accent('unstaged')} changes only`));
+  } else if (options.gitChanged) {
+    console.log(ui.status('git', `Filtering to ${ui.colors.accent('changed')} files (staged + unstaged)`));
+  }
 
   // Scan files
   let scan = await scanFiles(options);

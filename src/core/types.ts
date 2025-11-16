@@ -160,7 +160,13 @@ export interface CommanderOptions {
   // LLM report display options
   readonly llm?: boolean;
   readonly llmReport?: boolean;
+  // Git-aware selection options
+  readonly since?: string;
+  readonly staged?: boolean;
+  readonly unstaged?: boolean;
+  readonly changed?: boolean;
 }
+
 
 /**
  * CLI command options (normalized for internal use)
@@ -190,6 +196,8 @@ export interface CliOptions {
   readonly noGenerated?: boolean;
   readonly changed?: boolean;
   readonly staged?: boolean;
+  readonly unstaged?: boolean;
+  readonly since?: string;
   readonly listPresets?: boolean;
   readonly listProfiles?: boolean;
   readonly showProfile?: string;
@@ -262,4 +270,10 @@ export interface ResolvedOptions {
   readonly presetFooter?: string;
   readonly presetDescription?: string;
   readonly addOutlines: boolean;
+  // Git-aware selection options
+  readonly gitSince?: string;
+  readonly gitStaged?: boolean;
+  readonly gitUnstaged?: boolean;
+  readonly gitChanged?: boolean;
 }
+

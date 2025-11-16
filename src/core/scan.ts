@@ -5,6 +5,7 @@ import ignorePackage from 'ignore';
 import { minimatch } from 'minimatch';
 import type { FileInfo, ResolvedOptions, ScanResult } from './types.js';
 import { normalizeExtension } from './helpers.js';
+import { getChangedFiles, getStagedFiles, getUnstagedFiles, getFilesSince, isGitRepository } from './git.js';
 
 // Type workaround for CommonJS default export
 const createIgnore = ignorePackage as unknown as () => {
@@ -217,6 +218,40 @@ function sortByLayout(files: FileInfo[], layout: readonly string[]): FileInfo[] 
 }
 
 /**
+ * Get git-filtered file set based on options
+ * Returns undefined if no git filtering is requested
+ */
+async function getGitFilteredFiles(root: string, options: ResolvedOptions): Promise<Set<string> | undefined> {
+  const { gitSince, gitStaged, gitUnstaged, gitChanged } = options;
+
+  // If no git filters requested, return undefined
+  if (!gitSince && !gitStaged && !gitUnstaged && !gitChanged) {
+    return undefined;
+  }
+
+  // Check if this is a git repository
+  const isGitRepo = await isGitRepository(root);
+  if (!isGitRepo) {
+    console.warn('Warning: Git filtering requested but directory is not a git repository');
+    return undefined;
+  }
+
+  let gitFiles: string[] = [];
+
+  if (gitSince) {
+    gitFiles = getFilesSince(root, gitSince);
+  } else if (gitStaged) {
+    gitFiles = getStagedFiles(root);
+  } else if (gitUnstaged) {
+    gitFiles = getUnstagedFiles(root);
+  } else if (gitChanged) {
+    gitFiles = getChangedFiles(root);
+  }
+
+  return new Set(gitFiles);
+}
+
+/**
  * Scan files in the directory respecting .gitignore and filters
  */
 export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
@@ -224,6 +259,9 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
 
   // Load gitignore patterns
   const ig = await loadGitignore(root);
+
+  // Get git-filtered files if requested
+  const gitFilteredFiles = await getGitFilteredFiles(root, options);
 
   // Build glob patterns
   const patterns = include.length > 0 ? [...include] : ['**/*'];
@@ -254,6 +292,11 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
 
   for (const relativePath of allPaths) {
     const absolutePath = resolve(root, relativePath);
+
+    // Skip files not in git filter set (if git filtering is active)
+    if (gitFilteredFiles && !gitFilteredFiles.has(relativePath)) {
+      continue;
+    }
 
     // Get file stats
     let stats;
