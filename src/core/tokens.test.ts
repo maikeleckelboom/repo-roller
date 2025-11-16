@@ -89,9 +89,9 @@ describe('Token Estimation', () => {
     });
 
     it('should detect context window overflow', () => {
-      // GPT-4 has 8192 context window
-      const tooManyTokens = 10000;
-      const estimate = calculateCost(tooManyTokens, 'gpt-4');
+      // GPT-4o has 128000 context window
+      const tooManyTokens = 150000;
+      const estimate = calculateCost(tooManyTokens, 'gpt-4o');
       expect(estimate).toBeDefined();
       expect(estimate!.withinContextWindow).toBe(false);
     });
@@ -138,10 +138,10 @@ describe('Token Estimation', () => {
     });
 
     it('should format estimate exceeding context window', () => {
-      const estimate = calculateCost(10000, 'gpt-4')!;
+      const estimate = calculateCost(150000, 'gpt-4o')!;
       const formatted = formatCostEstimate(estimate);
       expect(formatted).toContain('✗');
-      expect(formatted).toContain('GPT-4');
+      expect(formatted).toContain('GPT-4o');
     });
 
     it('should include utilization percentage', () => {
@@ -160,8 +160,8 @@ describe('Token Estimation', () => {
     });
 
     it('should warn for large content', () => {
-      // Create content that would exceed GPT-4's 8K context
-      const largeText = 'word '.repeat(50000); // ~50K words ≈ 60K+ tokens
+      // Create content that would exceed GPT-4o's 128K context
+      const largeText = 'word '.repeat(150000); // ~150K words ≈ 180K+ tokens
       const analysis = analyzeTokenUsage(largeText);
       expect(analysis.warnings.length).toBeGreaterThan(0);
       expect(analysis.warnings.some((w: string) => w.includes('exceeds'))).toBe(true);
