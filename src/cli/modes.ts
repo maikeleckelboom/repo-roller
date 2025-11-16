@@ -128,8 +128,6 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   // Write output
   await writeFile(options.outFile, output, 'utf-8');
 
-  console.log(ui.status('write', `Output written to ${ui.colors.success(options.outFile)}`));
-
   // Display repo-first generation summary with minimal LLM info
   const estimatedTokens = estimateTokens(output);
 
@@ -181,4 +179,9 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   }
 
   console.log(ui.separator());
+
+  // Final success confirmation with file location
+  console.log(ui.success(`Generation complete`));
+  console.log(ui.keyValue('Output file', ui.colors.success(options.outFile)));
+  console.log('');
 }
