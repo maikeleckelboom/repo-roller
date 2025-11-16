@@ -159,6 +159,11 @@ export interface CommanderOptions {
   // LLM report display options
   readonly llm?: boolean;
   readonly llmReport?: boolean;
+  // Model preset options
+  readonly model?: string;
+  readonly listModels?: boolean;
+  // Prompt helper
+  readonly promptHelper?: boolean;
 }
 
 /**
@@ -211,6 +216,11 @@ export interface CliOptions {
   readonly yes?: boolean;
   // LLM report display options
   readonly showLLMReport?: boolean;
+  // Model preset options
+  readonly model?: string;
+  readonly listModels?: boolean;
+  // Prompt helper
+  readonly showPromptHelper?: boolean;
 }
 
 /**
@@ -261,4 +271,8 @@ export interface ResolvedOptions {
   readonly presetFooter?: string;
   readonly presetDescription?: string;
   readonly addOutlines: boolean;
+  // Model preset options
+  readonly modelPreset?: string;
+  // Prompt helper
+  readonly showPromptHelper: boolean;
 }

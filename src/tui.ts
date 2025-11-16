@@ -10,7 +10,10 @@ import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens } from './core/tokens.js';
 import { formatBytes } from './core/helpers.js';
-import { displayGenerationSummary, displayDetailedLLMAnalysis } from './cli/display.js';
+import { displayDetailedLLMAnalysis } from './cli/display.js';
+import { renderGenerationSummary } from './core/dashboard.js';
+import { getModelPreset } from './core/modelPresets.js';
+import { renderPromptHelper } from './core/promptHelper.js';
 
 /**
  * Run interactive TUI mode
@@ -150,8 +153,17 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   const previewOutput = await renderOutput(scan, updatedOptions);
   const estimatedTokens = estimateTokens(previewOutput);
 
-  // Display repo-first generation summary
-  displayGenerationSummary(scan, updatedOptions, estimatedTokens);
+  // Get model preset if specified
+  const modelPreset = updatedOptions.modelPreset ? getModelPreset(updatedOptions.modelPreset) : undefined;
+
+  // Display repo-first generation summary using new dashboard (detailed mode for interactive)
+  const dashboardLines = renderGenerationSummary(
+    { scan, options: updatedOptions, estimatedTokens, modelPreset },
+    { mode: 'detailed' }
+  );
+  for (const line of dashboardLines) {
+    console.log(line);
+  }
 
   let shouldGenerate: boolean;
   if (options.yes) {
@@ -181,7 +193,15 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
 
   // Display detailed LLM analysis only if --llm flag is set
   if (options.showLLMReport) {
-    displayDetailedLLMAnalysis(output, options);
+    displayDetailedLLMAnalysis(output, updatedOptions);
+  }
+
+  // Display prompt helper if requested
+  if (updatedOptions.showPromptHelper) {
+    const promptLines = renderPromptHelper(scan);
+    for (const line of promptLines) {
+      console.log(line);
+    }
   }
 
   console.log(ui.separator());

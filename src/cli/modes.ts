@@ -12,7 +12,10 @@ import { estimateTokens, calculateCost } from '../core/tokens.js';
 import { formatBytes } from '../core/helpers.js';
 import * as ui from '../core/ui.js';
 import { applyBudgetConstraints } from './budget.js';
-import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displayGenerationSummary, displayDetailedLLMAnalysis } from './display.js';
+import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displayDetailedLLMAnalysis } from './display.js';
+import { renderGenerationSummary } from '../core/dashboard.js';
+import { getModelPreset } from '../core/modelPresets.js';
+import { renderPromptHelper } from '../core/promptHelper.js';
 
 /**
  * Run preview mode (dry-run or stats-only)
@@ -138,11 +141,30 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
 
   // Display repo-first generation summary with minimal LLM info
   const estimatedTokens = estimateTokens(output);
-  displayGenerationSummary(scan, options, estimatedTokens);
+
+  // Get model preset if specified
+  const modelPreset = options.modelPreset ? getModelPreset(options.modelPreset) : undefined;
+
+  // Render the new dashboard
+  const dashboardLines = renderGenerationSummary(
+    { scan, options, estimatedTokens, modelPreset },
+    { mode: 'compact' }
+  );
+  for (const line of dashboardLines) {
+    console.log(line);
+  }
 
   // Display detailed LLM analysis only if --llm flag is set
   if (options.showLLMReport) {
     displayDetailedLLMAnalysis(output, options);
+  }
+
+  // Display prompt helper if requested
+  if (options.showPromptHelper) {
+    const promptLines = renderPromptHelper(scan);
+    for (const line of promptLines) {
+      console.log(line);
+    }
   }
 
   console.log(ui.separator());

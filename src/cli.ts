@@ -15,6 +15,7 @@ import {
   runPreview,
   runNonInteractive,
 } from './cli/index.js';
+import { listModelPresets, getModelPreset } from './core/modelPresets.js';
 
 /**
  * Main CLI function
@@ -98,6 +99,11 @@ async function main(): Promise<void> {
     // LLM report display options
     .option('--llm', 'Show detailed LLM provider/cost breakdown')
     .option('--llm-report', 'Alias for --llm')
+    // Model preset options
+    .option('--model <name>', 'Use a model preset (e.g., claude-3.5-sonnet, gpt-5.1)')
+    .option('--list-models', 'List all available model presets')
+    // Prompt helper
+    .option('--prompt-helper', 'Show suggested LLM prompts tailored to the bundle')
     .action(async (root: string, options: CommanderOptions) => {
       try {
         // Load config files early for info commands
@@ -132,6 +138,11 @@ async function main(): Promise<void> {
 
         if (options.listProviders) {
           displayProviders();
+          return;
+        }
+
+        if (options.listModels) {
+          displayModelPresets();
           return;
         }
 
@@ -218,6 +229,10 @@ async function main(): Promise<void> {
           yes: options.yes ?? options.defaults,
           // LLM report display options
           showLLMReport: options.llm ?? options.llmReport,
+          // Model preset options
+          model: options.model,
+          // Prompt helper
+          showPromptHelper: options.promptHelper,
         };
 
         // Resolve final options
@@ -251,6 +266,54 @@ async function main(): Promise<void> {
     });
 
   await program.parseAsync(process.argv);
+}
+
+/**
+ * Display all available model presets
+ */
+function displayModelPresets(): void {
+  console.log(ui.header());
+  console.log(ui.section('Model Presets'));
+  console.log(ui.colors.dim('  Use --model <name> to select a model preset\n'));
+
+  const presets = listModelPresets();
+  const grouped: Record<string, typeof presets> = {};
+
+  for (const preset of presets) {
+    if (!grouped[preset.family]) {
+      grouped[preset.family] = [];
+    }
+    const familyArray = grouped[preset.family];
+    if (familyArray) {
+      familyArray.push(preset);
+    }
+  }
+
+  const familyOrder = ['openai', 'anthropic', 'google', 'other'];
+
+  for (const family of familyOrder) {
+    const familyPresets = grouped[family];
+    if (!familyPresets || familyPresets.length === 0) {continue;}
+
+    const familyName = family.charAt(0).toUpperCase() + family.slice(1);
+    console.log(ui.colors.primary.bold(`  ${familyName}`));
+    console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(50)));
+
+    for (const preset of familyPresets) {
+      const contextStr = preset.contextLimit >= 1_000_000
+        ? `${(preset.contextLimit / 1_000_000).toFixed(0)}M`
+        : `${(preset.contextLimit / 1_000).toFixed(0)}K`;
+      const marginStr = `${(preset.safetyMargin * 100).toFixed(0)}%`;
+
+      console.log(`  ${ui.colors.accent(preset.name.padEnd(22))} ${contextStr.padEnd(8)} ${ui.colors.dim(`margin: ${marginStr}`)}`);
+      console.log(`  ${ui.colors.dim(preset.description)}`);
+      console.log(`  ${ui.colors.muted(`$${preset.inputCostPerMillion.toFixed(2)}/1M tokens`)}`);
+      console.log('');
+    }
+  }
+
+  console.log(ui.colors.dim('  Aliases: sonnet, opus, haiku, gpt5, gpt4, o3, gemini, flash'));
+  console.log('');
 }
 
 // Run main
