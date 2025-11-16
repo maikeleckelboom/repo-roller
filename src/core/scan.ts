@@ -5,6 +5,7 @@ import ignorePackage from 'ignore';
 import { minimatch } from 'minimatch';
 import type { FileInfo, ResolvedOptions, ScanResult } from './types.js';
 import { normalizeExtension } from './helpers.js';
+import { getChangedFiles, getMostRecentFiles } from './git.js';
 
 // Type workaround for CommonJS default export
 const createIgnore = ignorePackage as unknown as () => {
@@ -220,10 +221,21 @@ function sortByLayout(files: FileInfo[], layout: readonly string[]): FileInfo[] 
  * Scan files in the directory respecting .gitignore and filters
  */
 export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
-  const { root, include, exclude, extensions, maxFileSizeBytes, sort: sortMode, interactive } = options;
+  const { root, include, exclude, extensions, maxFileSizeBytes, sort: sortMode, interactive, gitDiff, gitMostRecent } = options;
 
   // Load gitignore patterns
   const ig = await loadGitignore(root);
+
+  // Get git-filtered files if applicable
+  let gitFilteredFiles: Set<string> | undefined;
+
+  if (gitDiff) {
+    const changedFiles = await getChangedFiles(root, gitDiff);
+    gitFilteredFiles = new Set(changedFiles);
+  } else if (gitMostRecent !== undefined && gitMostRecent > 0) {
+    const recentFiles = await getMostRecentFiles(root, gitMostRecent);
+    gitFilteredFiles = new Set(recentFiles);
+  }
 
   // Build glob patterns
   const patterns = include.length > 0 ? [...include] : ['**/*'];
@@ -254,6 +266,11 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
 
   for (const relativePath of allPaths) {
     const absolutePath = resolve(root, relativePath);
+
+    // Apply git filter if set (skip files not in git filter)
+    if (gitFilteredFiles && !gitFilteredFiles.has(relativePath)) {
+      continue;
+    }
 
     // Get file stats
     let stats;

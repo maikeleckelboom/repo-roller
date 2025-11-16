@@ -166,6 +166,9 @@ export interface CommanderOptions {
   readonly promptHelper?: boolean;
   // Clipboard support
   readonly copy?: boolean;
+  // Git-aware filtering
+  readonly diff?: string;
+  readonly mostRecent?: number;
 }
 
 /**
@@ -225,6 +228,9 @@ export interface CliOptions {
   readonly showPromptHelper?: boolean;
   // Clipboard support
   readonly copy?: boolean;
+  // Git-aware filtering
+  readonly diff?: string;
+  readonly mostRecent?: number;
 }
 
 /**
@@ -281,4 +287,7 @@ export interface ResolvedOptions {
   readonly showPromptHelper: boolean;
   // Clipboard support
   readonly copyToClipboard: boolean;
+  // Git-aware filtering
+  readonly gitDiff?: string;
+  readonly gitMostRecent?: number;
 }

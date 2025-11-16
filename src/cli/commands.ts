@@ -172,6 +172,8 @@ export function transformCommanderOptions(root: string, options: CommanderOption
     model: options.model,
     showPromptHelper: options.promptHelper,
     copy: options.copy,
+    diff: options.diff,
+    mostRecent: options.mostRecent,
   };
 }
 
