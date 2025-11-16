@@ -4,7 +4,9 @@ import {
   resetDisplaySettings,
   loadUserSettings,
   saveUserSettings,
+  resetAllSettings,
   DEFAULT_DISPLAY_SETTINGS,
+  DEFAULT_INTERACTIVE_SETTINGS,
   type DisplaySettings,
 } from '../core/userSettings.js';
 import * as ui from '../core/ui.js';
@@ -115,6 +117,26 @@ export async function resetDisplaySettingsCommand(): Promise<void> {
   console.log('');
   console.log(ui.colors.dim('  Defaults:'));
 
+  for (const [key, value] of Object.entries(DEFAULT_DISPLAY_SETTINGS)) {
+    const icon = value ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross);
+    console.log(`  ${icon} ${key}: ${value}`);
+  }
+  console.log('');
+}
+
+/**
+ * Reset ALL user settings to defaults (display + interactive preferences)
+ */
+export async function resetAllSettingsCommand(): Promise<void> {
+  await resetAllSettings();
+  console.log(ui.success('All settings reset to defaults'));
+  console.log('');
+  console.log(ui.colors.dim('  Interactive Mode Preferences (defaults):'));
+  console.log(`  ${ui.colors.muted(ui.symbols.bullet)} Strip comments: ${DEFAULT_INTERACTIVE_SETTINGS.stripComments ? 'Yes' : 'No'}`);
+  console.log(`  ${ui.colors.muted(ui.symbols.bullet)} Include tree: ${DEFAULT_INTERACTIVE_SETTINGS.withTree ? 'Yes' : 'No'}`);
+  console.log(`  ${ui.colors.muted(ui.symbols.bullet)} Include stats: ${DEFAULT_INTERACTIVE_SETTINGS.withStats ? 'Yes' : 'No'}`);
+  console.log('');
+  console.log(ui.colors.dim('  Display Settings (defaults):'));
   for (const [key, value] of Object.entries(DEFAULT_DISPLAY_SETTINGS)) {
     const icon = value ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross);
     console.log(`  ${icon} ${key}: ${value}`);

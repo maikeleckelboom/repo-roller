@@ -36,6 +36,7 @@ import {
   displaySettings,
   setDisplaySettingCommand,
   resetDisplaySettingsCommand,
+  resetAllSettingsCommand,
   displayAllSettings,
   exportSettings,
   importSettings,
@@ -114,6 +115,7 @@ async function main(): Promise<void> {
     .option('--show', 'Show current display settings (default)')
     .option('--set <key=value>', 'Set a specific setting (e.g., showCodeComposition=false)')
     .option('--reset', 'Reset display settings to defaults')
+    .option('--reset-all', 'Reset ALL settings to defaults (display + interactive preferences)')
     .option('--all', 'Show all user settings (not just display)')
     .option('--export', 'Export settings as JSON')
     .option('--import <json>', 'Import settings from JSON string')
@@ -352,6 +354,7 @@ async function handleSettingsCommand(options: {
   show?: boolean;
   set?: string;
   reset?: boolean;
+  resetAll?: boolean;
   all?: boolean;
   export?: boolean;
   import?: string;
@@ -365,6 +368,8 @@ async function handleSettingsCommand(options: {
       process.exit(1);
     }
     await setDisplaySettingCommand(key, value);
+  } else if (options.resetAll) {
+    await resetAllSettingsCommand();
   } else if (options.reset) {
     await resetDisplaySettingsCommand();
   } else if (options.all) {
