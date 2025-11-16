@@ -476,6 +476,35 @@ export function inlineBars(items: Array<{ name: string; percent: number }>, barW
 }
 
 /**
+ * Format compact bars in aligned two-column layout
+ */
+export function compactBarsGrid(items: Array<{ name: string; percent: number }>, barWidth = 10): string[] {
+  const lines: string[] = [];
+  const nameWidth = 12;
+
+  for (let i = 0; i < items.length; i += 2) {
+    const item1 = items[i]!;
+    const filled1 = Math.round((item1.percent / 100) * barWidth);
+    const empty1 = barWidth - filled1;
+    const bar1 = colors.primary('█'.repeat(filled1)) + colors.dim('░'.repeat(empty1));
+    const col1 = `${item1.name.padEnd(nameWidth)}${bar1} ${colors.dim(`${item1.percent.toFixed(0)}%`.padStart(3))}`;
+
+    if (i + 1 < items.length) {
+      const item2 = items[i + 1]!;
+      const filled2 = Math.round((item2.percent / 100) * barWidth);
+      const empty2 = barWidth - filled2;
+      const bar2 = colors.primary('█'.repeat(filled2)) + colors.dim('░'.repeat(empty2));
+      const col2 = `${item2.name.padEnd(nameWidth)}${bar2} ${colors.dim(`${item2.percent.toFixed(0)}%`.padStart(3))}`;
+      lines.push(`    ${col1}  ${col2}`);
+    } else {
+      lines.push(`    ${col1}`);
+    }
+  }
+
+  return lines;
+}
+
+/**
  * Format directory size breakdown
  */
 export function directoryBreakdown(dir: string, percent: number): string {

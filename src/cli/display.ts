@@ -184,25 +184,30 @@ export function displayGenerationSummary(
   console.log(ui.keyValue('Output file', ui.colors.success(options.outFile)));
   console.log('');
 
-  // Code Composition (compact with inline bars)
+  // Code Composition (compact two-column grid)
   console.log(ui.colors.dim('  Code Composition'));
 
-  // Language breakdown with inline bars
+  // Combine languages and roles into a single grid
   const languages = calculateLanguageBreakdown(scan.files);
-  if (languages.length > 0) {
-    const langItems = languages.slice(0, 3).map(l => ({ name: l.name, percent: l.percent }));
-    console.log(`    ${ui.inlineBars(langItems)}`);
+  const roles = calculateRoleBreakdown(scan.files);
+
+  const allItems: Array<{ name: string; percent: number }> = [];
+
+  // Add top languages
+  for (const lang of languages.slice(0, 3)) {
+    allItems.push({ name: lang.name, percent: lang.percent });
   }
 
-  // Role breakdown with inline bars
-  const roles = calculateRoleBreakdown(scan.files);
-  const roleItems = [];
-  if (roles.source > 0) {roleItems.push({ name: 'Src', percent: roles.source });}
-  if (roles.test > 0) {roleItems.push({ name: 'Test', percent: roles.test });}
-  if (roles.docs > 0) {roleItems.push({ name: 'Doc', percent: roles.docs });}
-  if (roles.config > 0) {roleItems.push({ name: 'Cfg', percent: roles.config });}
-  if (roleItems.length > 0) {
-    console.log(`    ${ui.inlineBars(roleItems)}`);
+  // Add roles
+  if (roles.source > 0) {allItems.push({ name: 'Source', percent: roles.source });}
+  if (roles.test > 0) {allItems.push({ name: 'Tests', percent: roles.test });}
+  if (roles.docs > 0) {allItems.push({ name: 'Docs', percent: roles.docs });}
+  if (roles.config > 0) {allItems.push({ name: 'Config', percent: roles.config });}
+
+  // Render in aligned two-column grid
+  const gridLines = ui.compactBarsGrid(allItems);
+  for (const line of gridLines) {
+    console.log(line);
   }
   console.log('');
 
