@@ -147,42 +147,64 @@ const nerdFontGlyphs: Record<FileIconId, string> = {
 
 /**
  * ASCII fallback icons (short text labels)
+ *
+ * Curated 2-letter badges for file types:
+ * - No chevron characters (> or <) in badges
+ * - Folders use blank badges (chevron column handles expand/collapse)
+ * - Intentionally chosen short codes for quick visual recognition
  */
 const asciiIcons: Record<FileIconId, string> = {
+  // Source files
   'file-icons:typescript': 'TS',
   'file-icons:typescript-alt': 'TS',
   'file-icons:jsx': 'RX',
   'file-icons:jsx-alt': 'RX',
   'file-icons:javascript': 'JS',
-  'file-icons:json': '{}',
-  'file-icons:markdown': 'MD',
-  'file-icons:yaml': 'YM',
-  'file-icons:config': 'CF',
-  'file-icons:npm': 'NP',
-  'file-icons:git': 'GT',
-  'file-icons:eslint': 'ES',
-  'file-icons:prettier': 'PR',
-  'file-icons:editorconfig': 'EC',
-  'file-icons:test-js': 'TJ',
-  'file-icons:test-typescript': 'TT',
   'file-icons:python': 'PY',
   'file-icons:go': 'GO',
   'file-icons:rust': 'RS',
   'file-icons:java': 'JV',
-  'file-icons:css': 'CS',
-  'file-icons:scss': 'SC',
   'file-icons:html': 'HT',
   'file-icons:shell': 'SH',
   'file-icons:sql': 'SQ',
-  'file-icons:env': 'EN',
+
+  // Test files
+  'file-icons:test-js': 'TJ',
+  'file-icons:test-typescript': 'TT',
+
+  // Config & data
+  'file-icons:json': 'JN',
+  'file-icons:yaml': 'YM',
+  'file-icons:config': 'CF',
+  'file-icons:npm': 'NP',
+  'file-icons:env': 'EV',
   'file-icons:docker': 'DK',
-  'file-icons:license': 'LC',
+
+  // Tooling
+  'file-icons:git': 'GT',
+  'file-icons:eslint': 'ES',
+  'file-icons:prettier': 'PR',
+  'file-icons:editorconfig': 'EC',
+
+  // Styles
+  'file-icons:css': 'CS',
+  'file-icons:scss': 'SC',
+
+  // Documentation
+  'file-icons:markdown': 'MD',
   'file-icons:readme': 'RM',
   'file-icons:changelog': 'CL',
+  'file-icons:license': 'LC',
+
+  // Package & locks
   'file-icons:lock': 'LK',
-  'file-icons:folder': 'D>',
-  'file-icons:folder-open': 'Dv',
-  'file-icons:file': '--',
+
+  // Folders - blank badges (chevron handles expand/collapse indicator)
+  'file-icons:folder': '  ',
+  'file-icons:folder-open': '  ',
+
+  // Generic files
+  'file-icons:file': '  ',
 };
 
 /**
