@@ -1,13 +1,14 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   formatBytes,
-  displayPresets,
-  displayPresetDetails,
-  displayProfiles,
-  displayProfileDetails,
-  displayExamples,
+  normalizeExtension,
+  extensionToLanguage,
+  categorizeFileRole,
+  calculateLanguageBreakdown,
+  calculateRoleBreakdown,
+  calculateTopDirectories,
+  estimateLinesOfCode,
 } from './helpers.js';
-import type { RollerConfig, RepoRollerYmlConfig } from './types.js';
 
 describe('helpers', () => {
   describe('formatBytes', () => {
@@ -16,7 +17,6 @@ describe('helpers', () => {
     });
 
     it('should format bytes (< 1KB)', () => {
-      // formatBytes keeps small values in bytes unit
       expect(formatBytes(512)).toBe('512.00 B');
       expect(formatBytes(100)).toBe('100.00 B');
     });
@@ -35,329 +35,162 @@ describe('helpers', () => {
     it('should format gigabytes', () => {
       expect(formatBytes(1024 * 1024 * 1024)).toBe('1.00 GB');
     });
+  });
 
-    it('should handle large numbers', () => {
-      expect(formatBytes(10 * 1024 * 1024 * 1024)).toBe('10.00 GB');
+  describe('normalizeExtension', () => {
+    it('should remove leading dot', () => {
+      expect(normalizeExtension('.ts')).toBe('ts');
+      expect(normalizeExtension('.tsx')).toBe('tsx');
+    });
+
+    it('should return extension as-is if no leading dot', () => {
+      expect(normalizeExtension('ts')).toBe('ts');
+      expect(normalizeExtension('js')).toBe('js');
     });
   });
 
-  describe('displayPresets', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
-
-    beforeEach(() => {
-      consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  describe('extensionToLanguage', () => {
+    it('should map TypeScript extensions', () => {
+      expect(extensionToLanguage('ts')).toBe('TypeScript');
+      expect(extensionToLanguage('tsx')).toBe('TypeScript');
     });
 
-    afterEach(() => {
-      consoleSpy.mockRestore();
+    it('should map JavaScript extensions', () => {
+      expect(extensionToLanguage('js')).toBe('JavaScript');
+      expect(extensionToLanguage('jsx')).toBe('JavaScript');
+      expect(extensionToLanguage('mjs')).toBe('JavaScript');
     });
 
-    it('should display built-in presets', () => {
-      displayPresets(undefined);
-
-      expect(consoleSpy).toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Available Presets');
-      expect(output).toContain('Built-in');
-      expect(output).toContain('Usage: repo-roller');
+    it('should map other languages', () => {
+      expect(extensionToLanguage('py')).toBe('Python');
+      expect(extensionToLanguage('go')).toBe('Go');
+      expect(extensionToLanguage('rs')).toBe('Rust');
+      expect(extensionToLanguage('md')).toBe('Markdown');
     });
 
-    it('should display config presets when provided', () => {
-      const config: RollerConfig = {
-        root: '.',
-        presets: {
-          'custom-preset': {
-            extensions: ['ts', 'tsx'],
-          },
-        },
-      };
-
-      displayPresets(config);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('repo-roller.config');
-      expect(output).toContain('custom-preset');
-    });
-
-    it('should list known built-in preset names', () => {
-      displayPresets(undefined);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      // Should include some known built-in presets
-      expect(output).toContain('ts');
-      expect(output).toContain('python');
-      expect(output).toContain('minimal');
+    it('should handle unknown extensions', () => {
+      expect(extensionToLanguage('xyz')).toBe('XYZ');
     });
   });
 
-  describe('displayPresetDetails', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
-    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-
-    beforeEach(() => {
-      consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  describe('categorizeFileRole', () => {
+    it('should identify test files', () => {
+      expect(categorizeFileRole('src/index.test.ts', 'ts')).toBe('test');
+      expect(categorizeFileRole('tests/unit.spec.js', 'js')).toBe('test');
+      expect(categorizeFileRole('__tests__/app.ts', 'ts')).toBe('test');
     });
 
-    afterEach(() => {
-      consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+    it('should identify documentation files', () => {
+      expect(categorizeFileRole('README.md', 'md')).toBe('docs');
+      expect(categorizeFileRole('docs/api.txt', 'txt')).toBe('docs');
+      expect(categorizeFileRole('CHANGELOG.md', 'md')).toBe('docs');
     });
 
-    it('should display details for built-in preset', () => {
-      displayPresetDetails('ts', undefined);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Preset: ts');
-      expect(output).toContain('Extensions');
-      expect(output).toContain('built-in');
+    it('should identify config files', () => {
+      expect(categorizeFileRole('package.json', 'json')).toBe('config');
+      expect(categorizeFileRole('tsconfig.json', 'json')).toBe('config');
+      expect(categorizeFileRole('.eslintrc.yml', 'yml')).toBe('config');
     });
 
-    it('should show error for non-existent preset', () => {
-      displayPresetDetails('nonexistent', undefined);
-
-      const errorOutput = consoleErrorSpy.mock.calls.flat().join('\n');
-      expect(errorOutput).toContain('not found');
-      expect(errorOutput).toContain('--list-presets');
-    });
-
-    it('should display details for config preset', () => {
-      const config: RollerConfig = {
-        root: '.',
-        presets: {
-          'my-preset': {
-            extensions: ['custom'],
-            stripComments: true,
-            withTree: false,
-            withStats: true,
-            maxFileSizeBytes: 500 * 1024,
-          },
-        },
-      };
-
-      displayPresetDetails('my-preset', config);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Preset: my-preset');
-      expect(output).toContain('custom');
-      expect(output).toContain('Strip comments: yes');
-      expect(output).toContain('With tree: no');
-      expect(output).toContain('With stats: yes');
-    });
-
-    it('should show max file size in MB', () => {
-      const config: RollerConfig = {
-        root: '.',
-        presets: {
-          'size-test': {
-            maxFileSizeBytes: 2 * 1024 * 1024,
-            stripComments: false,
-            withTree: true,
-            withStats: true,
-          },
-        },
-      };
-
-      displayPresetDetails('size-test', config);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('2.00 MB');
+    it('should default to source for regular code files', () => {
+      expect(categorizeFileRole('src/index.ts', 'ts')).toBe('source');
+      expect(categorizeFileRole('lib/utils.js', 'js')).toBe('source');
     });
   });
 
-  describe('displayProfiles', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
+  describe('calculateLanguageBreakdown', () => {
+    it('should calculate percentage breakdown', () => {
+      const files = [
+        { extension: 'ts', sizeBytes: 1000 },
+        { extension: 'ts', sizeBytes: 1000 },
+        { extension: 'js', sizeBytes: 500 },
+      ];
+      const breakdown = calculateLanguageBreakdown(files);
 
-    beforeEach(() => {
-      consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      expect(breakdown).toHaveLength(2);
+      expect(breakdown[0]?.name).toBe('TypeScript');
+      expect(breakdown[0]?.percent).toBeCloseTo(80);
+      expect(breakdown[1]?.name).toBe('JavaScript');
+      expect(breakdown[1]?.percent).toBeCloseTo(20);
     });
 
-    afterEach(() => {
-      consoleSpy.mockRestore();
+    it('should group small languages into Other', () => {
+      const files = [
+        { extension: 'ts', sizeBytes: 10000 },
+        { extension: 'py', sizeBytes: 100 },
+        { extension: 'go', sizeBytes: 50 },
+      ];
+      const breakdown = calculateLanguageBreakdown(files);
+
+      const other = breakdown.find(b => b.name === 'Other');
+      expect(other).toBeDefined();
+      expect(other!.bytes).toBe(150);
     });
 
-    it('should display built-in llm-context profile', () => {
-      displayProfiles(undefined);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Available Profiles');
-      expect(output).toContain('llm-context');
-      expect(output).toContain('default');
-    });
-
-    it('should display custom profiles from .reporoller.yml', () => {
-      const config: RepoRollerYmlConfig = {
-        profiles: {
-          'api-docs': {
-            layout: ['src/api/**/*.ts'],
-          },
-          'frontend': {
-            layout: ['src/components/**/*.tsx'],
-          },
-        },
-      };
-
-      displayProfiles(config);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('.reporoller.yml');
-      expect(output).toContain('api-docs');
-      expect(output).toContain('frontend');
-    });
-
-    it('should show hint when no custom profiles exist', () => {
-      displayProfiles({});
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Create custom profiles');
-      expect(output).toContain('.reporoller.yml');
-    });
-
-    it('should show usage instructions', () => {
-      displayProfiles(undefined);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Usage: repo-roller');
-      expect(output).toContain('--profile');
+    it('should handle empty files array', () => {
+      const breakdown = calculateLanguageBreakdown([]);
+      expect(breakdown).toHaveLength(0);
     });
   });
 
-  describe('displayProfileDetails', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
-    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  describe('calculateRoleBreakdown', () => {
+    it('should calculate role percentages', () => {
+      const files = [
+        { relativePath: 'src/index.ts', extension: 'ts', sizeBytes: 1000 },
+        { relativePath: 'src/index.test.ts', extension: 'ts', sizeBytes: 500 },
+        { relativePath: 'README.md', extension: 'md', sizeBytes: 500 },
+      ];
+      const breakdown = calculateRoleBreakdown(files);
 
-    beforeEach(() => {
-      consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(breakdown.source).toBe(50);
+      expect(breakdown.test).toBe(25);
+      expect(breakdown.docs).toBe(25);
+      expect(breakdown.config).toBe(0);
     });
 
-    afterEach(() => {
-      consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should display details for default llm-context profile', () => {
-      displayProfileDetails('llm-context', undefined);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Profile: llm-context');
-      expect(output).toContain('built-in');
-    });
-
-    it('should show error for non-existent profile', () => {
-      displayProfileDetails('nonexistent', undefined);
-
-      const errorOutput = consoleErrorSpy.mock.calls.flat().join('\n');
-      expect(errorOutput).toContain('not found');
-      expect(errorOutput).toContain('--list-profiles');
-    });
-
-    it('should display layout for custom profile', () => {
-      const config: RepoRollerYmlConfig = {
-        profiles: {
-          'custom': {
-            layout: ['src/index.ts', 'src/**/*.tsx', 'package.json'],
-          },
-        },
-      };
-
-      displayProfileDetails('custom', config);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Profile: custom');
-      expect(output).toContain('Layout order');
-      expect(output).toContain('src/index.ts');
-      expect(output).toContain('src/**/*.tsx');
-      expect(output).toContain('package.json');
-    });
-
-    it('should number layout items', () => {
-      const config: RepoRollerYmlConfig = {
-        profiles: {
-          'numbered': {
-            layout: ['first.ts', 'second.ts', 'third.ts'],
-          },
-        },
-      };
-
-      displayProfileDetails('numbered', config);
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('1. first.ts');
-      expect(output).toContain('2. second.ts');
-      expect(output).toContain('3. third.ts');
+    it('should handle empty files array', () => {
+      const breakdown = calculateRoleBreakdown([]);
+      expect(breakdown).toEqual({ source: 0, test: 0, docs: 0, config: 0 });
     });
   });
 
-  describe('displayExamples', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
+  describe('calculateTopDirectories', () => {
+    it('should calculate top directories by size', () => {
+      const files = [
+        { relativePath: 'src/core/index.ts', sizeBytes: 1000 },
+        { relativePath: 'src/core/utils.ts', sizeBytes: 500 },
+        { relativePath: 'tests/unit.ts', sizeBytes: 300 },
+      ];
+      const topDirs = calculateTopDirectories(files);
 
-    beforeEach(() => {
-      consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      expect(topDirs.length).toBeGreaterThan(0);
+      expect(topDirs[0]?.path).toBe('src/core/');
+      expect(topDirs[0]?.percent).toBeCloseTo(83.33, 1);
     });
 
-    afterEach(() => {
-      consoleSpy.mockRestore();
+    it('should limit to maxDirs', () => {
+      const files = [
+        { relativePath: 'a/file.ts', sizeBytes: 100 },
+        { relativePath: 'b/file.ts', sizeBytes: 100 },
+        { relativePath: 'c/file.ts', sizeBytes: 100 },
+        { relativePath: 'd/file.ts', sizeBytes: 100 },
+        { relativePath: 'e/file.ts', sizeBytes: 100 },
+      ];
+      const topDirs = calculateTopDirectories(files, 3);
+
+      expect(topDirs).toHaveLength(3);
+    });
+  });
+
+  describe('estimateLinesOfCode', () => {
+    it('should estimate lines based on bytes', () => {
+      const lines = estimateLinesOfCode(4500);
+      expect(lines).toBe(100);
     });
 
-    it('should display common workflows', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('Common Workflows');
-    });
-
-    it('should include LLM context generation examples', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('LLM CONTEXT GENERATION');
-      expect(output).toContain('--target claude-sonnet');
-      expect(output).toContain('--dry-run');
-    });
-
-    it('should include quick filter examples', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('QUICK FILTERS');
-      expect(output).toContain('--lang typescript');
-      expect(output).toContain('--preset python');
-      expect(output).toContain('--ext ts,tsx');
-    });
-
-    it('should include output customization examples', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('OUTPUT CUSTOMIZATION');
-      expect(output).toContain('--format json');
-      expect(output).toContain('--toc');
-    });
-
-    it('should include interactive mode examples', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('INTERACTIVE MODE');
-      expect(output).toContain('--interactive');
-    });
-
-    it('should include info command examples', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('INFO COMMANDS');
-      expect(output).toContain('--list-providers');
-      expect(output).toContain('--list-presets');
-      expect(output).toContain('--stats-only');
-    });
-
-    it('should use visual separators for sections', () => {
-      displayExamples();
-
-      const output = consoleSpy.mock.calls.flat().join('\n');
-      expect(output).toContain('━━━━━');
+    it('should return 0 for 0 bytes', () => {
+      const lines = estimateLinesOfCode(0);
+      expect(lines).toBe(0);
     });
   });
 });

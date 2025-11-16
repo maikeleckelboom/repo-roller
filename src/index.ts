@@ -45,7 +45,8 @@ export {
   formatBudget,
   formatBudgetUsage,
 } from "./core/budget.js";
-export { formatBytes, displayExamples } from "./core/helpers.js";
+export { formatBytes } from "./core/helpers.js";
+export type { FileRole, LanguageBreakdown, RoleBreakdown, DirectorySize } from "./core/helpers.js";
 export {
   BUILT_IN_PRESETS,
   getBuiltInPreset,

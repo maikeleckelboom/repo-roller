@@ -293,7 +293,7 @@ export function generateCliSchema(): CliSchema {
       name: 'maxCost',
       type: 'number',
       description: 'Maximum cost budget in USD',
-      examples: [0.5, 1.0, 5.0],
+      examples: ['0.5', '1.0', '5.0'],
       category: 'budget',
     },
     {
@@ -301,7 +301,7 @@ export function generateCliSchema(): CliSchema {
       name: 'maxCostEur',
       type: 'number',
       description: 'Maximum cost budget in EUR',
-      examples: [0.45, 0.9, 4.5],
+      examples: ['0.45', '0.9', '4.5'],
       category: 'budget',
     },
 
