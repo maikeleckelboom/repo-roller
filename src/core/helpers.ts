@@ -213,3 +213,10 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
+
+/**
+ * Normalize extension by removing leading dot
+ */
+export function normalizeExtension(ext: string): string {
+  return ext.startsWith('.') ? ext.slice(1) : ext;
+}

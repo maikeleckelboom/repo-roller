@@ -11,6 +11,7 @@ import type {
   OutputFormat,
 } from './types.js';
 import { getBuiltInPreset } from './builtInPresets.js';
+import { normalizeExtension } from './helpers.js';
 
 /**
  * Generate contextual output filename with smart naming
@@ -74,13 +75,6 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   // DX improvements: Skip prompts
   yes: false,
 } as const;
-
-/**
- * Normalize extension to remove leading dot
- */
-function normalizeExtension(ext: string): string {
-  return ext.startsWith('.') ? ext.slice(1) : ext;
-}
 
 /**
  * Parse extensions from comma-separated string or array

@@ -8,6 +8,7 @@ import type {
   RollerPreset,
   ProfileConfig,
 } from './types.js';
+import { LLM_PROVIDERS } from './tokens.js';
 
 export interface ValidationError {
   readonly field: string;
@@ -339,16 +340,7 @@ export function validateCliOptions(options: {
 
   // Check target provider
   if (options.target) {
-    const validProviders = [
-      'claude-sonnet',
-      'claude-opus',
-      'claude-haiku',
-      'gpt-4o',
-      'gpt-4-turbo',
-      'gpt-4',
-      'o1',
-      'gemini',
-    ];
+    const validProviders = Object.keys(LLM_PROVIDERS);
     if (!validProviders.includes(options.target)) {
       warnings.push({
         field: '--target',
