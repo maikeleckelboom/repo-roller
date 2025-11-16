@@ -69,3 +69,90 @@ profiles:
       - 'src/core/config.ts'
       - 'src/core/scan.ts'
       - 'src/core/render.ts'
+
+# Enhanced presets with intent/header/footer support (Phase 1)
+presets:
+  bug-report:
+    description: "Debug failing tests around a change"
+    include:
+      - "src/**"
+    exclude:
+      - "docs/**"
+      - ".github/**"
+    stripComments: true
+    withTree: false
+    withStats: true
+    addOutlines: false
+    header: |
+      ## Task
+
+      I am debugging a failing test in this repository.
+
+      1. Read the relevant source and test files.
+      2. Explain what is going wrong.
+      3. Propose the smallest possible patch that fixes the issue.
+
+    footer: |
+      ## General Instructions
+
+      - Work only within the provided files.
+      - Prefer minimal, targeted changes.
+      - When proposing code, show full functions/modules, not tiny fragments.
+      - Call out any ambiguous or risky assumptions explicitly.
+
+  api-review:
+    description: "Review API surface and documentation"
+    include:
+      - "src/**"
+      - "README.md"
+      - "docs/**"
+    exclude:
+      - "**/*.test.ts"
+      - "**/*.test.tsx"
+    stripComments: false
+    withTree: true
+    withStats: true
+    addOutlines: true
+    header: |
+      ## Task
+
+      You are reviewing this library's public API surface.
+
+      - Focus on naming, cohesion, and missing documentation.
+      - Identify confusing or inconsistent patterns.
+
+    footer: |
+      ## Deliverables
+
+      - A high-level summary of the API design.
+      - A list of specific improvements with reasoning.
+
+  code-refactor:
+    description: "Identify refactoring opportunities"
+    include:
+      - "src/core/**"
+      - "src/cli/**"
+    exclude:
+      - "**/*.test.ts"
+    stripComments: false
+    withTree: true
+    withStats: true
+    header: |
+      ## Task
+
+      Analyze this codebase for refactoring opportunities.
+
+      Focus on:
+      - Code duplication
+      - Complex functions that should be split
+      - Unclear naming or abstractions
+      - Missing error handling
+
+    footer: |
+      ## Output Format
+
+      For each issue found:
+      1. File and line number
+      2. Description of the problem
+      3. Suggested improvement
+      4. Priority (high/medium/low)

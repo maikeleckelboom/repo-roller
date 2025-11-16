@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import type { CliOptions, SortMode, OutputFormat, CommanderOptions } from './core/types.js';
 import { loadConfig, loadRepoRollerYml, resolveOptions } from './core/config.js';
 import { runInteractive } from './tui.js';
-import { displayPresets, displayProfiles, displayProfileDetails, displayExamples } from './core/helpers.js';
+import { displayPresets, displayPresetDetails, displayProfiles, displayProfileDetails, displayExamples } from './core/helpers.js';
 import { runInit } from './core/init.js';
 import { validateCliOptions } from './core/validation.js';
 import * as ui from './core/ui.js';
@@ -77,6 +77,7 @@ async function main(): Promise<void> {
     // Info options
     .option('--list-presets', 'List all available presets')
     .option('--list-profiles', 'List all available profiles')
+    .option('--show-preset <name>', 'Show details of a specific preset')
     .option('--show-profile <name>', 'Show details of a specific profile')
     .option('--examples', 'Show usage examples')
     .option('-v, --verbose', 'Verbose output')
@@ -105,12 +106,17 @@ async function main(): Promise<void> {
 
         // Handle info commands first (these exit immediately)
         if (options.listPresets) {
-          displayPresets(config);
+          displayPresets(config, repoRollerConfig);
           return;
         }
 
         if (options.listProfiles) {
           displayProfiles(repoRollerConfig);
+          return;
+        }
+
+        if (options.showPreset) {
+          displayPresetDetails(options.showPreset, config, repoRollerConfig);
           return;
         }
 
@@ -165,6 +171,11 @@ async function main(): Promise<void> {
         }
 
         // Build CLI options object (convert Commander naming to internal naming)
+        // Note: Commander sets tree/stats to true by default due to --no-tree/--no-stats options
+        // We need to check if the user explicitly set these flags by checking process.argv
+        const hasTreeFlag = process.argv.includes('--tree') || process.argv.includes('--no-tree');
+        const hasStatsFlag = process.argv.includes('--stats') || process.argv.includes('--no-stats');
+
         const cliOptions: CliOptions = {
           root,
           out: options.out,
@@ -175,8 +186,9 @@ async function main(): Promise<void> {
           lang: options.lang,
           maxSize: options.maxSize,
           stripComments: options.stripComments,
-          tree: options.tree,
-          stats: options.stats,
+          // Only pass tree/stats if explicitly set by user, otherwise let preset decide
+          tree: hasTreeFlag ? options.tree : undefined,
+          stats: hasStatsFlag ? options.stats : undefined,
           sort: options.sort as SortMode | undefined,
           interactive: options.interactive,
           preset: options.preset,

@@ -2,9 +2,9 @@ import { BUILT_IN_PRESETS, listBuiltInPresets } from './builtInPresets.js';
 import type { RepoRollerYmlConfig, RollerConfig } from './types.js';
 
 /**
- * Display all available presets (built-in + config)
+ * Display all available presets (built-in + config + YAML)
  */
-export function displayPresets(config?: RollerConfig): void {
+export function displayPresets(config?: RollerConfig, repoRollerConfig?: RepoRollerYmlConfig): void {
   console.log('📋 Available Presets:\n');
 
   // Built-in presets
@@ -14,15 +14,27 @@ export function displayPresets(config?: RollerConfig): void {
     const preset = BUILT_IN_PRESETS[name];
     if (!preset) {continue;}
     const extensions = preset.extensions?.join(', ') ?? 'all';
-    console.log(`  • ${name.padEnd(12)} - ${extensions}`);
+    const desc = preset.description ?? extensions;
+    console.log(`  • ${name.padEnd(12)} - ${desc}`);
   }
 
-  // Config presets
+  // Config presets (from repo-roller.config.mjs)
   if (config?.presets && Object.keys(config.presets).length > 0) {
     console.log('\nFrom repo-roller.config:');
     for (const [name, preset] of Object.entries(config.presets)) {
       const extensions = preset.extensions?.join(', ') ?? 'custom';
-      console.log(`  • ${name.padEnd(12)} - ${extensions}`);
+      const desc = preset.description ?? extensions;
+      console.log(`  • ${name.padEnd(12)} - ${desc}`);
+    }
+  }
+
+  // YAML presets (from .reporoller.yml) - these support headers/footers
+  if (repoRollerConfig?.presets && Object.keys(repoRollerConfig.presets).length > 0) {
+    console.log('\nFrom .reporoller.yml (with intent/header/footer support):');
+    for (const [name, preset] of Object.entries(repoRollerConfig.presets)) {
+      const desc = preset.description ?? 'custom preset';
+      const hasIntent = preset.header || preset.footer ? ' [has intent]' : '';
+      console.log(`  • ${name.padEnd(12)} - ${desc}${hasIntent}`);
     }
   }
 
@@ -32,10 +44,11 @@ export function displayPresets(config?: RollerConfig): void {
 /**
  * Display details of a specific preset
  */
-export function displayPresetDetails(name: string, config?: RollerConfig): void {
+export function displayPresetDetails(name: string, config?: RollerConfig, repoRollerConfig?: RepoRollerYmlConfig): void {
   const builtInPreset = BUILT_IN_PRESETS[name];
   const configPreset = config?.presets?.[name];
-  const preset = builtInPreset ?? configPreset;
+  const yamlPreset = repoRollerConfig?.presets?.[name];
+  const preset = builtInPreset ?? configPreset ?? yamlPreset;
 
   if (!preset) {
     console.error(`❌ Preset "${name}" not found.`);
@@ -44,6 +57,10 @@ export function displayPresetDetails(name: string, config?: RollerConfig): void 
   }
 
   console.log(`📄 Preset: ${name}\n`);
+
+  if (preset.description) {
+    console.log(`Description: ${preset.description}\n`);
+  }
 
   if (preset.extensions && preset.extensions.length > 0) {
     console.log(`Extensions: ${preset.extensions.join(', ')}`);
@@ -65,12 +82,30 @@ export function displayPresetDetails(name: string, config?: RollerConfig): void 
   console.log(`Strip comments: ${preset.stripComments ? 'yes' : 'no'}`);
   console.log(`With tree: ${preset.withTree ? 'yes' : 'no'}`);
   console.log(`With stats: ${preset.withStats ? 'yes' : 'no'}`);
+  console.log(`Add outlines: ${preset.addOutlines ? 'yes' : 'no'}`);
 
   if (preset.sort) {
     console.log(`Sort: ${preset.sort}`);
   }
 
-  console.log(`\nSource: ${builtInPreset ? 'built-in' : 'repo-roller.config'}`);
+  // Show header/footer information for enhanced presets
+  if (preset.header) {
+    console.log(`\n📝 Header (task/intent):`);
+    console.log(`  ${preset.header.trim().split('\n').slice(0, 3).join('\n  ')}...`);
+  }
+
+  if (preset.footer) {
+    console.log(`\n📋 Footer (instructions):`);
+    console.log(`  ${preset.footer.trim().split('\n').slice(0, 3).join('\n  ')}...`);
+  }
+
+  let source = 'built-in';
+  if (yamlPreset) {
+    source = '.reporoller.yml';
+  } else if (configPreset) {
+    source = 'repo-roller.config';
+  }
+  console.log(`\nSource: ${source}`);
 }
 
 /**
