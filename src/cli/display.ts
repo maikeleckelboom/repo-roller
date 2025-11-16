@@ -188,28 +188,24 @@ export function displayGenerationSummary(
   console.log(ui.colors.dim('  Code Composition'));
   console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(45)));
 
-  // Language breakdown with visual bars
+  // Language breakdown - prettier inline format
   const languages = calculateLanguageBreakdown(scan.files);
   if (languages.length > 0) {
-    console.log(ui.colors.dim('  Languages'));
-    for (const lang of languages.slice(0, 4)) {
-      console.log(ui.languageBar(lang.name, lang.percent));
-    }
+    const langStr = languages.slice(0, 4).map(l =>
+      `${ui.colors.primary(l.name)} ${ui.colors.dim(`${l.percent.toFixed(0)}%`)}`
+    ).join(ui.colors.muted('  ·  '));
+    console.log(`  ${langStr}`);
   }
 
-  // Role breakdown with visual bars
+  // Role breakdown - prettier inline format
   const roles = calculateRoleBreakdown(scan.files);
-  const roleItems: Array<{ name: string; percent: number }> = [];
-  if (roles.source > 0) {roleItems.push({ name: 'Source', percent: roles.source });}
-  if (roles.test > 0) {roleItems.push({ name: 'Tests', percent: roles.test });}
-  if (roles.docs > 0) {roleItems.push({ name: 'Docs', percent: roles.docs });}
-  if (roles.config > 0) {roleItems.push({ name: 'Config', percent: roles.config });}
+  const roleItems: string[] = [];
+  if (roles.source > 0) {roleItems.push(`${ui.colors.success('Src')} ${ui.colors.dim(`${roles.source.toFixed(0)}%`)}`);}
+  if (roles.test > 0) {roleItems.push(`${ui.colors.accent('Test')} ${ui.colors.dim(`${roles.test.toFixed(0)}%`)}`);}
+  if (roles.docs > 0) {roleItems.push(`${ui.colors.info('Docs')} ${ui.colors.dim(`${roles.docs.toFixed(0)}%`)}`);}
+  if (roles.config > 0) {roleItems.push(`${ui.colors.warning('Config')} ${ui.colors.dim(`${roles.config.toFixed(0)}%`)}`);}
   if (roleItems.length > 0) {
-    console.log('');
-    console.log(ui.colors.dim('  Roles'));
-    for (const role of roleItems) {
-      console.log(ui.languageBar(role.name, role.percent));
-    }
+    console.log(`  ${roleItems.join(ui.colors.muted('  ·  '))}`);
   }
   console.log('');
 
