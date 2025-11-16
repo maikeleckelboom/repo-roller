@@ -76,6 +76,11 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   yes: false,
   // LLM report display options (default to minimal)
   showLLMReport: false,
+  // Enhanced preset fields (default to none)
+  presetHeader: undefined,
+  presetFooter: undefined,
+  presetDescription: undefined,
+  addOutlines: false,
 } as const;
 
 /**
@@ -177,6 +182,11 @@ function mergePreset(
     warnTokens: defaults.warnTokens,
     yes: defaults.yes,
     showLLMReport: defaults.showLLMReport,
+    // Enhanced preset fields for intent-based bundling
+    presetHeader: preset.header ?? defaults.presetHeader,
+    presetFooter: preset.footer ?? defaults.presetFooter,
+    presetDescription: preset.description ?? defaults.presetDescription,
+    addOutlines: preset.addOutlines ?? defaults.addOutlines,
   };
 }
 
@@ -209,7 +219,7 @@ const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
 /**
  * Resolve and merge all configuration sources:
  * 1. Base defaults
- * 2. Preset from config (if specified) - checks built-in presets first
+ * 2. Preset from config (if specified) - checks built-in presets first, then config presets, then YAML presets
  * 3. CLI overrides
  * 4. RepoRoller YAML config
  */
@@ -221,13 +231,19 @@ export function resolveOptions(
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
 
-  // Apply preset if specified (check built-in presets first, then config presets)
+  // Apply preset if specified (check built-in presets first, then config presets, then YAML presets)
   if (cli.preset) {
     const builtInPreset = getBuiltInPreset(cli.preset);
     if (builtInPreset) {
       options = mergePreset(options, builtInPreset);
     } else if (config?.presets) {
       const preset = config.presets[cli.preset];
+      if (preset) {
+        options = mergePreset(options, preset);
+      }
+    } else if (repoRollerConfig?.presets) {
+      // Check .reporoller.yml presets (enhanced presets with header/footer support)
+      const preset = repoRollerConfig.presets[cli.preset];
       if (preset) {
         options = mergePreset(options, preset);
       }
@@ -325,5 +341,10 @@ export function resolveOptions(
     maxSizeExplicitlySet: cli.maxSize !== undefined,
     // LLM report display options
     showLLMReport: cli.showLLMReport ?? options.showLLMReport,
+    // Enhanced preset fields for intent-based bundling
+    presetHeader: options.presetHeader,
+    presetFooter: options.presetFooter,
+    presetDescription: options.presetDescription,
+    addOutlines: options.addOutlines,
   };
 }

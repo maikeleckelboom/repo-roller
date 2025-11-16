@@ -333,6 +333,13 @@ export async function renderMarkdown(
     output += generateFrontMatter(scan, options.profile);
   }
 
+  // Add Repo-Roller metadata comment (useful for tracking)
+  output += `<!-- Repo-Roller bundle -->\n`;
+  if (options.presetName) {
+    output += `<!-- Preset: ${options.presetName} -->\n`;
+  }
+  output += `<!-- Generated: ${new Date().toISOString().slice(0, 10)} -->\n\n`;
+
   output += `# 📦 Source Code Archive
 
 **Root**: \`${rootPath}\`
@@ -342,6 +349,15 @@ export async function renderMarkdown(
 ---
 
 `;
+
+  // Add preset header if provided (intent/task description)
+  if (options.presetHeader) {
+    output += `${options.presetHeader.trim()}
+
+---
+
+`;
+  }
 
   // Add architectural overview if provided
   if (architecturalOverview) {
@@ -408,6 +424,14 @@ ${contentWithComment}
 
 `;
     }
+  }
+
+  // Add preset footer if provided (general instructions/guidelines)
+  if (options.presetFooter) {
+    output += `---
+
+${options.presetFooter.trim()}
+`;
   }
 
   return output;

@@ -26,6 +26,7 @@ export type ProfileConfig = ProfileLayout;
 export interface RepoRollerYmlConfig {
   readonly architectural_overview?: string;
   readonly profiles?: Readonly<Record<string, ProfileConfig>>;
+  readonly presets?: Readonly<Record<string, RollerPreset>>;
 }
 
 /**
@@ -40,6 +41,11 @@ export interface RollerPreset {
   readonly withTree?: boolean;
   readonly withStats?: boolean;
   readonly sort?: SortMode;
+  // Enhanced preset fields for intent-based bundling
+  readonly description?: string;
+  readonly header?: string;
+  readonly footer?: string;
+  readonly addOutlines?: boolean; // Future feature: per-file code outlines
 }
 
 /**
@@ -136,6 +142,7 @@ export interface CommanderOptions {
   readonly frontMatter?: boolean;
   readonly listPresets?: boolean;
   readonly listProfiles?: boolean;
+  readonly showPreset?: string;
   readonly showProfile?: string;
   readonly examples?: boolean;
   readonly verbose?: boolean;
@@ -249,4 +256,9 @@ export interface ResolvedOptions {
   readonly maxSizeExplicitlySet?: boolean;
   // LLM report display options
   readonly showLLMReport: boolean;
+  // Enhanced preset fields for intent-based bundling
+  readonly presetHeader?: string;
+  readonly presetFooter?: string;
+  readonly presetDescription?: string;
+  readonly addOutlines: boolean;
 }
