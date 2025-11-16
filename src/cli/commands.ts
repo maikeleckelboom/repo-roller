@@ -171,6 +171,7 @@ export function transformCommanderOptions(root: string, options: CommanderOption
     showLLMReport: options.llm ?? options.llmReport,
     model: options.model,
     showPromptHelper: options.promptHelper,
+    copy: options.copy,
   };
 }
 

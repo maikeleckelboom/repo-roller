@@ -164,6 +164,8 @@ export interface CommanderOptions {
   readonly listModels?: boolean;
   // Prompt helper
   readonly promptHelper?: boolean;
+  // Clipboard support
+  readonly copy?: boolean;
 }
 
 /**
@@ -221,6 +223,8 @@ export interface CliOptions {
   readonly listModels?: boolean;
   // Prompt helper
   readonly showPromptHelper?: boolean;
+  // Clipboard support
+  readonly copy?: boolean;
 }
 
 /**
@@ -275,4 +279,6 @@ export interface ResolvedOptions {
   readonly modelPreset?: string;
   // Prompt helper
   readonly showPromptHelper: boolean;
+  // Clipboard support
+  readonly copyToClipboard: boolean;
 }
