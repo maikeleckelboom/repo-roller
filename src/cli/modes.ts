@@ -13,6 +13,7 @@ import { formatBytes } from '../core/helpers.js';
 import * as ui from '../core/ui.js';
 import { applyBudgetConstraints } from './budget.js';
 import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displayGenerationSummary, displayDetailedLLMAnalysis } from './display.js';
+import { performSafetyChecks, formatSafetyWarning, getSafetySummary } from '../core/safety.js';
 
 /**
  * Run preview mode (dry-run or stats-only)
@@ -137,6 +138,39 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   }
 
   console.log(ui.success(`Found ${ui.colors.primary(scan.files.length.toString())} files ${ui.colors.dim(`(${formatBytes(scan.totalBytes)})`)}`));
+
+  // Perform safety checks
+  console.log(ui.status('safety', 'Checking for sensitive content'));
+  const safetyResult = await performSafetyChecks(scan.files, options.repoRollerConfig);
+
+  if (safetyResult.hasConcerns) {
+    console.log('');
+    console.log(ui.colors.warning(`${ui.symbols.warning} Safety concerns detected: ${getSafetySummary(safetyResult)}`));
+
+    // If files were blocked, update the scan
+    if (safetyResult.blockedFiles.length > 0) {
+      console.log(ui.colors.dim(`   Removed ${safetyResult.blockedFiles.length} blocked file(s) from bundle`));
+      scan = {
+        ...scan,
+        files: safetyResult.safeFiles,
+        totalBytes: safetyResult.safeFiles.reduce((sum, f) => sum + f.sizeBytes, 0),
+      };
+    }
+
+    // Show detailed warnings if there are secrets
+    if (safetyResult.secretScan.secrets.length > 0) {
+      console.log('');
+      console.log(formatSafetyWarning(safetyResult));
+    }
+
+    // Ask for confirmation if not in --yes mode and there are high-risk secrets
+    if (safetyResult.requiresWarning && !options.yes) {
+      console.log(ui.colors.warning('⚠️  Proceed with caution! Use --yes to skip this warning.'));
+      console.log('');
+    }
+  } else {
+    console.log(ui.success('No sensitive content detected'));
+  }
 
   // Apply token/cost budget constraints if specified
   const budgetResult = await applyBudgetConstraints(scan, options);

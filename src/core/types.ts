@@ -21,12 +21,25 @@ export interface ProfileLayout {
 export type ProfileConfig = ProfileLayout;
 
 /**
+ * Safety rules configuration
+ */
+export interface SafetyRules {
+  /** File patterns that should never be included in bundles */
+  readonly neverSend?: readonly string[];
+  /** Disable secret scanning (not recommended) */
+  readonly disableSecretScanning?: boolean;
+  /** Skip interactive warnings for sensitive content */
+  readonly skipSensitiveWarnings?: boolean;
+}
+
+/**
  * Configuration for .reporoller.yml
  */
 export interface RepoRollerYmlConfig {
   readonly architectural_overview?: string;
   readonly profiles?: Readonly<Record<string, ProfileConfig>>;
   readonly presets?: Readonly<Record<string, RollerPreset>>;
+  readonly safety?: SafetyRules;
 }
 
 /**

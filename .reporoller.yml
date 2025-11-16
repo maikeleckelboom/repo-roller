@@ -156,3 +156,32 @@ presets:
       2. Description of the problem
       3. Suggested improvement
       4. Priority (high/medium/low)
+
+# Safety rules to prevent accidental exposure of sensitive data
+safety:
+  neverSend:
+    # Environment and secrets
+    - ".env"
+    - ".env.*"
+    - "*.pem"
+    - "*.key"
+    - "*.p12"
+    - "*.pfx"
+    - "id_rsa"
+    - "id_dsa"
+    - "id_ecdsa"
+    - "id_ed25519"
+    # Credentials files
+    - "**/credentials.json"
+    - "**/service-account*.json"
+    - "**/.htpasswd"
+    - "**/secrets.yml"
+    - "**/secrets.yaml"
+    # Database files
+    - "*.sqlite"
+    - "*.db"
+    - "**/database.yml"
+  # Enable secret scanning (default: true)
+  disableSecretScanning: false
+  # Warn about sensitive content (default: false)
+  skipSensitiveWarnings: false
