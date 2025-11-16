@@ -49,8 +49,9 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show file selection header
-      expect(output).toContain('File Selection');
+      // Should show step indicator
+      expect(output).toContain('Step 1');
+      expect(output).toContain('Select Files');
       // Should show file count
       expect(output).toContain('files selected');
     });
@@ -88,7 +89,8 @@ describe('CustomTreeSelect', () => {
 
       // Tree should be built with directories first
       const output = lastFrame() ?? '';
-      expect(output).toContain('File Selection');
+      expect(output).toContain('Step 1');
+      expect(output).toContain('Select Files');
     });
 
     it('should handle files at root level', () => {
@@ -275,7 +277,9 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      // Press Enter to confirm
+      // Press Enter twice (two-step flow)
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
       stdin.write('\r');
 
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -593,8 +597,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show partial selection indicator (◐)
-      expect(output).toContain('◐');
+      // Should show Nerd Font partial selection indicator (󰡖)
+      expect(output).toContain('󰡖');
     });
 
     it('should show full selection indicator when all children selected', () => {
@@ -611,8 +615,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show full selection (✓)
-      expect(output).toContain('✓');
+      // Should show Nerd Font full selection (󰄵)
+      expect(output).toContain('󰄵');
     });
 
     it('should show empty selection indicator when no children selected', () => {
@@ -629,8 +633,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show empty selection (○)
-      expect(output).toContain('○');
+      // Should show Nerd Font empty selection (󰄱)
+      expect(output).toContain('󰄱');
     });
   });
 
@@ -764,7 +768,9 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      // Press Enter to confirm empty selection
+      // Press Enter twice (two-step flow)
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
       stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -792,7 +798,7 @@ describe('CustomTreeSelect', () => {
       expect(lastFrame()).toContain('3 / 5 files selected');
     });
 
-    it('should show emoji icons in header', () => {
+    it('should show Nerd Font icons in tree', () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -803,7 +809,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('📁');
+      // Should contain Nerd Font folder icon
+      expect(output).toMatch(/|/);
     });
 
     it('should show file type icons based on extension', () => {
@@ -821,8 +828,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should contain file type icons
-      expect(output).toContain('📁'); // Directory icon
+      // Should contain Nerd Font file type icons
+      expect(output).toMatch(/|/); // Directory icon
     });
 
     it('should show folder icons for directories', () => {
@@ -838,8 +845,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should contain folder emoji (closed or open)
-      expect(output).toMatch(/📁|📂/);
+      // Should contain Nerd Font folder icon (closed or open)
+      expect(output).toMatch(/|/);
     });
 
     it('should show expand/collapse indicators', () => {
@@ -855,11 +862,11 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should contain expand indicator
-      expect(output).toMatch(/▸|▾/);
+      // Should contain Nerd Font expand indicator or collapsed indicator
+      expect(output).toMatch(/|/);
     });
 
-    it('should display decorative borders', () => {
+    it('should display step indicator', () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -870,8 +877,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('╭');
-      expect(output).toContain('╯');
+      expect(output).toContain('Step 1');
+      expect(output).toContain('Select Files');
     });
 
     it('should show visibility status indicator', () => {
@@ -885,8 +892,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show emoji for visibility status
-      expect(output).toMatch(/👁️|🙈/);
+      // Should show text for visibility status
+      expect(output).toMatch(/Showing all files|Excluded files hidden/);
     });
 
     it('should show hidden files count when excluded files are hidden', async () => {
@@ -1069,7 +1076,7 @@ describe('CustomTreeSelect', () => {
   });
 
   describe('confirmation with different selection states', () => {
-    it('should return empty array when all files deselected and Enter pressed', async () => {
+    it('should return empty array when all files deselected and Enter pressed twice', async () => {
       const files: FileInfo[] = [
         createMockFile('src/index.ts', false),
       ];
@@ -1081,7 +1088,10 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      // Confirm with no selection
+      // First Enter moves to confirm step
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      // Second Enter confirms
       stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1102,6 +1112,10 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      // First Enter moves to confirm step
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      // Second Enter confirms
       stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 

@@ -1,20 +1,29 @@
 import React, { useReducer, useMemo, useEffect, useCallback } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
+import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { FileInfo } from '../core/types.js';
 import { getUserSetting, setUserSetting } from '../core/userSettings.js';
-
-interface TreeNode {
-  name: string;
-  fullPath: string;
-  isFile: boolean;
-  children: TreeNode[];
-  depth: number;
-}
+import {
+  type TreeNode,
+  type RowState,
+  type FlatNode,
+  renderTreeRowParts,
+  renderRowWithMaxWidth,
+  flattenTreeWithLines,
+  renderCompactSummary,
+} from './TreeRenderer.js';
+import {
+  defaultTheme,
+  getFileColor,
+  type Theme,
+} from '../theme/index.js';
 
 interface CustomTreeSelectProps {
   files: readonly FileInfo[];
   onComplete: (selectedPaths: string[]) => void;
 }
+
+// Step in the interactive flow
+type Step = 'select' | 'confirm';
 
 // State type for the reducer
 interface TreeSelectState {
@@ -23,6 +32,8 @@ interface TreeSelectState {
   cursor: number;
   showExcluded: boolean;
   settingsLoaded: boolean;
+  step: Step;
+  reviewMode: boolean;
 }
 
 // Action types for the reducer
@@ -40,7 +51,9 @@ type TreeSelectAction =
   | { type: 'SET_SHOW_EXCLUDED'; payload: boolean }
   | { type: 'TOGGLE_SHOW_EXCLUDED' }
   | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
-  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } };
+  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } }
+  | { type: 'SET_STEP'; payload: Step }
+  | { type: 'TOGGLE_REVIEW_MODE' };
 
 // Reducer function to manage complex state
 function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): TreeSelectState {
@@ -110,6 +123,12 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
       const boundedCursor = Math.min(state.cursor, action.payload.maxIndex);
       return boundedCursor !== state.cursor ? { ...state, cursor: boundedCursor } : state;
     }
+
+    case 'SET_STEP':
+      return { ...state, step: action.payload };
+
+    case 'TOGGLE_REVIEW_MODE':
+      return { ...state, reviewMode: !state.reviewMode };
 
     default:
       return state;
@@ -185,24 +204,6 @@ function buildTreeStructure(files: readonly FileInfo[]): TreeNode {
 }
 
 /**
- * Flatten tree to a list of nodes for navigation
- */
-function flattenTree(node: TreeNode, expanded: Set<string>): TreeNode[] {
-  const result: TreeNode[] = [];
-
-  const traverse = (n: TreeNode) => {
-    result.push(n);
-    if (!n.isFile && expanded.has(n.fullPath)) {
-      n.children.forEach(traverse);
-    }
-  };
-
-  // Skip root, start with its children
-  node.children.forEach(traverse);
-  return result;
-}
-
-/**
  * Get all file paths under a node (recursively)
  */
 function getAllFilesUnder(node: TreeNode): string[] {
@@ -247,6 +248,9 @@ function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean
 
 export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete }) => {
   const tree = useMemo(() => buildTreeStructure(files), [files]);
+  const theme: Theme = defaultTheme;
+  const { stdout } = useStdout();
+  const terminalWidth = stdout?.columns ?? 80;
 
   // Initialize state with useReducer
   const [state, dispatch] = useReducer(treeSelectReducer, {
@@ -255,9 +259,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     cursor: 0,
     showExcluded: true,
     settingsLoaded: false,
+    step: 'select',
+    reviewMode: false,
   });
 
-  const { expanded, selected, cursor, showExcluded, settingsLoaded } = state;
+  const { expanded, selected, cursor, showExcluded, settingsLoaded, step, reviewMode } = state;
 
   // Load persisted setting on mount
   useEffect(() => {
@@ -291,8 +297,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Build tree from filtered files
   const filteredTree = useMemo(() => buildTreeStructure(filteredFiles), [filteredFiles]);
 
-  // Flatten tree based on expansion state
-  const flatNodes = useMemo(() => flattenTree(showExcluded ? tree : filteredTree, expanded), [tree, filteredTree, expanded, showExcluded]);
+  // Flatten tree with proper line tracking
+  const flatNodes: FlatNode[] = useMemo(
+    () => flattenTreeWithLines(showExcluded ? tree : filteredTree, expanded),
+    [tree, filteredTree, expanded, showExcluded]
+  );
 
   // Ensure cursor stays in bounds when flatNodes changes
   const boundedCursor = useMemo(() => {
@@ -324,6 +333,27 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   }, [selected]);
 
   useInput((input, key) => {
+    // Handle confirm step inputs
+    if (step === 'confirm' && !reviewMode) {
+      if (input === 'r' || input === 'R') {
+        dispatch({ type: 'TOGGLE_REVIEW_MODE' });
+        return;
+      }
+      if (key.return) {
+        // Final confirm - complete selection
+        onComplete(Array.from(selected));
+        exit();
+        return;
+      }
+      if (input === 'q' || input === 'Q') {
+        onComplete([]);
+        exit();
+        return;
+      }
+      return;
+    }
+
+    // Handle tree selection inputs (select step or review mode)
     if (input === 'q' || input === 'Q') {
       onComplete([]);
       exit();
@@ -348,175 +378,183 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
     if (key.rightArrow) {
       // Expand directory
-      const node = flatNodes[cursor];
-      if (node && !node.isFile) {
-        dispatch({ type: 'EXPAND_NODE', payload: node.fullPath });
+      const flatNode = flatNodes[cursor];
+      if (flatNode && !flatNode.node.isFile) {
+        dispatch({ type: 'EXPAND_NODE', payload: flatNode.node.fullPath });
       }
       return;
     }
 
     if (key.leftArrow) {
       // Collapse directory
-      const node = flatNodes[cursor];
-      if (node && !node.isFile) {
-        dispatch({ type: 'COLLAPSE_NODE', payload: node.fullPath });
+      const flatNode = flatNodes[cursor];
+      if (flatNode && !flatNode.node.isFile) {
+        dispatch({ type: 'COLLAPSE_NODE', payload: flatNode.node.fullPath });
       }
       return;
     }
 
     if (input === ' ') {
       // Toggle selection
-      const node = flatNodes[cursor];
-      if (!node) {
+      const flatNode = flatNodes[cursor];
+      if (!flatNode) {
         return;
       }
 
-      if (node.isFile) {
+      if (flatNode.node.isFile) {
         // Toggle single file
-        dispatch({ type: 'TOGGLE_FILE', payload: node.fullPath });
+        dispatch({ type: 'TOGGLE_FILE', payload: flatNode.node.fullPath });
       } else {
         // Toggle directory and all children
-        handleDirectoryToggle(node);
+        handleDirectoryToggle(flatNode.node);
       }
       return;
     }
 
     if (key.return) {
-      // Confirm selection
-      onComplete(Array.from(selected));
-      exit();
+      if (reviewMode) {
+        // Exit review mode back to confirm step
+        dispatch({ type: 'TOGGLE_REVIEW_MODE' });
+      } else {
+        // Move to confirm step
+        dispatch({ type: 'SET_STEP', payload: 'confirm' });
+      }
       return;
     }
   });
 
-  // Get file type icon based on extension
-  const getFileTypeIcon = (name: string): string => {
-    const ext = name.split('.').pop()?.toLowerCase() || '';
-    const iconMap: Record<string, string> = {
-      ts: '🔷',
-      tsx: '⚛️',
-      js: '🟨',
-      jsx: '⚛️',
-      json: '📋',
-      md: '📝',
-      yaml: '⚙️',
-      yml: '⚙️',
-      toml: '⚙️',
-      py: '🐍',
-      go: '🔵',
-      rs: '🦀',
-      java: '☕',
-      css: '🎨',
-      scss: '🎨',
-      html: '🌐',
-      sh: '💻',
-      bash: '💻',
-      sql: '🗄️',
-      env: '🔒',
+  // Render a single tree row with colors
+  const renderRow = (flatNode: FlatNode, index: number) => {
+    const { node, isLast, parentLasts } = flatNode;
+    const isCursor = index === cursor;
+    const isExpanded = expanded.has(node.fullPath);
+    const isFullySelected = node.isFile
+      ? selected.has(node.fullPath)
+      : areAllChildrenSelected(node, selected);
+    const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected);
+
+    const rowState: RowState = {
+      isSelected: isFullySelected,
+      isPartiallySelected,
+      isExpanded,
+      isCursor,
+      isLast,
+      parentLasts,
     };
-    return iconMap[ext] || '📄';
+
+    // Render with width constraint
+    const parts = renderRowWithMaxWidth(node, rowState, theme, terminalWidth - 2);
+
+    // Determine colors
+    const selectionColor = isFullySelected
+      ? theme.colors.selected
+      : isPartiallySelected
+        ? theme.colors.partiallySelected
+        : theme.colors.unselected;
+
+    const nameColor = isCursor
+      ? theme.colors.cursor
+      : node.isFile
+        ? getFileColor(node.name, theme)
+        : theme.colors.folder;
+
+    const nameBold = isCursor || !node.isFile;
+    const nameItalic = node.isFile && parts.hint.includes('test');
+
+    return (
+      <Box key={node.fullPath} flexDirection="row">
+        <Text dimColor>{parts.indent}</Text>
+        <Text color={selectionColor}>{parts.selection}</Text>
+        <Text dimColor>{parts.expand}</Text>
+        <Text>{parts.icon}</Text>
+        <Text color={nameColor} bold={nameBold} italic={nameItalic}>
+          {parts.name}
+        </Text>
+        <Text dimColor>{parts.hint}</Text>
+      </Box>
+    );
   };
 
-  // Render tree
+  // Render the file tree
   const renderTree = () => {
-    return flatNodes.map((node, index) => {
-      const isCursor = index === cursor;
-      const isExpanded = expanded.has(node.fullPath);
-      const isFullySelected = node.isFile
-        ? selected.has(node.fullPath)
-        : areAllChildrenSelected(node, selected);
-      const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected);
-
-      // Build tree connector lines for better visual hierarchy
-      const indentParts: string[] = [];
-      for (let i = 0; i < node.depth - 1; i++) {
-        indentParts.push('│  ');
-      }
-      const indent = indentParts.join('');
-
-      // Selection indicator with modern checkbox style
-      let selectionIcon = '';
-      if (node.isFile) {
-        selectionIcon = isFullySelected ? '✓ ' : '○ ';
-      } else {
-        if (isFullySelected) {
-          selectionIcon = '✓ ';
-        } else if (isPartiallySelected) {
-          selectionIcon = '◐ ';
-        } else {
-          selectionIcon = '○ ';
-        }
-      }
-
-      // Directory/file indicator
-      let typeIcon = '';
-      if (node.isFile) {
-        typeIcon = getFileTypeIcon(node.name);
-      } else {
-        typeIcon = isExpanded ? '📂' : '📁';
-      }
-
-      // Expand/collapse indicator for directories
-      const expandIcon = !node.isFile ? (isExpanded ? ' ▾' : ' ▸') : '';
-
-      // Name with visual distinction
-      const name = node.isFile ? node.name : `${node.name}`;
-
-      // Color scheme
-      let color: string | undefined;
-      if (isCursor) {
-        color = 'cyan';
-      } else if (isFullySelected) {
-        color = 'green';
-      } else if (isPartiallySelected) {
-        color = 'yellow';
-      } else {
-        color = undefined;
-      }
-      const bold = isCursor;
-
-      return (
-        <Box key={node.fullPath} flexDirection="row">
-          <Text dimColor>{indent}</Text>
-          <Text color={isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : 'gray'}>
-            {selectionIcon}
-          </Text>
-          <Text>{typeIcon} </Text>
-          <Text color={color} bold={bold}>
-            {name}
-          </Text>
-          <Text dimColor>{expandIcon}</Text>
-        </Box>
-      );
-    });
+    return flatNodes.map((flatNode, index) => renderRow(flatNode, index));
   };
 
+  // Render summary bar
+  const renderSummary = () => {
+    const hiddenCount = showExcluded ? 0 : files.length - filteredFiles.length;
+    const summary = renderCompactSummary({
+      selectedCount: selected.size,
+      totalCount: files.length,
+      hiddenCount,
+    });
+
+    return (
+      <Box marginTop={1} flexDirection="column">
+        <Text dimColor>{'─'.repeat(Math.min(60, terminalWidth - 4))}</Text>
+        <Box>
+          <Text bold color="green">
+            {summary}
+          </Text>
+        </Box>
+        <Text dimColor>
+          {showExcluded ? 'Showing all files' : 'Excluded files hidden'}
+        </Text>
+      </Box>
+    );
+  };
+
+  // Render confirm step (summary bar only)
+  if (step === 'confirm' && !reviewMode) {
+    const hiddenCount = showExcluded ? 0 : files.length - filteredFiles.length;
+    const summary = renderCompactSummary({
+      selectedCount: selected.size,
+      totalCount: files.length,
+      hiddenCount,
+    });
+
+    return (
+      <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="column">
+          <Text bold color="cyan">
+            Step 2: Confirm Selection
+          </Text>
+        </Box>
+
+        <Box marginBottom={1} flexDirection="column" paddingLeft={1}>
+          <Text bold color="green">
+            {summary}
+          </Text>
+          <Text dimColor>Press [R] to review selection</Text>
+        </Box>
+
+        <Box marginTop={1} flexDirection="column">
+          <Text dimColor>
+            ─────────────────────────────────────────────────────
+          </Text>
+          <Text dimColor>
+            Enter Confirm    R Review    Q Quit
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Render full tree view (select step or review mode)
   return (
     <Box flexDirection="column">
       <Box marginBottom={1} flexDirection="column">
         <Text bold color="cyan">
-          ╭─────────────────────────────────────────────────────╮
-        </Text>
-        <Text bold color="cyan">
-          │  🌳 Interactive File Selection                      │
-        </Text>
-        <Text bold color="cyan">
-          ╰─────────────────────────────────────────────────────╯
+          {reviewMode ? 'Review Selection' : 'Step 1: Select Files'}
         </Text>
       </Box>
 
       <Box marginBottom={1} flexDirection="column">
         <Text dimColor>
-          ┌─ Navigation ──────────────────────────────────────┐
+          ↑↓ Navigate    ←→ Collapse/Expand    Space Toggle
         </Text>
         <Text dimColor>
-          │ ↑↓ Navigate    ←→ Collapse/Expand    Space Toggle │
-        </Text>
-        <Text dimColor>
-          │ Enter Confirm  Q Quit                H Show/Hide  │
-        </Text>
-        <Text dimColor>
-          └───────────────────────────────────────────────────┘
+          Enter {reviewMode ? 'Done' : 'Confirm'}    Q Quit    H Show/Hide
         </Text>
       </Box>
 
@@ -524,29 +562,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         {renderTree()}
       </Box>
 
-      <Box marginTop={1} flexDirection="column">
-        <Text dimColor>
-          ────────────────────────────────────────────────────
-        </Text>
-        <Box>
-          <Text bold color="green">
-            ✓ {selected.size}
-          </Text>
-          <Text> / </Text>
-          <Text bold color="blue">
-            {files.length}
-          </Text>
-          <Text> files selected</Text>
-          {!showExcluded && files.length !== filteredFiles.length && (
-            <Text dimColor>
-              {' '}• {files.length - filteredFiles.length} hidden
-            </Text>
-          )}
-        </Box>
-        <Text dimColor>
-          {showExcluded ? '👁️  Showing all files' : '🙈 Excluded files hidden'}
-        </Text>
-      </Box>
+      {renderSummary()}
     </Box>
   );
 };
