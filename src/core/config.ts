@@ -53,7 +53,7 @@ import type {
   RepoRollerYmlConfig,
   OutputFormat,
 } from './types.js';
-import { getBuiltInPreset } from './builtInPresets.js';
+import { getBuiltInPreset, listBuiltInPresets } from './builtInPresets.js';
 import { normalizeExtension } from './helpers.js';
 
 /**
@@ -307,19 +307,34 @@ export function resolveOptions(
   // Apply preset if specified (check built-in presets first, then config presets, then YAML presets)
   if (cli.preset) {
     const builtInPreset = getBuiltInPreset(cli.preset);
+    let presetFound = false;
+
     if (builtInPreset) {
       options = mergePreset(options, builtInPreset);
-    } else if (config?.presets) {
-      const preset = config.presets[cli.preset];
-      if (preset) {
-        options = mergePreset(options, preset);
-      }
-    } else if (repoRollerConfig?.presets) {
+      presetFound = true;
+    } else if (config?.presets?.[cli.preset]) {
+      options = mergePreset(options, config.presets[cli.preset]);
+      presetFound = true;
+    } else if (repoRollerConfig?.presets?.[cli.preset]) {
       // Check .reporoller.yml presets (enhanced presets with header/footer support)
-      const preset = repoRollerConfig.presets[cli.preset];
-      if (preset) {
-        options = mergePreset(options, preset);
+      options = mergePreset(options, repoRollerConfig.presets[cli.preset]);
+      presetFound = true;
+    }
+
+    // Warn user if preset not found (prevents silent failures)
+    if (!presetFound) {
+      const builtInNames = listBuiltInPresets();
+      const configNames = config?.presets ? Object.keys(config.presets) : [];
+      const yamlNames = repoRollerConfig?.presets ? Object.keys(repoRollerConfig.presets) : [];
+      const allPresets = [...new Set([...builtInNames, ...configNames, ...yamlNames])];
+
+      console.warn(
+        `WARNING: Preset "${cli.preset}" not found. Using defaults instead.`
+      );
+      if (allPresets.length > 0) {
+        console.warn(`Available presets: ${allPresets.join(', ')}`);
       }
+      console.warn('');
     }
   } else if (config?.defaultPreset && config.presets) {
     // Apply default preset if no preset specified but a default exists
@@ -349,12 +364,28 @@ export function resolveOptions(
   if (cli.lang) {
     const langs = cli.lang.split(',').map(l => l.trim());
     const langExtensions: string[] = [];
+    const unknownLangs: string[] = [];
+
     for (const lang of langs) {
       const exts = LANGUAGE_EXTENSIONS[lang.toLowerCase()];
       if (exts) {
         langExtensions.push(...exts);
+      } else {
+        unknownLangs.push(lang);
       }
     }
+
+    // Warn about unknown languages (prevents silent filtering issues)
+    if (unknownLangs.length > 0) {
+      console.warn(
+        `WARNING: Unknown language(s): ${unknownLangs.join(', ')}`
+      );
+      console.warn(
+        `Available languages: ${Object.keys(LANGUAGE_EXTENSIONS).join(', ')}`
+      );
+      console.warn('');
+    }
+
     if (langExtensions.length > 0) {
       extensions = langExtensions;
     }

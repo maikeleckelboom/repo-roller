@@ -6,7 +6,7 @@ import { runInteractive } from '../tui.js';
 import { displayProviders, validateConfigs, runPreview, runNonInteractive } from './index.js';
 import { listModelPresets } from '../core/modelPresets.js';
 import * as ui from '../core/ui.js';
-import { getDisplaySettings } from '../core/userSettings.js';
+import { getDisplaySettings, loadUserSettings } from '../core/userSettings.js';
 
 export interface CommandContext {
   root: string;
@@ -131,9 +131,23 @@ export function validateAndTransformOptions(ctx: CommandContext): ValidationResu
   return { valid: true, cliOptions };
 }
 
+/**
+ * Detect which CLI flags were explicitly set (not just default values)
+ */
+function detectExplicitFlags(): {
+  stripComments: boolean;
+  tree: boolean;
+  stats: boolean;
+} {
+  return {
+    stripComments: process.argv.includes('--strip-comments') || process.argv.includes('--no-strip-comments'),
+    tree: process.argv.includes('--tree') || process.argv.includes('--no-tree'),
+    stats: process.argv.includes('--stats') || process.argv.includes('--no-stats'),
+  };
+}
+
 export function transformCommanderOptions(root: string, options: CommanderOptions): CliOptions {
-  const hasTreeFlag = process.argv.includes('--tree') || process.argv.includes('--no-tree');
-  const hasStatsFlag = process.argv.includes('--stats') || process.argv.includes('--no-stats');
+  const explicitFlags = detectExplicitFlags();
 
   return {
     root,
@@ -145,8 +159,8 @@ export function transformCommanderOptions(root: string, options: CommanderOption
     lang: options.lang,
     maxSize: options.maxSize,
     stripComments: options.stripComments,
-    tree: hasTreeFlag ? options.tree : undefined,
-    stats: hasStatsFlag ? options.stats : undefined,
+    tree: explicitFlags.tree ? options.tree : undefined,
+    stats: explicitFlags.stats ? options.stats : undefined,
     sort: options.sort as SortMode | undefined,
     interactive: options.interactive,
     preset: options.preset,
@@ -204,14 +218,29 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
     throw new Error('cliOptions should be defined when validation is valid');
   }
 
-  // Load user display settings BEFORE resolving options
-  // This allows CLI flags to properly override user settings on a per-setting basis
+  // Load ALL user settings BEFORE resolving options
+  // This ensures user preferences are respected in both interactive and non-interactive modes
+  const userSettings = await loadUserSettings();
   const userDisplaySettings = await getDisplaySettings();
+
+  // Get explicit flag information (reuse helper function to avoid duplication)
+  const explicitFlags = detectExplicitFlags();
 
   // Create a modified cliOptions that includes user settings as the base
   // CLI flags will override these in resolveOptions
   const cliOptionsWithUserSettings = {
     ...cliOptions,
+    // Apply user settings for stripComments/withTree/withStats if not explicitly set via CLI
+    // This ensures user preferences are respected in non-interactive mode
+    stripComments: explicitFlags.stripComments
+      ? cliOptions.stripComments
+      : (userSettings.stripComments ?? cliOptions.stripComments),
+    tree: explicitFlags.tree
+      ? cliOptions.tree
+      : (userSettings.withTree ?? cliOptions.tree),
+    stats: explicitFlags.stats
+      ? cliOptions.stats
+      : (userSettings.withStats ?? cliOptions.stats),
     // Pass user display settings as base - CLI flags will override in resolveOptions
     _userDisplaySettings: userDisplaySettings,
   };

@@ -36,8 +36,21 @@ async function ensureConfigDir(): Promise<void> {
 export async function loadUserSettings(): Promise<UserSettings> {
   try {
     const content = await readFile(SETTINGS_FILE, 'utf-8');
-    return JSON.parse(content) as UserSettings;
+    try {
+      return JSON.parse(content) as UserSettings;
+    } catch (parseError) {
+      // JSON is corrupted - warn user and return defaults
+      console.warn(
+        `WARNING: Settings file corrupted at ${SETTINGS_FILE}. Using defaults.`
+      );
+      console.warn(
+        `Error: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+      );
+      console.warn('');
+      return {};
+    }
   } catch {
+    // File doesn't exist - return empty settings (normal case)
     return {};
   }
 }
