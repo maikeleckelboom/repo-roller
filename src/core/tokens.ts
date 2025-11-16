@@ -80,13 +80,6 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
     inputCostPerMillion: 10.0,
     outputCostPerMillion: 30.0,
   },
-  'gpt-4': {
-    name: 'gpt-4',
-    displayName: 'GPT-4',
-    contextWindow: 8192,
-    inputCostPerMillion: 30.0,
-    outputCostPerMillion: 60.0,
-  },
   'o1': {
     name: 'o1',
     displayName: 'OpenAI o1',

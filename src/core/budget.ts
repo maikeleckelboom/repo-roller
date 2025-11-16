@@ -80,6 +80,13 @@ interface FileWithTokens extends FileInfo {
 const EUR_TO_USD_RATE = 1.08;
 
 /**
+ * Markdown overhead factor to account for formatting structure
+ * This includes: headers, code fences, file path comments, tree view, stats, etc.
+ * Empirically measured at ~5-10% overhead depending on file count
+ */
+const MARKDOWN_OVERHEAD_FACTOR = 1.08;
+
+/**
  * Estimate tokens for a single file based on its size
  * Uses a heuristic: ~4 characters per token, with adjustments for code
  */
@@ -207,11 +214,16 @@ export async function selectFilesWithinBudget(
   const orderedFiles = await middleware(files, config, context);
 
   // Estimate tokens for each file
-  const filesWithTokens: FileWithTokens[] = orderedFiles.map(file => ({
-    ...file,
-    estimatedTokens: estimateFileTokens(file),
-    estimatedCost: estimateFileCost(estimateFileTokens(file), provider),
-  }));
+  // Apply markdown overhead factor to account for rendering structure
+  const filesWithTokens: FileWithTokens[] = orderedFiles.map(file => {
+    const baseTokens = estimateFileTokens(file);
+    const tokensWithOverhead = Math.ceil(baseTokens * MARKDOWN_OVERHEAD_FACTOR);
+    return {
+      ...file,
+      estimatedTokens: tokensWithOverhead,
+      estimatedCost: estimateFileCost(tokensWithOverhead, provider),
+    };
+  });
 
   // Convert budget limit to tokens if needed
   let tokenBudget: number;
