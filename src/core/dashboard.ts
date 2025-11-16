@@ -415,7 +415,7 @@ function renderHealthHints(hints: string[]): string[] {
 function renderOptionsSection(options: ResolvedOptions): string[] {
   const lines: string[] = [];
   lines.push(ui.colors.dim('  Options'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(30)));
+  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(78)));
   lines.push(`  ${options.stripComments ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Strip comments`);
   lines.push(`  ${options.withTree ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Directory tree view`);
   lines.push(`  ${options.withStats ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Statistics section`);
