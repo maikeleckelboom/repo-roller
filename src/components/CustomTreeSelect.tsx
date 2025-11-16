@@ -487,7 +487,6 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         <Text dimColor>{parts.indent}</Text>
         <Text color={styling.selectionColor}>{parts.selection}</Text>
         <Text color={styling.iconColor}>{parts.expandMarker}</Text>
-        <Text color={styling.iconColor}>{parts.icon}</Text>
         <Text color={styling.nameColor} bold={styling.nameBold}>
           {parts.name}
         </Text>
@@ -522,16 +521,8 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   if (mode === 'summary') {
     return (
       <Box flexDirection="column">
-        <Box marginBottom={1} flexDirection="column">
-          <Text bold color="cyan">
-            ╭─────────────────────────────────────────────────────╮
-          </Text>
-          <Text bold color="cyan">
-            │  Step 2: Confirm Selection                          │
-          </Text>
-          <Text bold color="cyan">
-            ╰─────────────────────────────────────────────────────╯
-          </Text>
+        <Box marginBottom={1}>
+          <Text bold color="cyan">Confirm Selection</Text>
         </Box>
         {renderSummaryView()}
       </Box>
@@ -540,30 +531,13 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
   return (
     <Box flexDirection="column">
-      <Box marginBottom={1} flexDirection="column">
-        <Text bold color="cyan">
-          ╭─────────────────────────────────────────────────────╮
-        </Text>
-        <Text bold color="cyan">
-          │  Step 1: Select Files                                │
-        </Text>
-        <Text bold color="cyan">
-          ╰─────────────────────────────────────────────────────╯
-        </Text>
+      <Box marginBottom={1}>
+        <Text bold color="cyan">Select Files</Text>
       </Box>
 
-      <Box marginBottom={1} flexDirection="column">
+      <Box marginBottom={1}>
         <Text dimColor>
-          ┌─ Controls ───────────────────────────────────────────┐
-        </Text>
-        <Text dimColor>
-          │ ↑↓ Navigate    ←→ Collapse/Expand    Space Toggle   │
-        </Text>
-        <Text dimColor>
-          │ Enter Confirm  Q Quit                 H Show/Hide   │
-        </Text>
-        <Text dimColor>
-          └─────────────────────────────────────────────────────┘
+          ↑↓ navigate · ←→ expand · Space toggle · Enter confirm · Q quit · H filter
         </Text>
       </Box>
 
@@ -571,28 +545,16 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         {renderTreeView()}
       </Box>
 
-      <Box marginTop={1} flexDirection="column">
-        <Text dimColor>
-          ─────────────────────────────────────────────────────
-        </Text>
-        <Box>
-          <Text bold color="green">
-            {theme.markers.selected} {selected.size}
-          </Text>
-          <Text> / </Text>
-          <Text bold color="blue">
-            {files.length}
-          </Text>
-          <Text> files selected</Text>
-          {hiddenCount > 0 && (
-            <Text dimColor>
-              {' '}· {hiddenCount} hidden
-            </Text>
-          )}
-        </Box>
-        <Text dimColor>
-          {showExcluded ? 'Showing all files' : 'Excluded files hidden'}
-        </Text>
+      <Box marginTop={1}>
+        <Text bold color="green">{selected.size}</Text>
+        <Text dimColor>/</Text>
+        <Text color="blue">{files.length}</Text>
+        <Text dimColor> selected</Text>
+        {hiddenCount > 0 && (
+          <Text dimColor> · {hiddenCount} hidden</Text>
+        )}
+        <Text dimColor> · </Text>
+        <Text dimColor>{showExcluded ? 'all files' : 'filtered'}</Text>
       </Box>
     </Box>
   );

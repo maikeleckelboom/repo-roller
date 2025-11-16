@@ -37,8 +37,8 @@ export interface TreeColumnWidths {
 /** Default column widths */
 export const DEFAULT_COLUMN_WIDTHS: TreeColumnWidths = {
   selection: 4, // "[x] " or "[ ] "
-  expandMarker: 2, // "▾ " or "▸ " or "• "
-  icon: 3, // "TS " or "  " (glyph + space)
+  expandMarker: 2, // "▾ " or "▸ " or "  "
+  icon: 0, // No badges - rely on color and suffixes
   indent: 2, // Two spaces per depth level
 };
 
@@ -181,31 +181,38 @@ export function getRowStyling(
   iconInfo: FileIconInfo,
   theme: TreeTheme
 ): RowStyling {
-  // Name color based on state
-  let nameColor: string | undefined;
-  if (state.isCursor) {
-    nameColor = theme.colors.cursor;
-  } else if (state.isSelected) {
-    nameColor = theme.colors.selected;
-  } else if (state.isPartiallySelected) {
-    nameColor = theme.colors.partial;
-  } else {
-    nameColor = undefined;
-  }
-
-  // Icon color based on file type
-  let iconColor: string;
+  // Determine file type color (used for filename when not selected/cursor)
+  let fileTypeColor: string;
   if (node.isFile) {
-    // Check for language-specific color first
     const langColor = getLanguageColor(iconInfo.iconId, theme);
     if (langColor) {
-      iconColor = langColor;
+      fileTypeColor = langColor;
     } else {
-      iconColor = getCategoryColor(iconInfo.category, theme);
+      fileTypeColor = getCategoryColor(iconInfo.category, theme);
     }
   } else {
-    iconColor = theme.colors.folder;
+    fileTypeColor = theme.colors.folder;
   }
+
+  // Name color based on state, falling back to file type color
+  let nameColor: string | undefined;
+  let nameBold = false;
+
+  if (state.isCursor) {
+    nameColor = theme.colors.cursor;
+    nameBold = true;
+  } else if (!node.isFile) {
+    // Folders always bold with folder color
+    nameColor = theme.colors.folder;
+    nameBold = true;
+  } else {
+    // Files use their type color (TypeScript blue, test magenta, etc.)
+    nameColor = fileTypeColor;
+    nameBold = false;
+  }
+
+  // Icon color (expand/collapse marker color)
+  const iconColor = node.isFile ? theme.colors.dim : theme.colors.folder;
 
   // Selection marker color
   let selectionColor: string;
@@ -219,7 +226,7 @@ export function getRowStyling(
 
   return {
     nameColor,
-    nameBold: state.isCursor,
+    nameBold,
     selectionColor,
     iconColor,
   };

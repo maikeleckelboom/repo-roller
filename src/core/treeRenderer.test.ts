@@ -97,7 +97,7 @@ describe('treeRenderer', () => {
 
     it('should render leaf marker for file', () => {
       const marker = renderExpandMarker(true, false, defaultTheme);
-      expect(marker).toBe('• ');
+      expect(marker).toBe('  ');
     });
   });
 
@@ -125,9 +125,8 @@ describe('treeRenderer', () => {
       const state = createRowState();
       const row = renderTreeRow(node, state, defaultTheme);
 
-      // Check structure: selection (4) + expandMarker (2) + icon (3) + name
-      // Icon is Nerd Font glyph (single char) or ASCII fallback, padded to 3
-      expect(row).toMatch(/^\[ \] • .{2} ?index\.ts$/);
+      // Check structure: selection (4) + expandMarker (2) + name (no icon column)
+      expect(row).toMatch(/^\[ \]   index\.ts$/);
       expect(row).toContain('index.ts');
       expect(row.substring(0, 4)).toBe('[ ] ');
     });
@@ -137,7 +136,7 @@ describe('treeRenderer', () => {
       const state = createRowState({ isSelected: true });
       const row = renderTreeRow(node, state, defaultTheme);
 
-      expect(row).toMatch(/^\[x\] • .{2} ?app\.js$/);
+      expect(row).toMatch(/^\[x\]   app\.js$/);
       expect(row.substring(0, 4)).toBe('[x] ');
     });
 
@@ -146,7 +145,7 @@ describe('treeRenderer', () => {
       const state = createRowState({ isExpanded: true });
       const row = renderTreeRow(node, state, defaultTheme);
 
-      expect(row).toMatch(/^\[ \] ▾ .{2} ?src$/);
+      expect(row).toMatch(/^\[ \] ▾ src$/);
       expect(row).toContain('src');
     });
 
@@ -155,7 +154,7 @@ describe('treeRenderer', () => {
       const state = createRowState({ isExpanded: false });
       const row = renderTreeRow(node, state, defaultTheme);
 
-      expect(row).toMatch(/^\[ \] ▸ .{2} ?tests$/);
+      expect(row).toMatch(/^\[ \] ▸ tests$/);
       expect(row).toContain('tests');
     });
 
@@ -181,7 +180,7 @@ describe('treeRenderer', () => {
       const row = renderTreeRow(node, state, defaultTheme);
 
       // Should have vertical lines for indentation
-      expect(row).toMatch(/^│ │ \[ \] • .{2} ?nested\.ts$/);
+      expect(row).toMatch(/^│ │ \[ \]   nested\.ts$/);
       expect(row).toContain('nested.ts');
       expect(row.substring(0, 4)).toBe('│ │ ');
     });
@@ -195,12 +194,11 @@ describe('treeRenderer', () => {
       const row2 = renderTreeRow(node2, state, defaultTheme);
 
       // Selection marker should start at same position (0)
-      // Icon should start at same position (4 + 2 = 6)
-      // Name should start at same position (4 + 2 + 3 = 9)
-      const iconPos1 = row1.indexOf('•');
-      const iconPos2 = row2.indexOf('•');
-      expect(iconPos1).toBe(iconPos2);
-      expect(iconPos1).toBe(4); // After selection marker
+      // Name should start at same position (4 + 2 = 6) - no icon column
+      const namePos1 = row1.indexOf('short.ts');
+      const namePos2 = row2.indexOf('very-long-name.ts');
+      expect(namePos1).toBe(namePos2);
+      expect(namePos1).toBe(6); // After selection marker + expand marker
     });
 
     it('should not jitter when selection state changes', () => {
@@ -253,7 +251,7 @@ describe('treeRenderer', () => {
 
       expect(parts.selection).toHaveLength(4);
       expect(parts.expandMarker).toHaveLength(2);
-      expect(parts.icon).toHaveLength(3);
+      expect(parts.icon).toHaveLength(0); // No icon column - badges removed
       expect(parts.name).toBe('file.ts');
       expect(parts.indent).toBe('');
     });
@@ -278,22 +276,22 @@ describe('treeRenderer', () => {
   describe('getFixedWidth', () => {
     it('should calculate fixed width for depth 1', () => {
       const width = getFixedWidth(1);
-      // selection (4) + expand (2) + icon (3) + indent (0)
-      expect(width).toBe(9);
+      // selection (4) + expand (2) + icon (0) + indent (0)
+      expect(width).toBe(6);
     });
 
     it('should calculate fixed width for depth 3', () => {
       const width = getFixedWidth(3);
-      // selection (4) + expand (2) + icon (3) + indent (2 * 2)
-      expect(width).toBe(13);
+      // selection (4) + expand (2) + icon (0) + indent (2 * 2)
+      expect(width).toBe(10);
     });
   });
 
   describe('calculateMaxNameWidth', () => {
     it('should calculate available width for name', () => {
       const width = calculateMaxNameWidth(80, 1, DEFAULT_COLUMN_WIDTHS, 10);
-      // 80 - 9 (fixed) - 10 (hint) = 61
-      expect(width).toBe(61);
+      // 80 - 6 (fixed) - 10 (hint) = 64
+      expect(width).toBe(64);
     });
 
     it('should ensure minimum width of 10', () => {

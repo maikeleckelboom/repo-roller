@@ -50,9 +50,9 @@ describe('CustomTreeSelect', () => {
 
       const output = lastFrame() ?? '';
       // Should show file selection header
-      expect(output).toContain('Step 1: Select Files');
+      expect(output).toContain('Select Files');
       // Should show file count
-      expect(output).toContain('files selected');
+      expect(output).toContain('selected');
     });
 
     it('should handle deeply nested directory structure', () => {
@@ -69,7 +69,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      expect(lastFrame()).toContain('files selected');
+      expect(lastFrame()).toContain('selected');
     });
 
     it('should sort directories before files', () => {
@@ -88,7 +88,7 @@ describe('CustomTreeSelect', () => {
 
       // Tree should be built with directories first
       const output = lastFrame() ?? '';
-      expect(output).toContain('Step 1: Select Files');
+      expect(output).toContain('Select Files');
     });
 
     it('should handle files at root level', () => {
@@ -106,7 +106,7 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('3 / 3 files selected');
+      expect(output).toContain('3/3 selected');
     });
 
     it('should sort files alphabetically within directories', () => {
@@ -124,7 +124,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // All files should be counted
-      expect(lastFrame()).toContain('3 / 3 files selected');
+      expect(lastFrame()).toContain('3/3 selected');
     });
   });
 
@@ -144,7 +144,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // Should show 2 out of 3 files selected (the ones with isDefaultIncluded=true)
-      expect(lastFrame()).toContain('2 / 3 files selected');
+      expect(lastFrame()).toContain('2/3 selected');
     });
 
     it('should handle all files excluded (none pre-selected)', () => {
@@ -160,7 +160,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      expect(lastFrame()).toContain('0 / 2 files selected');
+      expect(lastFrame()).toContain('0/2 selected');
     });
 
     it('should handle all files pre-selected', () => {
@@ -177,7 +177,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      expect(lastFrame()).toContain('3 / 3 files selected');
+      expect(lastFrame()).toContain('3/3 selected');
     });
 
     it('should maintain selection state across re-renders', async () => {
@@ -194,14 +194,14 @@ describe('CustomTreeSelect', () => {
       );
 
       // Initial state
-      expect(lastFrame()).toContain('1 / 2 files selected');
+      expect(lastFrame()).toContain('1/2 selected');
 
       // Navigate and toggle
       stdin.write('\x1B[B'); // Down arrow
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Selection should be maintained
-      expect(lastFrame()).toContain('1 / 2 files selected');
+      expect(lastFrame()).toContain('1/2 selected');
     });
   });
 
@@ -217,10 +217,10 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('Navigate');
-      expect(output).toContain('Toggle');
-      expect(output).toContain('Confirm');
-      expect(output).toContain('Quit');
+      expect(output).toContain('navigate');
+      expect(output).toContain('toggle');
+      expect(output).toContain('confirm');
+      expect(output).toContain('quit');
     });
 
     it('should handle quit command (Q)', async () => {
@@ -300,7 +300,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // Initially no files selected
-      expect(lastFrame()).toContain('0 / 1 files selected');
+      expect(lastFrame()).toContain('0/1 selected');
 
       // Press space to toggle (need to navigate to the file first)
       // By default cursor is at first item
@@ -309,7 +309,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // File should now be selected
-      expect(lastFrame()).toContain('1 / 1 files selected');
+      expect(lastFrame()).toContain('1/1 selected');
     });
 
     it('should navigate down with down arrow', async () => {
@@ -327,14 +327,14 @@ describe('CustomTreeSelect', () => {
       );
 
       // Initially 1 file selected (a.ts)
-      expect(lastFrame()).toContain('1 / 3 files selected');
+      expect(lastFrame()).toContain('1/3 selected');
 
       // Navigate down to directory first, then to first file
       stdin.write('\x1B[A'); // Up arrow (does nothing at top)
       await new Promise(resolve => setTimeout(resolve, 30));
 
       // Still same selection
-      expect(lastFrame()).toContain('1 / 3 files selected');
+      expect(lastFrame()).toContain('1/3 selected');
     });
 
     it('should navigate up with up arrow', async () => {
@@ -359,7 +359,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 30));
 
       // Should be back at top
-      expect(lastFrame()).toContain('1 / 2 files selected');
+      expect(lastFrame()).toContain('1/2 selected');
     });
 
     it('should expand directory with right arrow', async () => {
@@ -379,7 +379,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('1 / 1 files selected');
+      expect(output).toContain('1/1 selected');
     });
 
     it('should collapse directory with left arrow', async () => {
@@ -399,7 +399,7 @@ describe('CustomTreeSelect', () => {
       stdin.write('\x1B[D'); // Left arrow
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(lastFrame()).toContain('2 / 2 files selected');
+      expect(lastFrame()).toContain('2/2 selected');
     });
 
     it('should not move cursor past boundaries', async () => {
@@ -425,7 +425,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Should still work fine
-      expect(lastFrame()).toContain('1 / 1 files selected');
+      expect(lastFrame()).toContain('1/1 selected');
     });
 
     it('should show toggle excluded files instruction', () => {
@@ -439,7 +439,7 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('Show/Hide');
+      expect(output).toContain('H filter');
       expect(output).toContain('H');
     });
 
@@ -460,7 +460,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Initially showing all files
-      expect(lastFrame()).toContain('Showing all files');
+      expect(lastFrame()).toContain('all files');
 
       // Press H to hide excluded
       stdin.write('H');
@@ -493,7 +493,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Should be back to showing all
-      expect(lastFrame()).toContain('Showing all files');
+      expect(lastFrame()).toContain('all files');
     });
   });
 
@@ -510,7 +510,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      expect(lastFrame()).toContain('1 / 1 files selected');
+      expect(lastFrame()).toContain('1/1 selected');
     });
 
     it('should handle multiple files in same directory', () => {
@@ -528,7 +528,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // 2 out of 3 files are pre-selected
-      expect(lastFrame()).toContain('2 / 3 files selected');
+      expect(lastFrame()).toContain('2/3 selected');
     });
 
     it('should toggle entire directory when space pressed on directory', async () => {
@@ -545,14 +545,14 @@ describe('CustomTreeSelect', () => {
       );
 
       // Initially all files selected (directory should show full selection)
-      expect(lastFrame()).toContain('2 / 2 files selected');
+      expect(lastFrame()).toContain('2/2 selected');
 
       // Cursor starts on src directory - toggle it
       stdin.write(' ');
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // All files in directory should be deselected
-      expect(lastFrame()).toContain('0 / 2 files selected');
+      expect(lastFrame()).toContain('0/2 selected');
     });
 
     it('should select all files in directory when toggling partially selected directory', async () => {
@@ -570,14 +570,14 @@ describe('CustomTreeSelect', () => {
       );
 
       // Initially 1 out of 3 files selected (partial)
-      expect(lastFrame()).toContain('1 / 3 files selected');
+      expect(lastFrame()).toContain('1/3 selected');
 
       // Toggle directory (should select all since only partial)
       stdin.write(' ');
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // All files should now be selected
-      expect(lastFrame()).toContain('3 / 3 files selected');
+      expect(lastFrame()).toContain('3/3 selected');
     });
 
     it('should show partial selection indicator for directories', () => {
@@ -715,7 +715,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Should still render properly despite error
-      expect(lastFrame()).toContain('files selected');
+      expect(lastFrame()).toContain('selected');
     });
 
     it('should handle setUserSetting error gracefully', async () => {
@@ -737,7 +737,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Should render without crashing
-      expect(lastFrame()).toContain('files selected');
+      expect(lastFrame()).toContain('selected');
     });
   });
 
@@ -752,7 +752,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      expect(lastFrame()).toContain('0 / 0 files selected');
+      expect(lastFrame()).toContain('0/0 selected');
     });
 
     it('should allow confirmation with no files', async () => {
@@ -792,7 +792,7 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      expect(lastFrame()).toContain('3 / 5 files selected');
+      expect(lastFrame()).toContain('3/5 selected');
     });
 
     it('should show themed icons (Nerd Font or ASCII fallback)', () => {
@@ -863,7 +863,7 @@ describe('CustomTreeSelect', () => {
       expect(output).toMatch(/▸|▾/);
     });
 
-    it('should display decorative borders', () => {
+    it('should display header title', () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -874,8 +874,7 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('╭');
-      expect(output).toContain('╯');
+      expect(output).toContain('Select Files');
     });
 
     it('should show visibility status indicator', () => {
@@ -890,7 +889,7 @@ describe('CustomTreeSelect', () => {
 
       const output = lastFrame() ?? '';
       // Should show text for visibility status
-      expect(output).toMatch(/Showing all files|Excluded files hidden/);
+      expect(output).toMatch(/all files|filtered/);
     });
 
     it('should show hidden files count when excluded files are hidden', async () => {
@@ -939,7 +938,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Cursor should be adjusted to valid position
-      expect(lastFrame()).toContain('1 / 3 files selected');
+      expect(lastFrame()).toContain('1/3 selected');
     });
 
     it('should maintain cursor at boundary when at end', async () => {
@@ -962,7 +961,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Should stay in bounds
-      expect(lastFrame()).toContain('2 / 2 files selected');
+      expect(lastFrame()).toContain('2/2 selected');
     });
   });
 
@@ -982,7 +981,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // Should count all files
-      expect(lastFrame()).toContain('1 / 3 files selected');
+      expect(lastFrame()).toContain('1/3 selected');
     });
 
     it('should filter excluded files when showExcluded is false', async () => {
@@ -1005,7 +1004,7 @@ describe('CustomTreeSelect', () => {
 
       // Total count should still show all files for context
       const output = lastFrame() ?? '';
-      expect(output).toContain('1 / 3 files selected');
+      expect(output).toContain('1/3 selected');
       // But hidden count should be displayed
       expect(output).toContain('hidden');
     });
@@ -1027,7 +1026,7 @@ describe('CustomTreeSelect', () => {
       );
 
       // Initially 1 selected
-      expect(lastFrame()).toContain('1 / 3 files selected');
+      expect(lastFrame()).toContain('1/3 selected');
 
       // Expand src directory first
       stdin.write('\x1B[C'); // Right arrow to expand
@@ -1038,7 +1037,7 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // All files should be selected
-      expect(lastFrame()).toContain('3 / 3 files selected');
+      expect(lastFrame()).toContain('3/3 selected');
     });
 
     it('should preserve selections when filtering', async () => {
@@ -1061,14 +1060,14 @@ describe('CustomTreeSelect', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Selection should be preserved
-      expect(lastFrame()).toContain('1 / 2 files selected');
+      expect(lastFrame()).toContain('1/2 selected');
 
       // Show excluded files again
       stdin.write('H');
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Selection still preserved
-      expect(lastFrame()).toContain('1 / 2 files selected');
+      expect(lastFrame()).toContain('1/2 selected');
     });
   });
 
