@@ -106,7 +106,53 @@ export interface RenderOptions {
 }
 
 /**
- * CLI command options (raw from commander)
+ * Commander.js options (raw from parser, uses different naming convention)
+ * Note: Commander converts --no-X flags to X: false, not noX: true
+ */
+export interface CommanderOptions {
+  readonly out?: string;
+  readonly outTemplate?: string;
+  readonly format?: string;
+  readonly include?: string[];
+  readonly exclude?: string[];
+  readonly ext?: string;
+  readonly lang?: string;
+  readonly maxSize?: number;
+  readonly tests?: boolean;  // --no-tests becomes tests: false
+  readonly deps?: boolean;   // --no-deps becomes deps: false
+  readonly generated?: boolean; // --no-generated becomes generated: false
+  readonly stripComments?: boolean;
+  readonly tree?: boolean;
+  readonly stats?: boolean;
+  readonly sort?: string;
+  readonly interactive?: boolean;
+  readonly dryRun?: boolean;
+  readonly statsOnly?: boolean;
+  readonly preset?: string;
+  readonly profile?: string;
+  readonly compact?: boolean;
+  readonly indent?: number;
+  readonly toc?: boolean;
+  readonly frontMatter?: boolean;
+  readonly listPresets?: boolean;
+  readonly listProfiles?: boolean;
+  readonly showProfile?: string;
+  readonly examples?: boolean;
+  readonly verbose?: boolean;
+  readonly tokenCount?: boolean;
+  readonly target?: string;
+  readonly warnTokens?: number;
+  readonly listProviders?: boolean;
+  readonly maxTokens?: number;
+  readonly maxCost?: number;
+  readonly maxCostEur?: number;
+  readonly validate?: boolean;
+  readonly yes?: boolean;
+  readonly defaults?: boolean;
+}
+
+/**
+ * CLI command options (normalized for internal use)
  */
 export interface CliOptions {
   readonly root?: string;

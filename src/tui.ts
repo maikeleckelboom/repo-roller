@@ -4,23 +4,13 @@ import React from 'react';
 import type { ResolvedOptions, ScanResult } from './core/types.js';
 import { scanFiles } from './core/scan.js';
 import { render as renderOutput } from './core/render.js';
-import { App } from './components/App.js';
+import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { Confirm } from './components/Confirm.js';
 import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost, analyzeTokenUsage } from './core/tokens.js';
 import type { TokenAnalysisContext } from './core/tokens.js';
-
-/**
- * Format bytes to human-readable string
- */
-function formatBytes(bytes: number): string {
-  if (bytes === 0) {return '0 B';}
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-}
+import { formatBytes } from './core/helpers.js';
 
 /**
  * Run interactive TUI mode
@@ -53,7 +43,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     let inkExitPromise: Promise<void> | undefined;
     selectedPaths = await new Promise<string[]>((resolve) => {
       const { waitUntilExit } = render(
-        React.createElement(App, {
+        React.createElement(CustomTreeSelect, {
           files: scan.files,
           onComplete: (paths: string[]) => {
             resolve(paths);

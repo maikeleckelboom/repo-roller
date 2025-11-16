@@ -4,6 +4,7 @@ import fg from 'fast-glob';
 import ignorePackage from 'ignore';
 import { minimatch } from 'minimatch';
 import type { FileInfo, ResolvedOptions, ScanResult } from './types.js';
+import { normalizeExtension } from './helpers.js';
 
 // Type workaround for CommonJS default export
 const createIgnore = ignorePackage as unknown as () => {
@@ -14,12 +15,22 @@ const createIgnore = ignorePackage as unknown as () => {
 type Ignore = ReturnType<typeof createIgnore>;
 
 /**
+ * Constants for binary file detection
+ */
+const BINARY_DETECTION = {
+  /** Maximum bytes to sample for binary detection */
+  SAMPLE_SIZE: 8000,
+  /** Threshold ratio of non-text bytes to consider file binary */
+  NON_TEXT_THRESHOLD: 0.3,
+} as const;
+
+/**
  * Check if a file is likely binary based on content sampling
  */
 async function isBinaryFile(path: string): Promise<boolean> {
   try {
     const buffer = await readFile(path);
-    const sampleSize = Math.min(8000, buffer.length);
+    const sampleSize = Math.min(BINARY_DETECTION.SAMPLE_SIZE, buffer.length);
 
     // Count null bytes and non-text characters
     let nullBytes = 0;
@@ -36,7 +47,7 @@ async function isBinaryFile(path: string): Promise<boolean> {
     }
 
     // If we find null bytes or too many non-text bytes, it's likely binary
-    return nullBytes > 0 || nonTextBytes / sampleSize > 0.3;
+    return nullBytes > 0 || nonTextBytes / sampleSize > BINARY_DETECTION.NON_TEXT_THRESHOLD;
   } catch {
     return true; // If we can't read it, assume binary
   }
@@ -135,13 +146,6 @@ async function loadGitignore(dir: string): Promise<Ignore> {
   }
 
   return ig;
-}
-
-/**
- * Normalize extension by removing leading dot
- */
-function normalizeExtension(ext: string): string {
-  return ext.startsWith('.') ? ext.slice(1) : ext;
 }
 
 /**

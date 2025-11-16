@@ -2,6 +2,40 @@
  * Token counting and LLM cost estimation utilities
  */
 
+/**
+ * Constants for token estimation heuristics
+ */
+export const TOKEN_ESTIMATION = {
+  /** Base characters per token ratio (BPE tokenizer average) */
+  CHARS_PER_TOKEN: 4.0,
+  /** Large content threshold (bytes) for simplified estimation */
+  LARGE_CONTENT_THRESHOLD: 100000,
+  /** Whitespace density thresholds */
+  WHITESPACE: {
+    HIGH: 0.30,
+    MEDIUM: 0.25,
+    LOW: 0.20,
+  },
+  /** Symbol density thresholds */
+  SYMBOLS: {
+    VERY_HIGH: 0.35,
+    HIGH: 0.25,
+    MEDIUM: 0.20,
+  },
+  /** Correction factors for whitespace density */
+  WHITESPACE_CORRECTION: {
+    HIGH: 0.85,
+    MEDIUM: 0.90,
+    LOW: 0.95,
+  },
+  /** Correction factors for symbol density */
+  SYMBOL_CORRECTION: {
+    VERY_HIGH: 1.25,
+    HIGH: 1.15,
+    MEDIUM: 1.05,
+  },
+} as const;
+
 export interface LLMProvider {
   readonly name: string;
   readonly displayName: string;
@@ -85,10 +119,10 @@ export function estimateTokens(text: string): number {
 
   const charCount = text.length;
 
-  // For very large content (>100KB), use the simple 4.0 ratio
+  // For very large content (>100KB), use the simple ratio
   // which provides excellent accuracy as variations average out
-  if (charCount > 100000) {
-    return Math.ceil(charCount / 4.0);
+  if (charCount > TOKEN_ESTIMATION.LARGE_CONTENT_THRESHOLD) {
+    return Math.ceil(charCount / TOKEN_ESTIMATION.CHARS_PER_TOKEN);
   }
 
   // For small-to-medium content, account for both whitespace efficiency
@@ -106,17 +140,17 @@ export function estimateTokens(text: string): number {
   const symbolDensity = contentChars > 0 ? specialChars / contentChars : 0;
 
   // Base estimate
-  const baseEstimate = charCount / 4.0;
+  const baseEstimate = charCount / TOKEN_ESTIMATION.CHARS_PER_TOKEN;
 
   // Start with whitespace correction
   // High whitespace = efficient tokenization = reduce estimate
   let correctionFactor: number;
-  if (whitespaceDensity > 0.30) {
-    correctionFactor = 0.85;
-  } else if (whitespaceDensity > 0.25) {
-    correctionFactor = 0.90;
-  } else if (whitespaceDensity > 0.20) {
-    correctionFactor = 0.95;
+  if (whitespaceDensity > TOKEN_ESTIMATION.WHITESPACE.HIGH) {
+    correctionFactor = TOKEN_ESTIMATION.WHITESPACE_CORRECTION.HIGH;
+  } else if (whitespaceDensity > TOKEN_ESTIMATION.WHITESPACE.MEDIUM) {
+    correctionFactor = TOKEN_ESTIMATION.WHITESPACE_CORRECTION.MEDIUM;
+  } else if (whitespaceDensity > TOKEN_ESTIMATION.WHITESPACE.LOW) {
+    correctionFactor = TOKEN_ESTIMATION.WHITESPACE_CORRECTION.LOW;
   } else {
     correctionFactor = 1.0;
   }
@@ -124,15 +158,15 @@ export function estimateTokens(text: string): number {
   // Apply symbol density adjustment
   // High symbol density = more tokens = increase estimate
   // This counteracts the whitespace reduction for symbol-heavy code
-  if (symbolDensity > 0.35) {
+  if (symbolDensity > TOKEN_ESTIMATION.SYMBOLS.VERY_HIGH) {
     // Very high density (compact JSON, minified)
-    correctionFactor *= 1.25;
-  } else if (symbolDensity > 0.25) {
+    correctionFactor *= TOKEN_ESTIMATION.SYMBOL_CORRECTION.VERY_HIGH;
+  } else if (symbolDensity > TOKEN_ESTIMATION.SYMBOLS.HIGH) {
     // High density (TypeScript generics, complex expressions)
-    correctionFactor *= 1.15;
-  } else if (symbolDensity > 0.20) {
+    correctionFactor *= TOKEN_ESTIMATION.SYMBOL_CORRECTION.HIGH;
+  } else if (symbolDensity > TOKEN_ESTIMATION.SYMBOLS.MEDIUM) {
     // Medium-high density (typical code)
-    correctionFactor *= 1.05;
+    correctionFactor *= TOKEN_ESTIMATION.SYMBOL_CORRECTION.MEDIUM;
   }
   // Moderate-to-low density: no additional adjustment
 

@@ -2,7 +2,7 @@
 
 import { writeFile } from 'node:fs/promises';
 import { Command } from 'commander';
-import type { CliOptions, SortMode, ResolvedOptions, OutputFormat, RollerConfig, RepoRollerYmlConfig } from './core/types.js';
+import type { CliOptions, SortMode, ResolvedOptions, OutputFormat, RollerConfig, RepoRollerYmlConfig, CommanderOptions } from './core/types.js';
 import { loadConfig, loadRepoRollerYml, resolveOptions } from './core/config.js';
 import { scanFiles } from './core/scan.js';
 import { render } from './core/render.js';
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
     // DX improvements: Skip prompts
     .option('-y, --yes', 'Skip all prompts and use defaults (or saved preferences)')
     .option('--defaults', 'Alias for --yes')
-    .action(async (root: string, options: Record<string, unknown>) => {
+    .action(async (root: string, options: CommanderOptions) => {
       try {
         // Load config files early for info commands
         const config = await loadConfig(root);
@@ -141,7 +141,7 @@ async function main(): Promise<void> {
         }
 
         if (options.showProfile) {
-          displayProfileDetails(options.showProfile as string, repoRollerConfig);
+          displayProfileDetails(options.showProfile, repoRollerConfig);
           return;
         }
 
@@ -163,11 +163,11 @@ async function main(): Promise<void> {
 
         // Validate CLI options early
         const cliValidation = validateCliOptions({
-          ext: options.ext as string | undefined,
-          lang: options.lang as string | undefined,
-          maxSize: options.maxSize as number | undefined,
-          format: options.format as string | undefined,
-          target: options.target as string | undefined,
+          ext: options.ext,
+          lang: options.lang,
+          maxSize: options.maxSize,
+          format: options.format,
+          target: options.target,
         });
 
         if (!cliValidation.valid) {
@@ -190,46 +190,46 @@ async function main(): Promise<void> {
           }
         }
 
-        // Build CLI options object
+        // Build CLI options object (convert Commander naming to internal naming)
         const cliOptions: CliOptions = {
           root,
-          out: options.out as string | undefined,
-          outTemplate: options.outTemplate as string | undefined,
-          include: options.include as string[] | undefined,
-          exclude: options.exclude as string[] | undefined,
-          ext: options.ext as string | undefined,
-          lang: options.lang as string | undefined,
-          maxSize: options.maxSize as number | undefined,
-          stripComments: options.stripComments as boolean | undefined,
-          tree: options.tree as boolean | undefined,
-          stats: options.stats as boolean | undefined,
+          out: options.out,
+          outTemplate: options.outTemplate,
+          include: options.include,
+          exclude: options.exclude,
+          ext: options.ext,
+          lang: options.lang,
+          maxSize: options.maxSize,
+          stripComments: options.stripComments,
+          tree: options.tree,
+          stats: options.stats,
           sort: options.sort as SortMode | undefined,
-          interactive: options.interactive as boolean | undefined,
-          preset: options.preset as string | undefined,
-          profile: options.profile as string | undefined,
+          interactive: options.interactive,
+          preset: options.preset,
+          profile: options.profile,
           format: options.format as OutputFormat | undefined,
-          verbose: options.verbose as boolean | undefined,
+          verbose: options.verbose,
           // New DX options
-          dryRun: options.dryRun as boolean | undefined,
-          statsOnly: options.statsOnly as boolean | undefined,
+          dryRun: options.dryRun,
+          statsOnly: options.statsOnly,
           noTests: options.tests === false ? true : undefined,
           noDeps: options.deps === false ? true : undefined,
           noGenerated: options.generated === false ? true : undefined,
           // Format-specific options
-          compact: options.compact as boolean | undefined,
-          indent: options.indent as number | undefined,
-          toc: options.toc as boolean | undefined,
-          frontMatter: options.frontMatter as boolean | undefined,
+          compact: options.compact,
+          indent: options.indent,
+          toc: options.toc,
+          frontMatter: options.frontMatter,
           // Token counting options
-          tokenCount: options.tokenCount as boolean | undefined,
-          target: options.target as string | undefined,
-          warnTokens: options.warnTokens as number | undefined,
+          tokenCount: options.tokenCount,
+          target: options.target,
+          warnTokens: options.warnTokens,
           // Token budget options
-          maxTokens: options.maxTokens as number | undefined,
-          maxCost: options.maxCost as number | undefined,
-          maxCostEur: options.maxCostEur as number | undefined,
+          maxTokens: options.maxTokens,
+          maxCost: options.maxCost,
+          maxCostEur: options.maxCostEur,
           // DX improvements: Skip prompts
-          yes: (options.yes as boolean | undefined) ?? (options.defaults as boolean | undefined),
+          yes: options.yes ?? options.defaults,
         };
 
         // Resolve final options
