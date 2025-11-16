@@ -13,6 +13,37 @@ import { estimateTokens, analyzeTokenUsage, formatNumber, calculateCost, LLM_PRO
 import type { TokenAnalysisContext } from './core/tokens.js';
 import { validateRollerConfig, validateRepoRollerYml, validateCliOptions, formatValidationErrors } from './core/validation.js';
 import * as ui from './core/ui.js';
+import { selectFilesWithinBudget, formatBudgetUsage } from './core/budget.js';
+import type { BudgetConfig, BudgetSelectionResult } from './core/budget.js';
+import type { FileInfo } from './core/types.js';
+
+/**
+ * Parse token budget string (e.g., "50000", "50k", "1m")
+ */
+function parseTokenBudget(value: string): number {
+  const trimmed = value.trim().toLowerCase();
+
+  if (trimmed.endsWith('k')) {
+    const num = parseFloat(trimmed.slice(0, -1));
+    if (!isNaN(num)) {
+      return num * 1000;
+    }
+  }
+
+  if (trimmed.endsWith('m')) {
+    const num = parseFloat(trimmed.slice(0, -1));
+    if (!isNaN(num)) {
+      return num * 1_000_000;
+    }
+  }
+
+  const num = parseFloat(trimmed);
+  if (!isNaN(num)) {
+    return num;
+  }
+
+  throw new Error(`Invalid token budget: ${value}. Use numbers like 50000, 50k, or 1m`);
+}
 
 /**
  * Main CLI function
@@ -83,6 +114,10 @@ async function main(): Promise<void> {
     .option('--target <provider>', 'Target LLM provider (claude-sonnet, gpt-4o, etc.)')
     .option('--warn-tokens <number>', 'Warn if output exceeds this token count', parseInt)
     .option('--list-providers', 'List all supported LLM providers')
+    // Token budget options
+    .option('--max-tokens <number>', 'Maximum token budget (e.g., 50000, 50k, 1m)', parseTokenBudget)
+    .option('--max-cost <dollars>', 'Maximum cost budget in USD (e.g., 0.50)', parseFloat)
+    .option('--max-cost-eur <euros>', 'Maximum cost budget in EUR (e.g., 0.45)', parseFloat)
     // Validation options
     .option('--validate', 'Validate configuration files without generating output')
     // DX improvements: Skip prompts
@@ -189,6 +224,10 @@ async function main(): Promise<void> {
           tokenCount: options.tokenCount as boolean | undefined,
           target: options.target as string | undefined,
           warnTokens: options.warnTokens as number | undefined,
+          // Token budget options
+          maxTokens: options.maxTokens as number | undefined,
+          maxCost: options.maxCost as number | undefined,
+          maxCostEur: options.maxCostEur as number | undefined,
           // DX improvements: Skip prompts
           yes: (options.yes as boolean | undefined) ?? (options.defaults as boolean | undefined),
         };
@@ -314,7 +353,7 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
   console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));
 
   // Scan files
-  const scan = await scanFiles(options);
+  let scan = await scanFiles(options);
 
   if (scan.files.length === 0) {
     displayNoFilesError(options);
@@ -322,6 +361,17 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
   }
 
   console.log(ui.success(`Found ${ui.colors.primary(scan.files.length.toString())} files ${ui.colors.dim(`(${formatBytes(scan.totalBytes)})`)}`));
+
+  // Apply token/cost budget constraints if specified
+  const budgetResult = await applyBudgetConstraints(scan, options);
+  if (budgetResult) {
+    scan = {
+      ...scan,
+      files: budgetResult.selectedFiles,
+      totalBytes: budgetResult.selectedFiles.reduce((sum, f) => sum + f.sizeBytes, 0),
+    };
+    displayBudgetSummary(budgetResult);
+  }
 
   // Render output
   const formatLabel = options.format.toUpperCase();
@@ -338,6 +388,91 @@ async function runNonInteractive(options: ResolvedOptions): Promise<void> {
   if (options.tokenCount) {
     displayTokenAnalysis(output, options);
   }
+}
+
+/**
+ * Apply budget constraints to file selection
+ */
+async function applyBudgetConstraints(
+  scan: { files: readonly FileInfo[] },
+  options: ResolvedOptions
+): Promise<BudgetSelectionResult | null> {
+  // Check if any budget constraint is specified
+  if (!options.maxTokens && !options.maxCost && !options.maxCostEur) {
+    return null;
+  }
+
+  // Determine budget config
+  let budgetConfig: BudgetConfig;
+
+  if (options.maxTokens) {
+    budgetConfig = {
+      type: 'tokens',
+      limit: options.maxTokens,
+      provider: options.targetProvider ?? 'claude-haiku',
+    };
+  } else if (options.maxCost) {
+    budgetConfig = {
+      type: 'usd',
+      limit: options.maxCost,
+      provider: options.targetProvider ?? 'claude-haiku',
+    };
+  } else if (options.maxCostEur) {
+    budgetConfig = {
+      type: 'eur',
+      limit: options.maxCostEur,
+      provider: options.targetProvider ?? 'claude-haiku',
+    };
+  } else {
+    return null;
+  }
+
+  console.log(ui.status('analyze', `Applying budget constraints ${ui.colors.dim(`(${formatBudgetLimit(budgetConfig)})`)}`));
+
+  const result = await selectFilesWithinBudget(
+    scan.files,
+    budgetConfig,
+    undefined, // Use default middleware
+    options.root
+  );
+
+  return result;
+}
+
+/**
+ * Format budget limit for display
+ */
+function formatBudgetLimit(config: BudgetConfig): string {
+  switch (config.type) {
+    case 'tokens':
+      if (config.limit >= 1_000_000) {
+        return `${(config.limit / 1_000_000).toFixed(1)}M tokens`;
+      } else if (config.limit >= 1000) {
+        return `${(config.limit / 1000).toFixed(0)}K tokens`;
+      }
+      return `${config.limit} tokens`;
+    case 'usd':
+      return `$${config.limit.toFixed(2)}`;
+    case 'eur':
+      return `€${config.limit.toFixed(2)}`;
+  }
+}
+
+/**
+ * Display budget selection summary
+ */
+function displayBudgetSummary(result: BudgetSelectionResult): void {
+  const selected = result.selectedFiles.length;
+  const excluded = result.excludedFiles.length;
+  const utilization = result.utilizationPercent.toFixed(1);
+
+  if (excluded > 0) {
+    console.log(ui.warning(`Budget constraint: excluded ${ui.colors.warning(excluded.toString())} files`));
+  }
+
+  console.log(ui.success(`Selected ${ui.colors.primary(selected.toString())} files within budget ${ui.colors.dim(`(${utilization}% utilized)`)}`));
+  console.log(ui.keyValue('  Budget usage', formatBudgetUsage(result)));
+  console.log('');
 }
 
 /**

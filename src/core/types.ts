@@ -147,6 +147,10 @@ export interface CliOptions {
   readonly tokenCount?: boolean;
   readonly target?: string;
   readonly warnTokens?: number;
+  // Token budget options
+  readonly maxTokens?: number;
+  readonly maxCost?: number;
+  readonly maxCostEur?: number;
   // DX improvements: Skip prompts
   readonly yes?: boolean;
 }
@@ -183,6 +187,10 @@ export interface ResolvedOptions {
   readonly tokenCount: boolean;
   readonly targetProvider?: string;
   readonly warnTokens?: number;
+  // Token budget options
+  readonly maxTokens?: number;
+  readonly maxCost?: number;
+  readonly maxCostEur?: number;
   // DX improvements: Skip prompts
   readonly yes: boolean;
   // Tracking what was explicitly specified (for smarter recommendations)

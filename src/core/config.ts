@@ -317,6 +317,10 @@ export function resolveOptions(
     tokenCount: cli.tokenCount ?? options.tokenCount,
     targetProvider: cli.target ?? options.targetProvider,
     warnTokens: cli.warnTokens ?? options.warnTokens,
+    // Token budget options
+    maxTokens: cli.maxTokens ?? options.maxTokens,
+    maxCost: cli.maxCost ?? options.maxCost,
+    maxCostEur: cli.maxCostEur ?? options.maxCostEur,
     // DX improvements: Skip prompts
     yes: cli.yes ?? options.yes,
     // Track what was explicitly specified
