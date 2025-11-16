@@ -433,5 +433,59 @@ export function gradientText(text: string): string {
   return result;
 }
 
+/**
+ * Create a compact horizontal bar for percentages
+ */
+export function percentBar(percent: number, width = 14): string {
+  const filled = Math.round((percent / 100) * width);
+  const empty = width - filled;
+  return colors.primary('█'.repeat(filled)) + colors.dim('░'.repeat(empty));
+}
+
+/**
+ * Format a language breakdown line with bar
+ */
+export function languageBar(name: string, percent: number, barWidth = 14): string {
+  const nameFormatted = name.padEnd(12);
+  const bar = percentBar(percent, barWidth);
+  const pct = colors.dim(`${percent.toFixed(0)}%`.padStart(4));
+  return `  ${nameFormatted} ${bar} ${pct}`;
+}
+
+/**
+ * Format a compact inline percentage list
+ */
+export function inlinePercentages(items: Array<{ name: string; percent: number }>): string {
+  return items
+    .map(({ name, percent }) => `${name}(${percent.toFixed(0)}%)`)
+    .join('  ');
+}
+
+/**
+ * Format directory size breakdown
+ */
+export function directoryBreakdown(dir: string, percent: number): string {
+  return `  ${colors.dim(symbols.bullet)} ${dir.padEnd(25)} ${colors.primary(`${percent.toFixed(0)}%`)}`;
+}
+
+/**
+ * Create context fit status line
+ */
+export function contextFitLine(tokens: number, contextSize: number): string {
+  const fits = tokens <= contextSize;
+  const icon = fits ? colors.success(symbols.check) : colors.error(symbols.cross);
+  const contextLabel = contextSize >= 1_000_000
+    ? `${(contextSize / 1_000_000).toFixed(0)}M`
+    : `${(contextSize / 1_000).toFixed(0)}K`;
+  return `${icon} Fits ${contextLabel} context`;
+}
+
+/**
+ * Format approximate cost range
+ */
+export function costRange(lowCost: number, highCost: number): string {
+  return `$${lowCost.toFixed(2)} - $${highCost.toFixed(2)}`;
+}
+
 // Export the color palette for custom use
 export { colors, symbols, box };

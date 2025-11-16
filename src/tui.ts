@@ -8,9 +8,9 @@ import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { Confirm } from './components/Confirm.js';
 import { loadUserSettings, saveUserSettings } from './core/userSettings.js';
 import * as ui from './core/ui.js';
-import { estimateTokens, calculateCost, analyzeTokenUsage } from './core/tokens.js';
-import type { TokenAnalysisContext } from './core/tokens.js';
+import { estimateTokens } from './core/tokens.js';
 import { formatBytes } from './core/helpers.js';
+import { displayGenerationSummary, displayDetailedLLMAnalysis } from './cli/display.js';
 
 /**
  * Run interactive TUI mode
@@ -150,8 +150,8 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   const previewOutput = await renderOutput(scan, updatedOptions);
   const estimatedTokens = estimateTokens(previewOutput);
 
-  // Display beautiful summary matching non-interactive style
-  displayInteractiveSummary(scan, updatedOptions, estimatedTokens);
+  // Display repo-first generation summary
+  displayGenerationSummary(scan, updatedOptions, estimatedTokens);
 
   let shouldGenerate: boolean;
   if (options.yes) {
@@ -179,116 +179,10 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   console.log(ui.status('write', `Output written to ${ui.colors.success(options.outFile)}`));
   console.log('');
 
-  // Display token analysis if enabled
-  if (options.tokenCount) {
-    displayInteractiveTokenAnalysis(output, options);
+  // Display detailed LLM analysis only if --llm flag is set
+  if (options.showLLMReport) {
+    displayDetailedLLMAnalysis(output, options);
   }
 
   console.log(ui.separator());
-}
-
-/**
- * Display beautiful summary for interactive mode
- */
-function displayInteractiveSummary(
-  scan: ScanResult,
-  options: ResolvedOptions,
-  estimatedTokens: number
-): void {
-  console.log('');
-  console.log(ui.section('Generation Summary'));
-
-  // Key metrics
-  console.log(ui.keyValue('Files selected', ui.colors.primary(scan.files.length.toString())));
-  console.log(ui.keyValue('Total size', ui.fileSize(scan.totalBytes)));
-  console.log(ui.keyValue('Estimated tokens', ui.tokenCount(estimatedTokens)));
-  console.log(ui.keyValue('Output format', ui.colors.accent(options.format.toUpperCase())));
-  console.log(ui.keyValue('Output file', ui.colors.success(options.outFile)));
-  console.log('');
-
-  // Options status
-  console.log(ui.colors.dim('  Options'));
-  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(30)));
-  console.log(`  ${options.withTree ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Directory tree view`);
-  console.log(`  ${options.withStats ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Statistics section`);
-  console.log(`  ${options.stripComments ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Strip comments`);
-  console.log('');
-
-  // Quick cost estimate
-  if (options.tokenCount) {
-    console.log(ui.colors.dim('  Cost Estimates'));
-    console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(30)));
-
-    const quickProviders = ['claude-haiku', 'gpt-4o'];
-    for (const providerName of quickProviders) {
-      const estimate = calculateCost(estimatedTokens, providerName);
-      if (estimate) {
-        console.log(ui.providerRow(
-          estimate.displayName,
-          `$${estimate.inputCost.toFixed(4)}`,
-          estimate.withinContextWindow,
-          false
-        ));
-      }
-    }
-    console.log('');
-  }
-}
-
-/**
- * Display token analysis for interactive mode
- */
-function displayInteractiveTokenAnalysis(output: string, options: ResolvedOptions): void {
-  const context: TokenAnalysisContext = {
-    profileUsed: options.profileExplicitlySet,
-    maxSizeUsed: options.maxSizeExplicitlySet,
-  };
-  const analysis = analyzeTokenUsage(output, context);
-
-  console.log(ui.section('Token Analysis'));
-  console.log(ui.keyValue('Estimated tokens', ui.tokenCount(analysis.estimatedTokens)));
-  console.log('');
-
-  // Provider comparison table
-  console.log(ui.colors.dim('  Provider             Cost         Context Utilization'));
-  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(58)));
-
-  const topProviders = ['claude-haiku', 'claude-sonnet', 'gpt-4o', 'gemini'];
-  const estimates = topProviders
-    .map(name => calculateCost(analysis.estimatedTokens, name))
-    .filter((e): e is NonNullable<typeof e> => e !== null && e !== undefined)
-    .sort((a, b) => a.inputCost - b.inputCost);
-
-  const cheapestFitting = estimates.find(e => e.withinContextWindow);
-
-  for (const estimate of estimates) {
-    const isCheapest = cheapestFitting && estimate.provider === cheapestFitting.provider;
-    console.log(ui.providerRowWithBar(
-      estimate.displayName,
-      `$${estimate.inputCost.toFixed(4)}`,
-      estimate.utilizationPercent,
-      estimate.withinContextWindow,
-      isCheapest
-    ));
-  }
-
-  // Warnings
-  if (analysis.warnings.length > 0) {
-    console.log('');
-    console.log(ui.colors.warning.bold('  Warnings'));
-    for (const warning of analysis.warnings) {
-      console.log(ui.bullet(ui.colors.warning(warning)));
-    }
-  }
-
-  // Recommendations
-  if (analysis.recommendations.length > 0) {
-    console.log('');
-    console.log(ui.colors.info.bold('  Recommendations'));
-    for (const rec of analysis.recommendations) {
-      console.log(ui.bullet(ui.colors.dim(rec)));
-    }
-  }
-
-  console.log('');
 }

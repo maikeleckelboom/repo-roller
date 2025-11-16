@@ -94,6 +94,9 @@ async function main(): Promise<void> {
     // DX improvements: Skip prompts
     .option('-y, --yes', 'Skip all prompts and use defaults (or saved preferences)')
     .option('--defaults', 'Alias for --yes')
+    // LLM report display options
+    .option('--llm', 'Show detailed LLM provider/cost breakdown')
+    .option('--llm-report', 'Alias for --llm')
     .action(async (root: string, options: CommanderOptions) => {
       try {
         // Load config files early for info commands
@@ -201,6 +204,8 @@ async function main(): Promise<void> {
           maxCostEur: options.maxCostEur,
           // DX improvements: Skip prompts
           yes: options.yes ?? options.defaults,
+          // LLM report display options
+          showLLMReport: options.llm ?? options.llmReport,
         };
 
         // Resolve final options

@@ -12,7 +12,7 @@ import { estimateTokens, calculateCost } from '../core/tokens.js';
 import { formatBytes } from '../core/helpers.js';
 import * as ui from '../core/ui.js';
 import { applyBudgetConstraints } from './budget.js';
-import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError } from './display.js';
+import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displayGenerationSummary, displayDetailedLLMAnalysis } from './display.js';
 
 /**
  * Run preview mode (dry-run or stats-only)
@@ -135,10 +135,15 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   await writeFile(options.outFile, output, 'utf-8');
 
   console.log(ui.status('write', `Output written to ${ui.colors.success(options.outFile)}`));
-  console.log('');
 
-  // Display token analysis if enabled
-  if (options.tokenCount) {
-    displayTokenAnalysis(output, options);
+  // Display repo-first generation summary with minimal LLM info
+  const estimatedTokens = estimateTokens(output);
+  displayGenerationSummary(scan, options, estimatedTokens);
+
+  // Display detailed LLM analysis only if --llm flag is set
+  if (options.showLLMReport) {
+    displayDetailedLLMAnalysis(output, options);
   }
+
+  console.log(ui.separator());
 }

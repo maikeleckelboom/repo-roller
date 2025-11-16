@@ -74,6 +74,8 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   warnTokens: undefined,
   // DX improvements: Skip prompts
   yes: false,
+  // LLM report display options (default to minimal)
+  showLLMReport: false,
 } as const;
 
 /**
@@ -174,6 +176,7 @@ function mergePreset(
     targetProvider: defaults.targetProvider,
     warnTokens: defaults.warnTokens,
     yes: defaults.yes,
+    showLLMReport: defaults.showLLMReport,
   };
 }
 
@@ -320,5 +323,7 @@ export function resolveOptions(
     // Track what was explicitly specified
     profileExplicitlySet: cli.profile !== undefined,
     maxSizeExplicitlySet: cli.maxSize !== undefined,
+    // LLM report display options
+    showLLMReport: cli.showLLMReport ?? options.showLLMReport,
   };
 }
