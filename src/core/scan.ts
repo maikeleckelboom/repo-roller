@@ -287,6 +287,7 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
       extension: ext,
       isBinary,
       isDefaultIncluded,
+      lastModified: stats.mtime,
     });
 
     // Count extensions only for default included files

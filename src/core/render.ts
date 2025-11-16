@@ -8,7 +8,14 @@ import type {
   ResolvedOptions,
   StructuredOutput
 } from './types.js';
-import { formatBytes } from './helpers.js';
+import {
+  formatBytes,
+  calculateLanguageBreakdown,
+  calculateRoleBreakdown,
+  categorizeFileRole,
+  extensionToLanguage,
+  estimateLinesOfCode,
+} from './helpers.js';
 
 /**
  * Map file extension to code fence language
@@ -259,6 +266,39 @@ ${lines.join('\n')}
 }
 
 /**
+ * Render code composition section showing language and role breakdown
+ */
+function renderCodeComposition(scan: ScanResult): string {
+  const { files, totalBytes } = scan;
+
+  const languageBreakdown = calculateLanguageBreakdown(files);
+  const roleBreakdown = calculateRoleBreakdown(files);
+  const estimatedLOC = estimateLinesOfCode(totalBytes);
+
+  // Format language breakdown: "TS(78%) MD(12%) JSON(7%) Other(3%)"
+  const langString = languageBreakdown
+    .slice(0, 4) // Show top 4 languages
+    .map(lang => `${lang.name}(${Math.round(lang.percent)}%)`)
+    .join('  ');
+
+  // Format role breakdown: "Src(64%) Tests(21%) Docs(11%) Config(4%)"
+  const roleString = [
+    roleBreakdown.source > 0 ? `Src(${Math.round(roleBreakdown.source)}%)` : '',
+    roleBreakdown.test > 0 ? `Tests(${Math.round(roleBreakdown.test)}%)` : '',
+    roleBreakdown.docs > 0 ? `Docs(${Math.round(roleBreakdown.docs)}%)` : '',
+    roleBreakdown.config > 0 ? `Config(${Math.round(roleBreakdown.config)}%)` : '',
+  ].filter(Boolean).join('  ');
+
+  return `## 📊 Code Composition
+
+- **Lines of code**: ~${estimatedLOC.toLocaleString()}
+- **Languages**: ${langString}
+- **Roles**: ${roleString}
+
+`;
+}
+
+/**
  * Render statistics section
  */
 function renderStats(scan: ScanResult): string {
@@ -269,7 +309,7 @@ function renderStats(scan: ScanResult): string {
     .map(([ext, count]) => `  - ${ext || '(no extension)'}: ${count} file${count === 1 ? '' : 's'}`)
     .join('\n');
 
-  return `## 📊 Statistics
+  return `## 📈 Statistics
 
 - **Total files**: ${files.length}
 - **Total size**: ${formatBytes(totalBytes)}
@@ -375,6 +415,9 @@ ${architecturalOverview}
     output += generateTOC(files);
   }
 
+  // Add code composition section (always included for context)
+  output += renderCodeComposition(scan);
+
   // Add tree view if requested
   if (withTree) {
     output += renderTree(scan);
@@ -400,15 +443,21 @@ ${architecturalOverview}
       }
 
       const language = getLanguage(file.extension);
+      const languageName = extensionToLanguage(file.extension);
+      const role = categorizeFileRole(file.relativePath, file.extension);
+      const lineCount = content.split('\n').length;
+      const lastModifiedDate = file.lastModified.toISOString().slice(0, 10);
 
       // Inject file path as a comment at the top of the content
       const filePathComment = `// File: ${file.relativePath}`;
       const contentWithComment = `${filePathComment}\n\n${content}`;
 
-      // Add anchor-friendly heading
+      // Add anchor-friendly heading with enhanced metadata
       const anchorId = file.relativePath.replace(/[^\w-]/g, '-').toLowerCase();
 
       output += `### \`${file.relativePath}\` {#${anchorId}}
+
+*${languageName} • ${role} • ${lineCount} LOC • last modified ${lastModifiedDate}*
 
 \`\`\`${language}
 ${contentWithComment}

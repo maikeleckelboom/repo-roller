@@ -67,6 +67,7 @@ export interface FileInfo {
   readonly extension: string;
   readonly isBinary: boolean;
   readonly isDefaultIncluded: boolean; // Whether file should be pre-selected in interactive mode
+  readonly lastModified: Date; // File modification timestamp for metadata display
 }
 
 /**

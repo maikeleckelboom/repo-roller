@@ -46,6 +46,7 @@ def helper():
         sizeBytes: 100,
         isBinary: false,
         isDefaultIncluded: true,
+        lastModified: new Date('2025-01-01'),
       },
       {
         relativePath: 'src/utils.ts',
@@ -54,6 +55,7 @@ def helper():
         sizeBytes: 50,
         isBinary: false,
         isDefaultIncluded: true,
+        lastModified: new Date('2025-01-01'),
       },
       {
         relativePath: 'README.md',
@@ -62,6 +64,7 @@ def helper():
         sizeBytes: 50,
         isBinary: false,
         isDefaultIncluded: true,
+        lastModified: new Date('2025-01-01'),
       },
     ];
   });
@@ -192,7 +195,7 @@ def helper():
 
       const result = await renderMarkdown(scan, opts, options);
 
-      expect(result).toContain('## 📊 Statistics');
+      expect(result).toContain('## 📈 Statistics');
       expect(result).toContain('**Total files**: 3');
       expect(result).toContain('**Total size**');
       expect(result).toContain('ts: 2 files');
