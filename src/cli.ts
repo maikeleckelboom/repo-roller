@@ -151,6 +151,8 @@ async function main(): Promise<void> {
     .option('--list-models', 'List model presets')
     .option('--prompt-helper', 'Show prompt suggestions')
     .option('-c, --copy', 'Copy output to clipboard')
+    .option('--diff <ref>', 'Filter to files changed since git ref (e.g., main, HEAD~3)')
+    .option('--most-recent <n>', 'Filter to N most recently committed files', parseInt)
     .action(handleMainCommand);
 
   await program.parseAsync(process.argv);

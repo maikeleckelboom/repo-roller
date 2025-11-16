@@ -87,6 +87,9 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   showPromptHelper: false,
   // Clipboard support
   copyToClipboard: false,
+  // Git-aware filtering
+  gitDiff: undefined,
+  gitMostRecent: undefined,
 } as const;
 
 /**
@@ -364,5 +367,8 @@ export function resolveOptions(
     showPromptHelper: cli.showPromptHelper ?? options.showPromptHelper,
     // Clipboard support
     copyToClipboard: cli.copy ?? options.copyToClipboard,
+    // Git-aware filtering
+    gitDiff: cli.diff ?? options.gitDiff,
+    gitMostRecent: cli.mostRecent ?? options.gitMostRecent,
   };
 }
