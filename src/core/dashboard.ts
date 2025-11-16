@@ -144,7 +144,7 @@ function renderCodeComposition(
 ): string[] {
   const lines: string[] = [];
   lines.push(ui.colors.dim('  Code Composition'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(50)));
+  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(78)));
 
   const languages = calculateLanguageBreakdown(files);
   const roles = calculateRoleBreakdown(files);
@@ -198,7 +198,8 @@ function renderCodeComposition(
  * Render a single colored bar based on type
  */
 function renderColoredBar(name: string, percent: number, type: string): string {
-  const barWidth = 12;
+  const barWidth = 20;
+  const nameWidth = 11;
   const filled = Math.round((percent / 100) * barWidth);
   const empty = barWidth - filled;
 
@@ -218,7 +219,7 @@ function renderColoredBar(name: string, percent: number, type: string): string {
   }
 
   const bar = barColor('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
-  const nameFormatted = name.padEnd(12);
+  const nameFormatted = name.padEnd(nameWidth);
   const pct = ui.colors.dim(`${percent.toFixed(0)}%`.padStart(4));
 
   return `      ${nameFormatted} ${bar} ${pct}`;
@@ -229,10 +230,11 @@ function renderColoredBar(name: string, percent: number, type: string): string {
  */
 function compactColoredBarsGrid(
   items: Array<{ name: string; percent: number; type: string }>,
-  barWidth = 10
+  barWidth = 20
 ): string[] {
   const lines: string[] = [];
-  const nameWidth = 12;
+  const nameWidth = 11;
+  const pctWidth = 4;
 
   for (let i = 0; i < items.length; i += 2) {
     const item1 = items[i];
@@ -241,7 +243,7 @@ function compactColoredBarsGrid(
     const filled1 = Math.round((item1.percent / 100) * barWidth);
     const empty1 = barWidth - filled1;
     const bar1 = getBarColor(item1.type)('█'.repeat(filled1)) + ui.colors.dim('░'.repeat(empty1));
-    const col1 = `${item1.name.padEnd(nameWidth)}${bar1} ${ui.colors.dim(`${item1.percent.toFixed(0)}%`.padStart(3))}`;
+    const col1 = `${item1.name.padEnd(nameWidth)} ${bar1} ${ui.colors.dim(`${item1.percent.toFixed(0)}%`.padStart(pctWidth))}`;
 
     if (i + 1 < items.length) {
       const item2 = items[i + 1];
@@ -250,8 +252,8 @@ function compactColoredBarsGrid(
       const filled2 = Math.round((item2.percent / 100) * barWidth);
       const empty2 = barWidth - filled2;
       const bar2 = getBarColor(item2.type)('█'.repeat(filled2)) + ui.colors.dim('░'.repeat(empty2));
-      const col2 = `${item2.name.padEnd(nameWidth)}${bar2} ${ui.colors.dim(`${item2.percent.toFixed(0)}%`.padStart(3))}`;
-      lines.push(`    ${col1}  ${col2}`);
+      const col2 = `${item2.name.padEnd(nameWidth)} ${bar2} ${ui.colors.dim(`${item2.percent.toFixed(0)}%`.padStart(pctWidth))}`;
+      lines.push(`    ${col1}   ${col2}`);
     } else {
       lines.push(`    ${col1}`);
     }
@@ -290,7 +292,7 @@ function renderContextFit(
 ): string[] {
   const lines: string[] = [];
   lines.push(ui.colors.dim('  Context Fit'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(50)));
+  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(78)));
 
   if (modelPreset) {
     // Show specific model preset info

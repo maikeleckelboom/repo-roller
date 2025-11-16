@@ -59,14 +59,14 @@ const symbols = {
 /**
  * Create a horizontal line
  */
-export function line(width = 60): string {
+export function line(width = 80): string {
   return colors.muted(symbols.line.repeat(width));
 }
 
 /**
  * Create a thin separator line
  */
-export function separator(width = 60): string {
+export function separator(width = 80): string {
   return colors.dim(symbols.dash.repeat(width));
 }
 
@@ -125,7 +125,7 @@ export function header(): string {
   return [
     '',
     `${title} ${version}`,
-    colors.muted(symbols.line.repeat(60)),
+    colors.muted(symbols.line.repeat(80)),
     '',
   ].join('\n');
 }
