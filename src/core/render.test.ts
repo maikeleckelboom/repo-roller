@@ -3,11 +3,11 @@ import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { render, renderMarkdown, renderJson, renderYaml, renderTxt, getLanguage } from './render.js';
-import type { ScanResult, ResolvedOptions, RenderOptions } from './types.js';
+import type { ScanResult, ResolvedOptions, RenderOptions, FileInfo } from './types.js';
 
 describe('render module', () => {
   let testDir: string;
-  let testFiles: { relativePath: string; absolutePath: string; extension: string; sizeBytes: number }[];
+  let testFiles: FileInfo[];
 
   // Helper to safely get a test file by index
   const getTestFile = (index: number) => {
@@ -44,18 +44,24 @@ def helper():
         absolutePath: file1Path,
         extension: 'ts',
         sizeBytes: 100,
+        isBinary: false,
+        isDefaultIncluded: true,
       },
       {
         relativePath: 'src/utils.ts',
         absolutePath: file2Path,
         extension: 'ts',
         sizeBytes: 50,
+        isBinary: false,
+        isDefaultIncluded: true,
       },
       {
         relativePath: 'README.md',
         absolutePath: file3Path,
         extension: 'md',
         sizeBytes: 50,
+        isBinary: false,
+        isDefaultIncluded: true,
       },
     ];
   });
@@ -106,8 +112,8 @@ def helper():
   });
 
   describe('renderMarkdown', () => {
-    const createScanResult = (files = testFiles): ScanResult => ({
-      files: files as any,
+    const createScanResult = (files: FileInfo[] = testFiles): ScanResult => ({
+      files,
       totalBytes: files.reduce((sum, f) => sum + f.sizeBytes, 0),
       rootPath: testDir,
       extensionCounts: { ts: 2, md: 1 },
@@ -277,14 +283,16 @@ def helper():
     });
 
     it('should handle file read errors gracefully', async () => {
-      const badFile = {
+      const badFile: FileInfo = {
         relativePath: 'nonexistent.ts',
         absolutePath: join(testDir, 'nonexistent.ts'),
         extension: 'ts',
         sizeBytes: 0,
+        isBinary: false,
+        isDefaultIncluded: true,
       };
 
-      const scan = createScanResult([badFile as any]);
+      const scan = createScanResult([badFile]);
       const opts: RenderOptions = {
         withTree: false,
         withStats: false,
@@ -299,8 +307,8 @@ def helper():
   });
 
   describe('renderJson', () => {
-    const createScanResult = (files = testFiles): ScanResult => ({
-      files: files as any,
+    const createScanResult = (files: FileInfo[] = testFiles): ScanResult => ({
+      files,
       totalBytes: files.reduce((sum, f) => sum + f.sizeBytes, 0),
       rootPath: testDir,
       extensionCounts: { ts: 2, md: 1 },
@@ -409,8 +417,8 @@ def helper():
   });
 
   describe('renderYaml', () => {
-    const createScanResult = (files = testFiles): ScanResult => ({
-      files: files as any,
+    const createScanResult = (files: FileInfo[] = testFiles): ScanResult => ({
+      files,
       totalBytes: files.reduce((sum, f) => sum + f.sizeBytes, 0),
       rootPath: testDir,
       extensionCounts: { ts: 2, md: 1 },
@@ -480,8 +488,8 @@ def helper():
   });
 
   describe('renderTxt', () => {
-    const createScanResult = (files = testFiles): ScanResult => ({
-      files: files as any,
+    const createScanResult = (files: FileInfo[] = testFiles): ScanResult => ({
+      files,
       totalBytes: files.reduce((sum, f) => sum + f.sizeBytes, 0),
       rootPath: testDir,
       extensionCounts: { ts: 2, md: 1 },
@@ -551,8 +559,8 @@ def helper():
   });
 
   describe('render (dispatcher)', () => {
-    const createScanResult = (files = testFiles): ScanResult => ({
-      files: files as any,
+    const createScanResult = (files: FileInfo[] = testFiles): ScanResult => ({
+      files,
       totalBytes: files.reduce((sum, f) => sum + f.sizeBytes, 0),
       rootPath: testDir,
       extensionCounts: { ts: 2, md: 1 },
@@ -627,10 +635,13 @@ def helper():
     it('should default to markdown for unknown format', async () => {
       const scan = createScanResult([getTestFile(0)]);
       const options = createOptions('md');
-      // Force unknown format
-      (options as any).format = 'unknown';
+      // Force unknown format - using type assertion for testing invalid input
+      const optionsWithUnknownFormat = {
+        ...options,
+        format: 'unknown' as 'md' | 'json' | 'yaml' | 'txt', // Intentionally invalid for testing
+      };
 
-      const result = await render(scan, options);
+      const result = await render(scan, optionsWithUnknownFormat);
 
       // Should fall through to markdown
       expect(result).toContain('# 📦 Source Code Archive');

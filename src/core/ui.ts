@@ -59,14 +59,14 @@ const symbols = {
 /**
  * Create a horizontal line
  */
-export function line(width: number = 60): string {
+export function line(width = 60): string {
   return colors.muted(symbols.line.repeat(width));
 }
 
 /**
  * Create a thin separator line
  */
-export function separator(width: number = 60): string {
+export function separator(width = 60): string {
   return colors.dim(symbols.dash.repeat(width));
 }
 
@@ -182,7 +182,7 @@ export function info(message: string): string {
 /**
  * Bullet point
  */
-export function bullet(message: string, indent: number = 2): string {
+export function bullet(message: string, indent = 2): string {
   const spaces = ' '.repeat(indent);
   return `${spaces}${colors.dim(symbols.bullet)} ${message}`;
 }
@@ -190,7 +190,7 @@ export function bullet(message: string, indent: number = 2): string {
 /**
  * Create a boxed section
  */
-export function boxSection(title: string, content: string[], width: number = 60): string {
+export function boxSection(title: string, content: string[], width = 60): string {
   const lines: string[] = [];
   const innerWidth = width - 2;
 
@@ -239,7 +239,7 @@ export function section(title: string): string {
 /**
  * Format a key-value pair
  */
-export function keyValue(key: string, value: string | number, keyWidth: number = 20): string {
+export function keyValue(key: string, value: string | number, keyWidth = 20): string {
   const formattedKey = colors.dim(key.padEnd(keyWidth));
   return `  ${formattedKey} ${value}`;
 }
@@ -267,7 +267,7 @@ export function metric(
 /**
  * Progress indicator (simple, no spinner)
  */
-export function progress(current: number, total: number, label: string = ''): string {
+export function progress(current: number, total: number, label = ''): string {
   const percentage = Math.round((current / total) * 100);
   const barWidth = 30;
   const filled = Math.round((current / total) * barWidth);
@@ -286,7 +286,7 @@ export function providerRow(
   name: string,
   cost: string,
   withinLimit: boolean,
-  highlight: boolean = false
+  highlight = false
 ): string {
   const statusIcon = withinLimit
     ? colors.success(symbols.check)
@@ -311,7 +311,7 @@ export function providerRowWithBar(
   cost: string,
   utilizationPercent: number,
   withinLimit: boolean,
-  highlight: boolean = false
+  highlight = false
 ): string {
   const statusIcon = withinLimit
     ? colors.success(symbols.check)
@@ -394,7 +394,7 @@ function stripAnsi(str: string): string {
 /**
  * Center text
  */
-export function center(text: string, width: number = 60): string {
+export function center(text: string, width = 60): string {
   const stripped = stripAnsi(text);
   const padding = Math.max(0, Math.floor((width - stripped.length) / 2));
   return ' '.repeat(padding) + text;
@@ -403,7 +403,7 @@ export function center(text: string, width: number = 60): string {
 /**
  * Right-align text
  */
-export function rightAlign(text: string, width: number = 60): string {
+export function rightAlign(text: string, width = 60): string {
   const stripped = stripAnsi(text);
   const padding = Math.max(0, width - stripped.length);
   return ' '.repeat(padding) + text;
