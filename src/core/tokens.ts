@@ -1,5 +1,40 @@
 /**
- * Token counting and LLM cost estimation utilities
+ * @module core/tokens
+ *
+ * Token counting and LLM cost estimation for multiple providers.
+ *
+ * OWNS:
+ * - Estimating token counts using heuristics (not exact tokenizers)
+ * - Cost calculations for various LLM providers
+ * - Provider data (context windows, pricing)
+ * - Token usage analysis and reporting
+ *
+ * DOES NOT OWN:
+ * - Budget selection logic (that's budget.ts)
+ * - File scanning (that's scan.ts)
+ * - Output rendering (that's render.ts)
+ *
+ * ESTIMATION ACCURACY:
+ * Uses heuristic approach (roughly 4 chars/token with adjustments) for:
+ * - Speed (no external tokenizer dependency)
+ * - Simplicity (works across all content types)
+ * - ~95% accuracy on larger codebases (good enough for decision-making)
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { estimateTokens, calculateCost, LLM_PROVIDERS } from './tokens.js';
+ *
+ * const content = 'function add(a, b) { return a + b; }';
+ * const tokens = estimateTokens(content);
+ * const cost = calculateCost(tokens, 'claude-sonnet');
+ * console.log(`~${tokens} tokens, $${cost.inputCost.toFixed(4)}`);
+ * ```
+ *
+ * SUPPORTED PROVIDERS:
+ * - Claude (Sonnet, Opus, Haiku)
+ * - OpenAI (GPT-4o, GPT-4 Turbo, o1)
+ * - Google (Gemini 1.5 Pro/Flash)
+ * - Meta (LLaMA 3.1)
  */
 
 /**

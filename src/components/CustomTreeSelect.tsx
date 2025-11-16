@@ -1,3 +1,35 @@
+/**
+ * @module components/CustomTreeSelect
+ *
+ * Interactive file tree selection component for terminal UI.
+ *
+ * ARCHITECTURE:
+ * This component uses a reducer-based state management pattern with clear separation:
+ * 1. State Model - TreeSelectState holds all UI state (selection, cursor, expansion)
+ * 2. Actions - Typed actions describe all possible state transitions
+ * 3. Reducer - Pure function that computes new state from actions
+ * 4. Input Handling - useInput hook maps keyboard events to actions
+ * 5. Rendering - Converts state to React elements using theme system
+ *
+ * KEY DESIGN DECISIONS:
+ * - Reducer pattern for predictable state management (vs multiple useState)
+ * - Flat list rendering from tree (flatNodes) for keyboard navigation
+ * - Cursor bounds automatically adjusted when tree structure changes
+ * - User preferences persisted (showExcluded setting)
+ * - Two modes: tree selection and summary confirmation
+ *
+ * STATE FLOW:
+ * files[] -> buildTreeStructure() -> TreeNode hierarchy
+ * TreeNode + expanded Set -> flattenTree() -> FlatNode[] for rendering
+ * User input -> dispatch(action) -> reducer -> new state -> re-render
+ *
+ * EXTENDING THIS COMPONENT:
+ * - Add new action type to TreeSelectAction
+ * - Handle action in treeSelectReducer
+ * - Dispatch action from useInput handler or callback
+ * - Keep rendering logic separate from state logic
+ */
+
 import React, { useReducer, useMemo, useEffect, useCallback, useState } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { FileInfo } from '../core/types.js';
@@ -272,10 +304,13 @@ function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean
 }
 
 export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete }) => {
+  // Build tree structure once from flat file list
+  // This is memoized because tree building is O(n*m) where m is path depth
   const tree = useMemo(() => buildTreeStructure(files), [files]);
   const theme: TreeTheme = defaultTheme;
 
-  // Get terminal width for responsive truncation
+  // Track terminal width for responsive name truncation
+  // This ensures long file names don't break the layout when terminal is resized
   const { stdout } = useStdout();
   const [terminalWidth, setTerminalWidth] = useState(stdout?.columns || 80);
 
@@ -292,14 +327,18 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     };
   }, [stdout]);
 
-  // Initialize state with useReducer
+  // State management with useReducer for predictable updates
+  // We use a reducer instead of multiple useState calls because:
+  // 1. State changes are complex (toggle selection affects multiple values)
+  // 2. Actions are typed and self-documenting
+  // 3. Easier to debug (all state transitions go through reducer)
   const [state, dispatch] = useReducer(treeSelectReducer, {
-    expanded: new Set(['.']),
+    expanded: new Set(['.']),  // Root is always expanded
     selected: new Set(files.filter(f => f.isDefaultIncluded).map(f => f.relativePath)),
     cursor: 0,
-    showExcluded: true,
-    settingsLoaded: false,
-    mode: 'tree',
+    showExcluded: true,  // Show all files by default, user can filter
+    settingsLoaded: false,  // Track if we've loaded persisted settings
+    mode: 'tree',  // Start in tree view mode (vs summary confirmation)
   });
 
   const { expanded, selected, cursor, showExcluded, settingsLoaded, mode } = state;
@@ -340,6 +379,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   const flatNodes = useMemo(() => flattenTree(showExcluded ? tree : filteredTree, expanded), [tree, filteredTree, expanded, showExcluded]);
 
   // Ensure cursor stays in bounds when flatNodes changes
+  // This can happen when:
+  // 1. User collapses a directory and cursor was on a child
+  // 2. User toggles showExcluded and fewer nodes are visible
+  // 3. Tree structure changes due to external update
   const boundedCursor = useMemo(() => {
     if (flatNodes.length === 0) {
       return 0;
@@ -348,6 +391,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   }, [cursor, flatNodes.length]);
 
   // Sync cursor state if it needs adjustment (only when actually out of bounds)
+  // We intentionally don't include `cursor` in deps because:
+  // 1. We only want to sync when boundedCursor changes
+  // 2. Adding cursor would cause infinite loops
+  // 3. This is a derived state correction, not a reactive effect
   useEffect(() => {
     if (boundedCursor !== cursor) {
       dispatch({ type: 'SET_CURSOR', payload: boundedCursor });
@@ -357,6 +404,8 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   const { exit } = useApp();
 
   // Handle directory toggle (select all or deselect all children)
+  // Behavior: If all children selected -> deselect all, otherwise -> select all
+  // This provides a "tri-state" checkbox experience common in file managers
   const handleDirectoryToggle = useCallback((node: TreeNode) => {
     const allFiles = getAllFilesUnder(node);
     const allSelected = allFiles.every(f => selected.has(f));

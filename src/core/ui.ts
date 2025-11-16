@@ -1,6 +1,36 @@
 /**
- * Modern CLI UI utilities with sleek, next-gen design
- * No emojis - clean, professional terminal aesthetics
+ * @module core/ui
+ *
+ * Terminal UI primitives for consistent CLI output.
+ *
+ * OWNS:
+ * - Color palette (primary, secondary, accent, success, error, etc.)
+ * - Unicode symbols (check, cross, bullet, arrows)
+ * - Box-drawing characters for borders
+ * - Message formatting helpers (success, error, warning, info)
+ * - Status indicators and separators
+ *
+ * DOES NOT OWN:
+ * - Tree rendering logic (that's treeRenderer.ts)
+ * - Generation summaries (that's dashboard.ts)
+ * - React/Ink components
+ *
+ * DESIGN PRINCIPLES:
+ * - No emojis (clean, professional aesthetics)
+ * - Consistent color palette across all CLI output
+ * - Chalk-based for cross-platform terminal support
+ * - Reusable primitives for building messages
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import * as ui from './ui.js';
+ *
+ * console.log(ui.success('Bundle generated!'));
+ * console.log(ui.warning('Token count exceeds 100K'));
+ * console.log(ui.error('Invalid configuration'));
+ * console.log(ui.info('Scanning files...'));
+ * console.log(ui.separator());
+ * ```
  */
 import chalk from 'chalk';
 

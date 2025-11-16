@@ -1,3 +1,46 @@
+/**
+ * @module core/config
+ *
+ * Configuration loading and resolution system.
+ *
+ * OWNS:
+ * - Loading .reporoller.yml files (profiles, architectural overview)
+ * - Loading repo-roller.config.mjs files (custom presets)
+ * - Merging configuration from multiple sources
+ * - Resolving final ResolvedOptions from defaults + config + CLI args
+ * - Generating smart output filenames
+ *
+ * DOES NOT OWN:
+ * - Validation logic (that's validation.ts)
+ * - Built-in preset definitions (that's builtInPresets.ts)
+ * - CLI argument parsing (that's Commander in cli.ts)
+ * - User settings persistence (that's userSettings.ts)
+ *
+ * RESOLUTION PRIORITY (highest wins):
+ * 1. CLI arguments (explicit user intent)
+ * 2. User presets from repo-roller.config.mjs
+ * 3. Profile layouts from .reporoller.yml
+ * 4. Built-in presets (ts, python, docs, etc.)
+ * 5. Hardcoded defaults
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { loadConfig, loadRepoRollerYml, resolveOptions } from './config.js';
+ *
+ * const config = await loadConfig(root);
+ * const repoRollerYml = await loadRepoRollerYml(root);
+ * const options = await resolveOptions({
+ *   root,
+ *   preset: 'minimal',
+ *   include: ['src/**'],
+ * });
+ * ```
+ *
+ * CONFIG FILES:
+ * - `.reporoller.yml` - Profile definitions and architectural overview
+ * - `repo-roller.config.mjs` - Custom presets (JavaScript module)
+ */
+
 import { readFile } from 'node:fs/promises';
 import { resolve, join, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';

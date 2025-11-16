@@ -1,6 +1,33 @@
 /**
- * Pure tree row renderer
- * Renders tree nodes with consistent alignment and theming
+ * @module core/treeRenderer
+ *
+ * Pure tree row renderer with consistent alignment and theming.
+ *
+ * OWNS:
+ * - Rendering tree node rows (indentation, selection markers, icons)
+ * - Column width calculations for alignment
+ * - Tree node data structures
+ * - Summary bar formatting
+ *
+ * DOES NOT OWN:
+ * - React/Ink rendering (that's CustomTreeSelect.tsx)
+ * - Tree building from files (that's CustomTreeSelect.tsx)
+ * - User interaction/input handling
+ * - Theme definitions (that's treeTheme.ts)
+ *
+ * DESIGN PRINCIPLES:
+ * - Pure functions (no side effects)
+ * - Returns string parts, not React elements
+ * - Consistent column alignment
+ * - Theming via dependency injection
+ *
+ * TYPICAL USAGE:
+ * ```typescript
+ * import { renderTreeRowParts, getRowStyling } from './treeRenderer.js';
+ *
+ * const parts = renderTreeRowParts(node, rowState, theme, columnWidths, maxNameWidth);
+ * // parts.indent, parts.selection, parts.expandMarker, parts.name, parts.hint
+ * ```
  */
 
 import type { TreeTheme } from './treeTheme.js';

@@ -1,4 +1,30 @@
 /**
+ * @module core/types
+ *
+ * Central type definitions for repo-roller.
+ *
+ * OWNS:
+ * - All shared TypeScript interfaces and type aliases
+ * - Configuration shapes (RollerConfig, ResolvedOptions)
+ * - Data structures (FileInfo, ScanResult, OutputMetadata)
+ * - CLI option types (CommanderOptions, CliOptions)
+ *
+ * DOES NOT OWN:
+ * - Type validation logic (see validation.ts)
+ * - Default values (see config.ts, builtInPresets.ts)
+ * - Runtime behavior
+ *
+ * DESIGN PRINCIPLES:
+ * - All interfaces use `readonly` to ensure immutability
+ * - Types are self-documenting with descriptive names
+ * - Avoid `any` - use specific types or `unknown` when necessary
+ *
+ * HOW TO USE:
+ * Import specific types as needed throughout the codebase.
+ * These types form the contract between modules.
+ */
+
+/**
  * Sort modes for organizing files in output
  */
 export type SortMode = 'path' | 'size' | 'extension';

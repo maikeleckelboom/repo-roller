@@ -144,10 +144,19 @@ export function displayProfileDetails(name: string, repoRollerConfig?: RepoRolle
 }
 
 export function displayExamples(): void {
-  console.log('Common Workflows:\n');
+  console.log('repo-roller - Common Workflows');
+  console.log('='.repeat(60) + '\n');
+
+  console.log('QUICK START');
+  console.log('-'.repeat(60) + '\n');
+
+  console.log('  repo-roller .                    # Basic bundle');
+  console.log('  repo-roller . --preset ts        # TypeScript files');
+  console.log('  repo-roller . -I                 # Interactive mode');
+  console.log('  repo-roller . --copy             # Copy to clipboard\n');
 
   console.log('LLM CONTEXT GENERATION');
-  console.log('='.repeat(50) + '\n');
+  console.log('-'.repeat(60) + '\n');
 
   console.log('1. Create context for Claude Projects:');
   console.log('   $ repo-roller . --target claude-sonnet');
@@ -166,8 +175,8 @@ export function displayExamples(): void {
   console.log('   $ repo-roller . --preset minimal --target claude-haiku');
   console.log('   > Stripped comments, smaller files\n');
 
-  console.log('QUICK FILTERS');
-  console.log('='.repeat(50) + '\n');
+  console.log('FILTERING');
+  console.log('-'.repeat(60) + '\n');
 
   console.log('5. TypeScript source only (no tests):');
   console.log('   $ repo-roller . --lang typescript --no-tests\n');
@@ -182,7 +191,7 @@ export function displayExamples(): void {
   console.log('   $ repo-roller . --preset docs\n');
 
   console.log('OUTPUT CUSTOMIZATION');
-  console.log('='.repeat(50) + '\n');
+  console.log('-'.repeat(60) + '\n');
 
   console.log('9. Custom output filename:');
   console.log('   $ repo-roller . --out context-$(date +%Y%m%d).md\n');
@@ -194,14 +203,14 @@ export function displayExamples(): void {
   console.log('    $ repo-roller . --toc --front-matter\n');
 
   console.log('INTERACTIVE MODE');
-  console.log('='.repeat(50) + '\n');
+  console.log('-'.repeat(60) + '\n');
 
   console.log('12. Launch file selection UI:');
   console.log('    $ repo-roller . --interactive');
   console.log('    > Visual tree to select specific files\n');
 
   console.log('INFO COMMANDS');
-  console.log('='.repeat(50) + '\n');
+  console.log('-'.repeat(60) + '\n');
 
   console.log('List LLM providers and pricing:');
   console.log('  $ repo-roller --list-providers\n');
@@ -211,4 +220,25 @@ export function displayExamples(): void {
 
   console.log('Show project statistics:');
   console.log('  $ repo-roller . --stats-only\n');
+
+  console.log('GIT-AWARE FILTERING');
+  console.log('-'.repeat(60) + '\n');
+
+  console.log('13. Only changed files (since branch):');
+  console.log('    $ repo-roller . --diff main');
+  console.log('    > Only files changed since branching from main\n');
+
+  console.log('14. Most recently committed files:');
+  console.log('    $ repo-roller . --most-recent 20');
+  console.log('    > 20 most recently committed files\n');
+
+  console.log('TIPS');
+  console.log('-'.repeat(60) + '\n');
+
+  console.log('* Use --dry-run to preview before generating');
+  console.log('* Use --verbose for detailed scanning information');
+  console.log('* Use --validate to check config file syntax');
+  console.log('* Use --quiet to suppress summaries (for scripts)');
+  console.log('* Token estimates are ~95% accurate (heuristic-based)\n');
 }
+
