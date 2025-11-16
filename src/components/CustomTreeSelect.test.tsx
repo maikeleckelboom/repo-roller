@@ -11,6 +11,14 @@ vi.mock('../core/userSettings.js', () => ({
   setUserSetting: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Helper to wait for settings to load (renders "Loading preferences..." -> actual UI)
+const waitForSettingsLoad = async () => {
+  // Wait for the promise to resolve and requestAnimationFrame to fire
+  await vi.waitFor(() => Promise.resolve(), { timeout: 100 });
+  // Allow React to process the state update
+  await new Promise(resolve => setTimeout(resolve, 0));
+};
+
 describe('CustomTreeSelect', () => {
   const mockOnComplete = vi.fn();
 
@@ -27,14 +35,20 @@ describe('CustomTreeSelect', () => {
     vi.clearAllMocks();
     vi.mocked(userSettings.getUserSetting).mockResolvedValue(undefined);
     vi.mocked(userSettings.setUserSetting).mockResolvedValue(undefined);
+    // Mock requestAnimationFrame for immediate execution
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('tree building', () => {
-    it('should build correct tree structure from flat file list', () => {
+    it('should build correct tree structure from flat file list', async () => {
       const files: FileInfo[] = [
         createMockFile('src/index.ts'),
         createMockFile('src/utils/helper.ts'),
@@ -48,6 +62,8 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       const output = lastFrame() ?? '';
       // Should show file selection header
       expect(output).toContain('File Selection');
@@ -55,7 +71,7 @@ describe('CustomTreeSelect', () => {
       expect(output).toContain('files selected');
     });
 
-    it('should handle deeply nested directory structure', () => {
+    it('should handle deeply nested directory structure', async () => {
       const files: FileInfo[] = [
         createMockFile('src/components/ui/forms/Input.tsx'),
         createMockFile('src/components/ui/forms/Button.tsx'),
@@ -69,10 +85,12 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       expect(lastFrame()).toContain('files selected');
     });
 
-    it('should sort directories before files', () => {
+    it('should sort directories before files', async () => {
       const files: FileInfo[] = [
         createMockFile('README.md'),
         createMockFile('src/index.ts'),
@@ -86,6 +104,8 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       // Tree should be built with directories first
       const output = lastFrame() ?? '';
       expect(output).toContain('File Selection');
@@ -93,7 +113,7 @@ describe('CustomTreeSelect', () => {
   });
 
   describe('file selection', () => {
-    it('should pre-select files marked as isDefaultIncluded', () => {
+    it('should pre-select files marked as isDefaultIncluded', async () => {
       const files: FileInfo[] = [
         createMockFile('src/index.ts', true),
         createMockFile('node_modules/pkg/index.js', false),
@@ -107,11 +127,13 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       // Should show 2 out of 3 files selected (the ones with isDefaultIncluded=true)
       expect(lastFrame()).toContain('2 / 3 files selected');
     });
 
-    it('should handle all files excluded (none pre-selected)', () => {
+    it('should handle all files excluded (none pre-selected)', async () => {
       const files: FileInfo[] = [
         createMockFile('node_modules/pkg/index.js', false),
         createMockFile('.gitignore', false),
@@ -124,10 +146,12 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       expect(lastFrame()).toContain('0 / 2 files selected');
     });
 
-    it('should handle all files pre-selected', () => {
+    it('should handle all files pre-selected', async () => {
       const files: FileInfo[] = [
         createMockFile('src/index.ts', true),
         createMockFile('src/utils.ts', true),
@@ -141,12 +165,14 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       expect(lastFrame()).toContain('3 / 3 files selected');
     });
   });
 
   describe('keyboard navigation', () => {
-    it('should show navigation instructions', () => {
+    it('should show navigation instructions', async () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -155,6 +181,8 @@ describe('CustomTreeSelect', () => {
           onComplete: mockOnComplete,
         })
       );
+
+      await waitForSettingsLoad();
 
       const output = lastFrame() ?? '';
       expect(output).toContain('Navigate');
@@ -172,6 +200,8 @@ describe('CustomTreeSelect', () => {
           onComplete: mockOnComplete,
         })
       );
+
+      await waitForSettingsLoad();
 
       // Press Q to quit
       stdin.write('Q');
@@ -196,6 +226,8 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       // Press Enter to confirm
       stdin.write('\r');
 
@@ -219,6 +251,8 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       // Initially no files selected
       expect(lastFrame()).toContain('0 / 1 files selected');
 
@@ -232,7 +266,7 @@ describe('CustomTreeSelect', () => {
       expect(lastFrame()).toContain('1 / 1 files selected');
     });
 
-    it('should show toggle excluded files instruction', () => {
+    it('should show toggle excluded files instruction', async () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -241,6 +275,8 @@ describe('CustomTreeSelect', () => {
           onComplete: mockOnComplete,
         })
       );
+
+      await waitForSettingsLoad();
 
       const output = lastFrame() ?? '';
       expect(output).toContain('Toggle excluded');
@@ -293,7 +329,7 @@ describe('CustomTreeSelect', () => {
   });
 
   describe('empty file list', () => {
-    it('should handle empty file list gracefully', () => {
+    it('should handle empty file list gracefully', async () => {
       const files: FileInfo[] = [];
 
       const { lastFrame } = render(
@@ -303,12 +339,14 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       expect(lastFrame()).toContain('0 / 0 files selected');
     });
   });
 
   describe('UI rendering', () => {
-    it('should display file count correctly', () => {
+    it('should display file count correctly', async () => {
       const files: FileInfo[] = [
         createMockFile('a.ts', true),
         createMockFile('b.ts', false),
@@ -324,10 +362,12 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       expect(lastFrame()).toContain('3 / 5 files selected');
     });
 
-    it('should show emoji icons in header', () => {
+    it('should show emoji icons in header', async () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -337,13 +377,15 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       const output = lastFrame() ?? '';
       expect(output).toContain('📁');
     });
   });
 
   describe('directory selection behavior', () => {
-    it('should handle single file in directory', () => {
+    it('should handle single file in directory', async () => {
       const files: FileInfo[] = [
         createMockFile('src/index.ts', true),
       ];
@@ -355,10 +397,12 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      await waitForSettingsLoad();
+
       expect(lastFrame()).toContain('1 / 1 files selected');
     });
 
-    it('should handle multiple files in same directory', () => {
+    it('should handle multiple files in same directory', async () => {
       const files: FileInfo[] = [
         createMockFile('src/a.ts', true),
         createMockFile('src/b.ts', true),
@@ -371,6 +415,8 @@ describe('CustomTreeSelect', () => {
           onComplete: mockOnComplete,
         })
       );
+
+      await waitForSettingsLoad();
 
       // 2 out of 3 files are pre-selected
       expect(lastFrame()).toContain('2 / 3 files selected');

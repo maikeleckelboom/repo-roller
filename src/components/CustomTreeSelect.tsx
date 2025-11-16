@@ -249,6 +249,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   const tree = useMemo(() => buildTreeStructure(files), [files]);
 
   // Initialize state with useReducer
+  // Note: showExcluded defaults to true, will be overridden by settings once loaded
   const [state, dispatch] = useReducer(treeSelectReducer, {
     expanded: new Set(['.']),
     selected: new Set(files.filter(f => f.isDefaultIncluded).map(f => f.relativePath)),
@@ -259,16 +260,26 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
   const { expanded, selected, cursor, showExcluded, settingsLoaded } = state;
 
-  // Load persisted setting on mount
+  // Load persisted setting on mount - load before first render to avoid layout shift
   useEffect(() => {
+    let mounted = true;
     getUserSetting('showExcludedFiles').then(value => {
+      if (!mounted) return;
       if (value !== undefined) {
         dispatch({ type: 'SET_SHOW_EXCLUDED', payload: value });
       }
-      dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
+      // Small delay to ensure state is consistent before marking as loaded
+      requestAnimationFrame(() => {
+        if (mounted) {
+          dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
+        }
+      });
     }).catch(() => {
-      dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
+      if (mounted) {
+        dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
+      }
     });
+    return () => { mounted = false; };
   }, []);
 
   // Save setting when it changes (after initial load)
@@ -431,6 +442,20 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       );
     });
   };
+
+  // Don't render until settings are loaded to prevent layout shift
+  if (!settingsLoaded) {
+    return (
+      <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="column">
+          <Text bold color="cyan">
+            📁 File Selection
+          </Text>
+          <Text dimColor>Loading preferences...</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column">

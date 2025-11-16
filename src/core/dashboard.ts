@@ -144,38 +144,30 @@ function renderCodeComposition(
 ): string[] {
   const lines: string[] = [];
   lines.push(ui.colors.dim('  Code Composition'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(50)));
+  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(60)));
 
   const languages = calculateLanguageBreakdown(files);
   const roles = calculateRoleBreakdown(files);
 
   if (mode === 'detailed') {
-    // Show languages and roles separately with more detail
-    if (languages.length > 0) {
-      lines.push(ui.colors.dim('    Languages'));
-      for (const lang of languages.slice(0, 5)) {
-        lines.push(renderColoredBar(lang.name, lang.percent, 'language'));
-      }
-      lines.push('');
+    // Show languages and roles side-by-side in two columns
+    const langItems: Array<{ name: string; percent: number; type: string }> = [];
+    const roleItems: Array<{ name: string; percent: number; type: string }> = [];
+
+    for (const lang of languages.slice(0, 4)) {
+      langItems.push({ name: lang.name, percent: lang.percent, type: 'language' });
     }
 
-    if (roles.source + roles.test + roles.docs + roles.config > 0) {
-      lines.push(ui.colors.dim('    File Roles'));
-      if (roles.source > 0) {
-        lines.push(renderColoredBar('Source', roles.source, 'role-source'));
-      }
-      if (roles.test > 0) {
-        lines.push(renderColoredBar('Tests', roles.test, 'role-test'));
-      }
-      if (roles.docs > 0) {
-        lines.push(renderColoredBar('Docs', roles.docs, 'role-docs'));
-      }
-      if (roles.config > 0) {
-        lines.push(renderColoredBar('Config', roles.config, 'role-config'));
-      }
-    }
+    if (roles.source > 0) roleItems.push({ name: 'Source', percent: roles.source, type: 'role-source' });
+    if (roles.test > 0) roleItems.push({ name: 'Tests', percent: roles.test, type: 'role-test' });
+    if (roles.docs > 0) roleItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
+    if (roles.config > 0) roleItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
+
+    // Render side-by-side columns
+    const sideBySideLines = renderSideBySideColumns(langItems, roleItems, 'Languages', 'File Roles');
+    lines.push(...sideBySideLines);
   } else {
-    // Compact two-column grid
+    // Compact two-column grid (mix languages and roles)
     const allItems: Array<{ name: string; percent: number; type: string }> = [];
 
     for (const lang of languages.slice(0, 3)) {
@@ -278,6 +270,68 @@ function getBarColor(type: string): (str: string) => string {
     default:
       return ui.colors.primary;
   }
+}
+
+/**
+ * Render two columns side-by-side (languages on left, roles on right)
+ */
+function renderSideBySideColumns(
+  leftItems: Array<{ name: string; percent: number; type: string }>,
+  rightItems: Array<{ name: string; percent: number; type: string }>,
+  leftTitle: string,
+  rightTitle: string
+): string[] {
+  const lines: string[] = [];
+  const barWidth = 8;
+  const nameWidth = 10;
+  const colWidth = 28;
+
+  // Headers
+  const leftHeader = ui.colors.dim(leftTitle.padEnd(colWidth));
+  const rightHeader = ui.colors.dim(rightTitle);
+  lines.push(`    ${leftHeader}  ${rightHeader}`);
+
+  // Find max rows needed
+  const maxRows = Math.max(leftItems.length, rightItems.length);
+
+  for (let i = 0; i < maxRows; i++) {
+    let leftCol = ' '.repeat(colWidth);
+    let rightCol = '';
+
+    // Left column (languages)
+    if (i < leftItems.length) {
+      const item = leftItems[i];
+      if (item) {
+        const filled = Math.round((item.percent / 100) * barWidth);
+        const empty = barWidth - filled;
+        const bar = getBarColor(item.type)('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
+        const pctStr = `${item.percent.toFixed(0)}%`.padStart(4);
+        leftCol = `${item.name.padEnd(nameWidth)}${bar} ${ui.colors.dim(pctStr)}`;
+        // Pad to column width (accounting for ANSI codes)
+        const visibleLength = item.name.length + barWidth + 1 + pctStr.length;
+        const paddingNeeded = colWidth - visibleLength;
+        if (paddingNeeded > 0) {
+          leftCol += ' '.repeat(paddingNeeded);
+        }
+      }
+    }
+
+    // Right column (roles)
+    if (i < rightItems.length) {
+      const item = rightItems[i];
+      if (item) {
+        const filled = Math.round((item.percent / 100) * barWidth);
+        const empty = barWidth - filled;
+        const bar = getBarColor(item.type)('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
+        const pctStr = `${item.percent.toFixed(0)}%`.padStart(4);
+        rightCol = `${item.name.padEnd(nameWidth)}${bar} ${ui.colors.dim(pctStr)}`;
+      }
+    }
+
+    lines.push(`    ${leftCol}  ${rightCol}`);
+  }
+
+  return lines;
 }
 
 /**
