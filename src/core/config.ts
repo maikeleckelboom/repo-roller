@@ -81,6 +81,10 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   presetFooter: undefined,
   presetDescription: undefined,
   addOutlines: false,
+  // Model preset options
+  modelPreset: undefined,
+  // Prompt helper
+  showPromptHelper: false,
 } as const;
 
 /**
@@ -187,6 +191,10 @@ function mergePreset(
     presetFooter: preset.footer ?? defaults.presetFooter,
     presetDescription: preset.description ?? defaults.presetDescription,
     addOutlines: preset.addOutlines ?? defaults.addOutlines,
+    // Model preset options
+    modelPreset: defaults.modelPreset,
+    // Prompt helper
+    showPromptHelper: defaults.showPromptHelper,
   };
 }
 
@@ -346,5 +354,9 @@ export function resolveOptions(
     presetFooter: options.presetFooter,
     presetDescription: options.presetDescription,
     addOutlines: options.addOutlines,
+    // Model preset options
+    modelPreset: cli.model ?? options.modelPreset,
+    // Prompt helper
+    showPromptHelper: cli.showPromptHelper ?? options.showPromptHelper,
   };
 }
