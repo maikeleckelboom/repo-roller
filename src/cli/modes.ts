@@ -1,5 +1,4 @@
 import { writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import type { ResolvedOptions } from '../core/types.js';
 import { scanFiles } from '../core/scan.js';
 import { render } from '../core/render.js';
@@ -12,73 +11,7 @@ import { renderGenerationSummary } from '../core/dashboard.js';
 import { getModelPreset } from '../core/modelPresets.js';
 import { renderPromptHelper } from '../core/promptHelper.js';
 import { recordHistoryEntry } from '../core/history.js';
-
-/**
- * Copy text to system clipboard (cross-platform)
- */
-async function copyToClipboard(text: string): Promise<void> {
-  const platform = process.platform;
-
-  let cmd: string;
-  let args: string[];
-
-  if (platform === 'darwin') {
-    cmd = 'pbcopy';
-    args = [];
-  } else if (platform === 'win32') {
-    cmd = 'clip';
-    args = [];
-  } else {
-    // Linux - try xclip first, then xsel
-    cmd = 'xclip';
-    args = ['-selection', 'clipboard'];
-  }
-
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { stdio: ['pipe', 'ignore', 'pipe'] });
-
-    let stderr = '';
-    proc.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        // If xclip fails on Linux, try xsel
-        if (platform === 'linux' && cmd === 'xclip') {
-          const xselProc = spawn('xsel', ['--clipboard', '--input'], { stdio: ['pipe', 'ignore', 'pipe'] });
-          xselProc.on('close', (xselCode) => {
-            if (xselCode === 0) {
-              resolve();
-            } else {
-              reject(new Error('Clipboard not available. Install xclip or xsel on Linux.'));
-            }
-          });
-          xselProc.on('error', () => {
-            reject(new Error('Clipboard not available. Install xclip or xsel on Linux.'));
-          });
-          xselProc.stdin?.write(text);
-          xselProc.stdin?.end();
-        } else {
-          reject(new Error(`Clipboard command failed: ${stderr || 'unknown error'}`));
-        }
-      }
-    });
-
-    proc.on('error', (err) => {
-      if (platform === 'linux') {
-        reject(new Error('Clipboard not available. Install xclip or xsel on Linux.'));
-      } else {
-        reject(err);
-      }
-    });
-
-    proc.stdin?.write(text);
-    proc.stdin?.end();
-  });
-}
+import { copyToClipboard } from '../core/clipboard.js';
 export async function runPreview(options: ResolvedOptions): Promise<void> {
   console.log(ui.header());
   console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));

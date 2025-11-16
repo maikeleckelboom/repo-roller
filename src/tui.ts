@@ -1,5 +1,4 @@
 import { writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import { render } from 'ink';
 import React from 'react';
 import type { ResolvedOptions, ScanResult } from './core/types.js';
@@ -16,64 +15,7 @@ import { renderGenerationSummary } from './core/dashboard.js';
 import { getModelPreset } from './core/modelPresets.js';
 import { renderPromptHelper } from './core/promptHelper.js';
 import { recordHistoryEntry } from './core/history.js';
-
-/**
- * Copy text to system clipboard (cross-platform)
- */
-async function copyToClipboard(text: string): Promise<void> {
-  const platform = process.platform;
-
-  let cmd: string;
-  let args: string[];
-
-  if (platform === 'darwin') {
-    cmd = 'pbcopy';
-    args = [];
-  } else if (platform === 'win32') {
-    cmd = 'clip';
-    args = [];
-  } else {
-    cmd = 'xclip';
-    args = ['-selection', 'clipboard'];
-  }
-
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { stdio: ['pipe', 'ignore', 'pipe'] });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else if (platform === 'linux' && cmd === 'xclip') {
-        const xselProc = spawn('xsel', ['--clipboard', '--input'], { stdio: ['pipe', 'ignore', 'pipe'] });
-        xselProc.on('close', (xselCode) => {
-          if (xselCode === 0) {
-            resolve();
-          } else {
-            reject(new Error('Clipboard not available. Install xclip or xsel on Linux.'));
-          }
-        });
-        xselProc.on('error', () => {
-          reject(new Error('Clipboard not available. Install xclip or xsel on Linux.'));
-        });
-        xselProc.stdin?.write(text);
-        xselProc.stdin?.end();
-      } else {
-        reject(new Error('Clipboard command failed'));
-      }
-    });
-
-    proc.on('error', () => {
-      if (platform === 'linux') {
-        reject(new Error('Clipboard not available. Install xclip or xsel on Linux.'));
-      } else {
-        reject(new Error('Clipboard not available'));
-      }
-    });
-
-    proc.stdin?.write(text);
-    proc.stdin?.end();
-  });
-}
+import { copyToClipboard } from './core/clipboard.js';
 
 /**
  * Run interactive TUI mode
@@ -151,21 +93,44 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
 
   // Helper function to prompt for confirmation using Ink
   const promptConfirm = async (message: string, defaultValue: boolean): Promise<boolean> => {
-    return new Promise<boolean>((resolve) => {
+    let result: boolean = defaultValue;
+    let inkExitPromise: Promise<void> | undefined;
+
+    await new Promise<void>((resolvePrompt) => {
       const { waitUntilExit } = render(
         React.createElement(Confirm, {
           message,
           defaultValue,
           onSubmit: (value: boolean) => {
-            resolve(value);
+            result = value;
+            resolvePrompt();
           },
         })
       );
 
-      waitUntilExit().catch(() => {
+      inkExitPromise = waitUntilExit().catch(() => {
         // Ignore exit errors
       });
     });
+
+    // Wait for Ink to fully exit before continuing (critical for proper tab clearing)
+    if (inkExitPromise) {
+      await inkExitPromise;
+    }
+
+    return result;
+  };
+
+  // Helper function to prompt for interactive mode preferences (reduces duplication)
+  const promptForPreferences = async (defaults: {
+    stripComments: boolean;
+    withTree: boolean;
+    withStats: boolean;
+  }): Promise<{ stripComments: boolean; withTree: boolean; withStats: boolean }> => {
+    const stripComments = await promptConfirm('Strip comments from source files?', defaults.stripComments);
+    const withTree = await promptConfirm('Include directory tree view?', defaults.withTree);
+    const withStats = await promptConfirm('Include statistics section?', defaults.withStats);
+    return { stripComments, withTree, withStats };
   };
 
   // Determine final options for strip/tree/stats
@@ -212,14 +177,14 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       } else {
         // Interactive prompts with user preferences as defaults
         console.log('');
-        const defaultStripComments = userSettings.stripComments ?? options.stripComments;
-        stripComments = await promptConfirm('Strip comments from source files?', defaultStripComments);
-
-        const defaultWithTree = userSettings.withTree ?? options.withTree;
-        withTree = await promptConfirm('Include directory tree view?', defaultWithTree);
-
-        const defaultWithStats = userSettings.withStats ?? options.withStats;
-        withStats = await promptConfirm('Include statistics section?', defaultWithStats);
+        const prefs = await promptForPreferences({
+          stripComments: userSettings.stripComments ?? options.stripComments,
+          withTree: userSettings.withTree ?? options.withTree,
+          withStats: userSettings.withStats ?? options.withStats,
+        });
+        stripComments = prefs.stripComments;
+        withTree = prefs.withTree;
+        withStats = prefs.withStats;
 
         // Save user preferences for next time
         await saveUserSettings({
@@ -231,14 +196,14 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     } else {
       // No saved preferences - use standard flow
       console.log('');
-      const defaultStripComments = userSettings.stripComments ?? options.stripComments;
-      stripComments = await promptConfirm('Strip comments from source files?', defaultStripComments);
-
-      const defaultWithTree = userSettings.withTree ?? options.withTree;
-      withTree = await promptConfirm('Include directory tree view?', defaultWithTree);
-
-      const defaultWithStats = userSettings.withStats ?? options.withStats;
-      withStats = await promptConfirm('Include statistics section?', defaultWithStats);
+      const prefs = await promptForPreferences({
+        stripComments: userSettings.stripComments ?? options.stripComments,
+        withTree: userSettings.withTree ?? options.withTree,
+        withStats: userSettings.withStats ?? options.withStats,
+      });
+      stripComments = prefs.stripComments;
+      withTree = prefs.withTree;
+      withStats = prefs.withStats;
 
       // Save user preferences for next time
       await saveUserSettings({
