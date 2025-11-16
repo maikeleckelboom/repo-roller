@@ -279,5 +279,157 @@ profiles:
         expect(resolved.withStats).toBe(true);
       });
     });
+
+    describe('display settings resolution', () => {
+      it('should have default display settings when no CLI flags set', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings).toBeDefined();
+        expect(resolved.displaySettings.showGenerationSummary).toBe(true);
+        expect(resolved.displaySettings.showCodeComposition).toBe(true);
+        expect(resolved.displaySettings.showContextFit).toBe(true);
+        expect(resolved.displaySettings.showHealthHints).toBe(true);
+        expect(resolved.displaySettings.showTokenWarnings).toBe(true);
+        expect(resolved.displaySettings.showCostEstimates).toBe(true);
+        expect(resolved.displaySettings.showRecommendations).toBe(true);
+      });
+
+      it('should apply --quiet flag to hide all display settings', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          quiet: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings.showGenerationSummary).toBe(false);
+        expect(resolved.displaySettings.showCodeComposition).toBe(false);
+        expect(resolved.displaySettings.showContextFit).toBe(false);
+        expect(resolved.displaySettings.showHealthHints).toBe(false);
+        expect(resolved.displaySettings.showTokenWarnings).toBe(false);
+        expect(resolved.displaySettings.showCostEstimates).toBe(false);
+        expect(resolved.displaySettings.showRecommendations).toBe(false);
+      });
+
+      it('should apply --hide-composition flag independently', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideComposition: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        // Only composition should be hidden
+        expect(resolved.displaySettings.showCodeComposition).toBe(false);
+        // Others should remain true
+        expect(resolved.displaySettings.showGenerationSummary).toBe(true);
+        expect(resolved.displaySettings.showContextFit).toBe(true);
+        expect(resolved.displaySettings.showHealthHints).toBe(true);
+        expect(resolved.displaySettings.showTokenWarnings).toBe(true);
+        expect(resolved.displaySettings.showCostEstimates).toBe(true);
+        expect(resolved.displaySettings.showRecommendations).toBe(true);
+      });
+
+      it('should apply --hide-context-fit flag independently', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideContextFit: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings.showContextFit).toBe(false);
+        expect(resolved.displaySettings.showCodeComposition).toBe(true);
+        expect(resolved.displaySettings.showHealthHints).toBe(true);
+      });
+
+      it('should apply --hide-health-hints flag independently', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideHealthHints: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings.showHealthHints).toBe(false);
+        expect(resolved.displaySettings.showCodeComposition).toBe(true);
+        expect(resolved.displaySettings.showContextFit).toBe(true);
+      });
+
+      it('should apply --hide-warnings flag independently', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideWarnings: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings.showTokenWarnings).toBe(false);
+        expect(resolved.displaySettings.showCodeComposition).toBe(true);
+        expect(resolved.displaySettings.showCostEstimates).toBe(true);
+      });
+
+      it('should apply --hide-cost flag independently', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideCost: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings.showCostEstimates).toBe(false);
+        expect(resolved.displaySettings.showTokenWarnings).toBe(true);
+        expect(resolved.displaySettings.showRecommendations).toBe(true);
+      });
+
+      it('should apply --hide-recommendations flag independently', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideRecommendations: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        expect(resolved.displaySettings.showRecommendations).toBe(false);
+        expect(resolved.displaySettings.showCostEstimates).toBe(true);
+        expect(resolved.displaySettings.showHealthHints).toBe(true);
+      });
+
+      it('should allow multiple independent hide flags', () => {
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideComposition: true,
+          hideCost: true,
+          hideWarnings: true,
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        // These three should be hidden
+        expect(resolved.displaySettings.showCodeComposition).toBe(false);
+        expect(resolved.displaySettings.showCostEstimates).toBe(false);
+        expect(resolved.displaySettings.showTokenWarnings).toBe(false);
+
+        // These should remain visible
+        expect(resolved.displaySettings.showGenerationSummary).toBe(true);
+        expect(resolved.displaySettings.showContextFit).toBe(true);
+        expect(resolved.displaySettings.showHealthHints).toBe(true);
+        expect(resolved.displaySettings.showRecommendations).toBe(true);
+      });
+
+      it('should not have all-or-nothing behavior for CLI flags', () => {
+        // This test ensures that setting ONE flag doesn't affect others
+        const cliOptions: CliOptions = {
+          root: '.',
+          hideComposition: true, // Only this one
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        // CRITICAL: Only composition should be affected, not all settings
+        expect(resolved.displaySettings.showCodeComposition).toBe(false);
+        // All others must remain true (not false!)
+        expect(resolved.displaySettings.showGenerationSummary).toBe(true);
+        expect(resolved.displaySettings.showContextFit).toBe(true);
+        expect(resolved.displaySettings.showHealthHints).toBe(true);
+        expect(resolved.displaySettings.showTokenWarnings).toBe(true);
+        expect(resolved.displaySettings.showCostEstimates).toBe(true);
+        expect(resolved.displaySettings.showRecommendations).toBe(true);
+      });
+    });
   });
 });

@@ -218,10 +218,11 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   // Get model preset if specified
   const modelPreset = updatedOptions.modelPreset ? getModelPreset(updatedOptions.modelPreset) : undefined;
 
-  // Display repo-first generation summary using new dashboard (detailed mode for interactive)
+  // Display repo-first generation summary using new dashboard
+  // Use 'compact' mode for horizontal two-column layout (consistent with non-interactive mode)
   const dashboardLines = renderGenerationSummary(
     { scan, options: updatedOptions, estimatedTokens, modelPreset },
-    { mode: 'detailed' }
+    { mode: 'compact', displaySettings: updatedOptions.displaySettings }
   );
   for (const line of dashboardLines) {
     console.log(line);

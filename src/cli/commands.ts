@@ -203,28 +203,50 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
   if (!cliOptions) {
     throw new Error('cliOptions should be defined when validation is valid');
   }
-  let resolved = resolveOptions(cliOptions, ctx.config, ctx.repoRollerConfig);
 
-  // Load user display settings and merge them (CLI flags take priority)
+  // Load user display settings BEFORE resolving options
+  // This allows CLI flags to properly override user settings on a per-setting basis
   const userDisplaySettings = await getDisplaySettings();
-  const hasCliOverride = cliOptions.quiet || cliOptions.hideComposition || cliOptions.hideContextFit ||
-    cliOptions.hideHealthHints || cliOptions.hideWarnings || cliOptions.hideCost || cliOptions.hideRecommendations;
 
-  if (!hasCliOverride) {
-    // Apply user settings if no CLI override flags are set
-    resolved = {
-      ...resolved,
-      displaySettings: {
-        showGenerationSummary: userDisplaySettings.showGenerationSummary,
-        showCodeComposition: userDisplaySettings.showCodeComposition,
-        showContextFit: userDisplaySettings.showContextFit,
-        showHealthHints: userDisplaySettings.showHealthHints,
-        showTokenWarnings: userDisplaySettings.showTokenWarnings,
-        showCostEstimates: userDisplaySettings.showCostEstimates,
-        showRecommendations: userDisplaySettings.showRecommendations,
-      },
-    };
-  }
+  // Create a modified cliOptions that includes user settings as the base
+  // CLI flags will override these in resolveOptions
+  const cliOptionsWithUserSettings = {
+    ...cliOptions,
+    // Pass user display settings as base - CLI flags will override in resolveOptions
+    _userDisplaySettings: userDisplaySettings,
+  };
+
+  let resolved = resolveOptions(cliOptionsWithUserSettings, ctx.config, ctx.repoRollerConfig);
+
+  // Now properly merge: user settings as base, then CLI overrides
+  // Each setting should be evaluated individually, not all-or-nothing
+  resolved = {
+    ...resolved,
+    displaySettings: {
+      // For each setting: CLI flag takes priority, then user setting, then default
+      showGenerationSummary: cliOptions.quiet
+        ? false
+        : userDisplaySettings.showGenerationSummary,
+      showCodeComposition: cliOptions.quiet || cliOptions.hideComposition
+        ? false
+        : userDisplaySettings.showCodeComposition,
+      showContextFit: cliOptions.quiet || cliOptions.hideContextFit
+        ? false
+        : userDisplaySettings.showContextFit,
+      showHealthHints: cliOptions.quiet || cliOptions.hideHealthHints
+        ? false
+        : userDisplaySettings.showHealthHints,
+      showTokenWarnings: cliOptions.quiet || cliOptions.hideWarnings
+        ? false
+        : userDisplaySettings.showTokenWarnings,
+      showCostEstimates: cliOptions.quiet || cliOptions.hideCost
+        ? false
+        : userDisplaySettings.showCostEstimates,
+      showRecommendations: cliOptions.quiet || cliOptions.hideRecommendations
+        ? false
+        : userDisplaySettings.showRecommendations,
+    },
+  };
 
   if (resolved.verbose) {
     console.log('Configuration:', resolved);

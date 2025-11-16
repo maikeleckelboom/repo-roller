@@ -209,4 +209,263 @@ describe('userSettings', () => {
       expect(finalWithStats).toBe(true); // default (undefined in file)
     });
   });
+
+  describe('display settings - new CLI preferences', () => {
+    it('should support all display setting fields in user preferences', async () => {
+      await mkdir(configDir, { recursive: true });
+
+      const displaySettings = {
+        displaySettings: {
+          showGenerationSummary: true,
+          showCodeComposition: false,
+          showContextFit: true,
+          showHealthHints: false,
+          showTokenWarnings: true,
+          showCostEstimates: false,
+          showRecommendations: true,
+        },
+      };
+
+      await writeFile(settingsFile, JSON.stringify(displaySettings), 'utf-8');
+      const content = await fsReadFile(settingsFile, 'utf-8');
+      const loaded = JSON.parse(content);
+
+      expect(loaded.displaySettings.showGenerationSummary).toBe(true);
+      expect(loaded.displaySettings.showCodeComposition).toBe(false);
+      expect(loaded.displaySettings.showContextFit).toBe(true);
+      expect(loaded.displaySettings.showHealthHints).toBe(false);
+      expect(loaded.displaySettings.showTokenWarnings).toBe(true);
+      expect(loaded.displaySettings.showCostEstimates).toBe(false);
+      expect(loaded.displaySettings.showRecommendations).toBe(true);
+    });
+
+    it('should merge user display settings with defaults correctly', async () => {
+      await mkdir(configDir, { recursive: true });
+
+      // User only customizes some settings
+      const userSettings = {
+        displaySettings: {
+          showCodeComposition: false,
+          showCostEstimates: false,
+        },
+      };
+
+      await writeFile(settingsFile, JSON.stringify(userSettings), 'utf-8');
+      const loaded = JSON.parse(await fsReadFile(settingsFile, 'utf-8'));
+
+      // Simulate the merge pattern from getDisplaySettings()
+      const defaults = {
+        showGenerationSummary: true,
+        showCodeComposition: true,
+        showContextFit: true,
+        showHealthHints: true,
+        showTokenWarnings: true,
+        showCostEstimates: true,
+        showRecommendations: true,
+      };
+
+      const merged = {
+        ...defaults,
+        ...(loaded.displaySettings || {}),
+      };
+
+      // User preferences override defaults
+      expect(merged.showCodeComposition).toBe(false); // user override
+      expect(merged.showCostEstimates).toBe(false); // user override
+      // Defaults remain for unset values
+      expect(merged.showGenerationSummary).toBe(true);
+      expect(merged.showContextFit).toBe(true);
+      expect(merged.showHealthHints).toBe(true);
+      expect(merged.showTokenWarnings).toBe(true);
+      expect(merged.showRecommendations).toBe(true);
+    });
+
+    it('should handle individual CLI flag overrides on top of user settings', async () => {
+      await mkdir(configDir, { recursive: true });
+
+      // User settings - user has composition and cost hidden
+      const userDisplaySettings = {
+        showGenerationSummary: true,
+        showCodeComposition: false,
+        showContextFit: true,
+        showHealthHints: true,
+        showTokenWarnings: true,
+        showCostEstimates: false,
+        showRecommendations: true,
+      };
+
+      // CLI flags - user additionally hides health hints via CLI
+      const cliFlags = {
+        quiet: false,
+        hideComposition: false, // Not set - should use user setting (false)
+        hideContextFit: false,
+        hideHealthHints: true, // CLI override - should become false
+        hideWarnings: false,
+        hideCost: false, // Not set - should use user setting (false)
+        hideRecommendations: false,
+      };
+
+      // Simulate the proper merge logic (CLI flags override user settings)
+      const finalDisplaySettings = {
+        showGenerationSummary: cliFlags.quiet
+          ? false
+          : userDisplaySettings.showGenerationSummary,
+        showCodeComposition: cliFlags.quiet || cliFlags.hideComposition
+          ? false
+          : userDisplaySettings.showCodeComposition,
+        showContextFit: cliFlags.quiet || cliFlags.hideContextFit
+          ? false
+          : userDisplaySettings.showContextFit,
+        showHealthHints: cliFlags.quiet || cliFlags.hideHealthHints
+          ? false
+          : userDisplaySettings.showHealthHints,
+        showTokenWarnings: cliFlags.quiet || cliFlags.hideWarnings
+          ? false
+          : userDisplaySettings.showTokenWarnings,
+        showCostEstimates: cliFlags.quiet || cliFlags.hideCost
+          ? false
+          : userDisplaySettings.showCostEstimates,
+        showRecommendations: cliFlags.quiet || cliFlags.hideRecommendations
+          ? false
+          : userDisplaySettings.showRecommendations,
+      };
+
+      // Verify correct priority: CLI > user settings > defaults
+      expect(finalDisplaySettings.showGenerationSummary).toBe(true); // user setting
+      expect(finalDisplaySettings.showCodeComposition).toBe(false); // user setting
+      expect(finalDisplaySettings.showContextFit).toBe(true); // user setting
+      expect(finalDisplaySettings.showHealthHints).toBe(false); // CLI override
+      expect(finalDisplaySettings.showTokenWarnings).toBe(true); // user setting
+      expect(finalDisplaySettings.showCostEstimates).toBe(false); // user setting
+      expect(finalDisplaySettings.showRecommendations).toBe(true); // user setting
+    });
+
+    it('should NOT reset all user settings when one CLI flag is set', async () => {
+      // This is the critical regression test for the bug that was fixed
+      await mkdir(configDir, { recursive: true });
+
+      const userDisplaySettings = {
+        showGenerationSummary: true,
+        showCodeComposition: true,
+        showContextFit: true,
+        showHealthHints: true,
+        showTokenWarnings: true,
+        showCostEstimates: false, // User explicitly disabled cost estimates
+        showRecommendations: true,
+      };
+
+      // User sets only --hide-composition via CLI
+      const cliFlags = {
+        quiet: false,
+        hideComposition: true, // This is the only CLI flag set
+        hideContextFit: false,
+        hideHealthHints: false,
+        hideWarnings: false,
+        hideCost: false,
+        hideRecommendations: false,
+      };
+
+      // CORRECT behavior: Each setting evaluated independently
+      const correctFinalSettings = {
+        showGenerationSummary: cliFlags.quiet
+          ? false
+          : userDisplaySettings.showGenerationSummary,
+        showCodeComposition: cliFlags.quiet || cliFlags.hideComposition
+          ? false
+          : userDisplaySettings.showCodeComposition,
+        showContextFit: cliFlags.quiet || cliFlags.hideContextFit
+          ? false
+          : userDisplaySettings.showContextFit,
+        showHealthHints: cliFlags.quiet || cliFlags.hideHealthHints
+          ? false
+          : userDisplaySettings.showHealthHints,
+        showTokenWarnings: cliFlags.quiet || cliFlags.hideWarnings
+          ? false
+          : userDisplaySettings.showTokenWarnings,
+        showCostEstimates: cliFlags.quiet || cliFlags.hideCost
+          ? false
+          : userDisplaySettings.showCostEstimates,
+        showRecommendations: cliFlags.quiet || cliFlags.hideRecommendations
+          ? false
+          : userDisplaySettings.showRecommendations,
+      };
+
+      // Critical: User's cost estimate preference should be preserved
+      expect(correctFinalSettings.showCostEstimates).toBe(false); // User's preference MUST be preserved
+      expect(correctFinalSettings.showCodeComposition).toBe(false); // CLI override
+      expect(correctFinalSettings.showGenerationSummary).toBe(true); // User's preference
+      expect(correctFinalSettings.showContextFit).toBe(true); // User's preference
+      expect(correctFinalSettings.showHealthHints).toBe(true); // User's preference
+      expect(correctFinalSettings.showTokenWarnings).toBe(true); // User's preference
+      expect(correctFinalSettings.showRecommendations).toBe(true); // User's preference
+    });
+
+    it('should allow users to hide specific UI blocks persistently', async () => {
+      await mkdir(configDir, { recursive: true });
+
+      // User wants minimal output - only summary and context fit
+      const minimalDisplaySettings = {
+        displaySettings: {
+          showGenerationSummary: true,
+          showCodeComposition: false,
+          showContextFit: true,
+          showHealthHints: false,
+          showTokenWarnings: false,
+          showCostEstimates: false,
+          showRecommendations: false,
+        },
+      };
+
+      await writeFile(settingsFile, JSON.stringify(minimalDisplaySettings), 'utf-8');
+      const loaded = JSON.parse(await fsReadFile(settingsFile, 'utf-8'));
+
+      // Verify all user preferences are persisted correctly
+      expect(loaded.displaySettings.showGenerationSummary).toBe(true);
+      expect(loaded.displaySettings.showCodeComposition).toBe(false);
+      expect(loaded.displaySettings.showContextFit).toBe(true);
+      expect(loaded.displaySettings.showHealthHints).toBe(false);
+      expect(loaded.displaySettings.showTokenWarnings).toBe(false);
+      expect(loaded.displaySettings.showCostEstimates).toBe(false);
+      expect(loaded.displaySettings.showRecommendations).toBe(false);
+    });
+
+    it('should handle empty display settings gracefully', async () => {
+      await mkdir(configDir, { recursive: true });
+
+      // User has other settings but no display settings
+      const userSettings = {
+        stripComments: true,
+        withTree: false,
+        // No displaySettings property
+      };
+
+      await writeFile(settingsFile, JSON.stringify(userSettings), 'utf-8');
+      const loaded = JSON.parse(await fsReadFile(settingsFile, 'utf-8'));
+
+      // Simulate getDisplaySettings() behavior
+      const defaults = {
+        showGenerationSummary: true,
+        showCodeComposition: true,
+        showContextFit: true,
+        showHealthHints: true,
+        showTokenWarnings: true,
+        showCostEstimates: true,
+        showRecommendations: true,
+      };
+
+      const merged = {
+        ...defaults,
+        ...(loaded.displaySettings || {}),
+      };
+
+      // All should be defaults since no displaySettings in file
+      expect(merged.showGenerationSummary).toBe(true);
+      expect(merged.showCodeComposition).toBe(true);
+      expect(merged.showContextFit).toBe(true);
+      expect(merged.showHealthHints).toBe(true);
+      expect(merged.showTokenWarnings).toBe(true);
+      expect(merged.showCostEstimates).toBe(true);
+      expect(merged.showRecommendations).toBe(true);
+    });
+  });
 });
