@@ -2,12 +2,24 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
-interface UserSettings {
+export interface DisplaySettings {
+  showGenerationSummary?: boolean;
+  showCodeComposition?: boolean;
+  showContextFit?: boolean;
+  showHealthHints?: boolean;
+  showTokenWarnings?: boolean;
+  showCostEstimates?: boolean;
+  showRecommendations?: boolean;
+}
+
+export interface UserSettings {
   showExcludedFiles?: boolean;
   // DX improvements: Remember user preferences for interactive mode
   stripComments?: boolean;
   withTree?: boolean;
   withStats?: boolean;
+  // Display preferences for CLI output
+  displaySettings?: DisplaySettings;
 }
 
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');
@@ -49,4 +61,42 @@ export async function setUserSetting<K extends keyof UserSettings>(
   value: UserSettings[K]
 ): Promise<void> {
   await saveUserSettings({ [key]: value });
+}
+
+export const DEFAULT_DISPLAY_SETTINGS: Required<DisplaySettings> = {
+  showGenerationSummary: true,
+  showCodeComposition: true,
+  showContextFit: true,
+  showHealthHints: true,
+  showTokenWarnings: true,
+  showCostEstimates: true,
+  showRecommendations: true,
+};
+
+export async function getDisplaySettings(): Promise<Required<DisplaySettings>> {
+  const settings = await loadUserSettings();
+  return {
+    ...DEFAULT_DISPLAY_SETTINGS,
+    ...(settings.displaySettings || {}),
+  };
+}
+
+export async function setDisplaySetting<K extends keyof DisplaySettings>(
+  key: K,
+  value: boolean
+): Promise<void> {
+  const current = await loadUserSettings();
+  const updatedDisplaySettings = {
+    ...(current.displaySettings || {}),
+    [key]: value,
+  };
+  await saveUserSettings({ displaySettings: updatedDisplaySettings });
+}
+
+export async function resetDisplaySettings(): Promise<void> {
+  const current = await loadUserSettings();
+  // Remove displaySettings entirely to use defaults
+  const { displaySettings: _, ...rest } = current;
+  await ensureConfigDir();
+  await writeFile(SETTINGS_FILE, JSON.stringify(rest, null, 2), 'utf-8');
 }

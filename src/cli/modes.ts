@@ -227,7 +227,7 @@ export async function runNonInteractive(options: ResolvedOptions): Promise<void>
   // Render the new dashboard
   const dashboardLines = renderGenerationSummary(
     { scan, options, estimatedTokens, modelPreset },
-    { mode: 'compact' }
+    { mode: 'compact', displaySettings: options.displaySettings }
   );
   for (const line of dashboardLines) {
     console.log(line);

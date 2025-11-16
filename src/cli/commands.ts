@@ -1,4 +1,4 @@
-import type { CliOptions, SortMode, OutputFormat, CommanderOptions, RollerConfig, RepoRollerYmlConfig } from '../core/types.js';
+import type { CliOptions, SortMode, OutputFormat, CommanderOptions, RollerConfig, RepoRollerYmlConfig, ResolvedOptions } from '../core/types.js';
 import { displayPresets, displayPresetDetails, displayProfiles, displayProfileDetails, displayExamples } from './presets.js';
 import { validateCliOptions } from '../core/validation.js';
 import { resolveOptions } from '../core/config.js';
@@ -6,6 +6,7 @@ import { runInteractive } from '../tui.js';
 import { displayProviders, validateConfigs, runPreview, runNonInteractive } from './index.js';
 import { listModelPresets } from '../core/modelPresets.js';
 import * as ui from '../core/ui.js';
+import { getDisplaySettings } from '../core/userSettings.js';
 
 export interface CommandContext {
   root: string;
@@ -174,6 +175,13 @@ export function transformCommanderOptions(root: string, options: CommanderOption
     copy: options.copy,
     diff: options.diff,
     mostRecent: options.mostRecent,
+    quiet: options.quiet,
+    hideComposition: options.hideComposition,
+    hideContextFit: options.hideContextFit,
+    hideHealthHints: options.hideHealthHints,
+    hideWarnings: options.hideWarnings,
+    hideCost: options.hideCost,
+    hideRecommendations: options.hideRecommendations,
   };
 }
 
@@ -195,7 +203,28 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
   if (!cliOptions) {
     throw new Error('cliOptions should be defined when validation is valid');
   }
-  const resolved = resolveOptions(cliOptions, ctx.config, ctx.repoRollerConfig);
+  let resolved = resolveOptions(cliOptions, ctx.config, ctx.repoRollerConfig);
+
+  // Load user display settings and merge them (CLI flags take priority)
+  const userDisplaySettings = await getDisplaySettings();
+  const hasCliOverride = cliOptions.quiet || cliOptions.hideComposition || cliOptions.hideContextFit ||
+    cliOptions.hideHealthHints || cliOptions.hideWarnings || cliOptions.hideCost || cliOptions.hideRecommendations;
+
+  if (!hasCliOverride) {
+    // Apply user settings if no CLI override flags are set
+    resolved = {
+      ...resolved,
+      displaySettings: {
+        showGenerationSummary: userDisplaySettings.showGenerationSummary,
+        showCodeComposition: userDisplaySettings.showCodeComposition,
+        showContextFit: userDisplaySettings.showContextFit,
+        showHealthHints: userDisplaySettings.showHealthHints,
+        showTokenWarnings: userDisplaySettings.showTokenWarnings,
+        showCostEstimates: userDisplaySettings.showCostEstimates,
+        showRecommendations: userDisplaySettings.showRecommendations,
+      },
+    };
+  }
 
   if (resolved.verbose) {
     console.log('Configuration:', resolved);

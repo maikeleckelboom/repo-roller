@@ -90,6 +90,16 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   // Git-aware filtering
   gitDiff: undefined,
   gitMostRecent: undefined,
+  // Display settings
+  displaySettings: {
+    showGenerationSummary: true,
+    showCodeComposition: true,
+    showContextFit: true,
+    showHealthHints: true,
+    showTokenWarnings: true,
+    showCostEstimates: true,
+    showRecommendations: true,
+  },
 } as const;
 
 /**
@@ -202,6 +212,11 @@ function mergePreset(
     showPromptHelper: defaults.showPromptHelper,
     // Clipboard support
     copyToClipboard: defaults.copyToClipboard,
+    // Git-aware filtering
+    gitDiff: defaults.gitDiff,
+    gitMostRecent: defaults.gitMostRecent,
+    // Display settings
+    displaySettings: defaults.displaySettings,
   };
 }
 
@@ -370,5 +385,15 @@ export function resolveOptions(
     // Git-aware filtering
     gitDiff: cli.diff ?? options.gitDiff,
     gitMostRecent: cli.mostRecent ?? options.gitMostRecent,
+    // Display settings with CLI overrides
+    displaySettings: {
+      showGenerationSummary: cli.quiet ? false : options.displaySettings.showGenerationSummary,
+      showCodeComposition: cli.quiet || cli.hideComposition ? false : options.displaySettings.showCodeComposition,
+      showContextFit: cli.quiet || cli.hideContextFit ? false : options.displaySettings.showContextFit,
+      showHealthHints: cli.quiet || cli.hideHealthHints ? false : options.displaySettings.showHealthHints,
+      showTokenWarnings: cli.quiet || cli.hideWarnings ? false : options.displaySettings.showTokenWarnings,
+      showCostEstimates: cli.quiet || cli.hideCost ? false : options.displaySettings.showCostEstimates,
+      showRecommendations: cli.quiet || cli.hideRecommendations ? false : options.displaySettings.showRecommendations,
+    },
   };
 }

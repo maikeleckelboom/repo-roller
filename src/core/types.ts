@@ -169,6 +169,14 @@ export interface CommanderOptions {
   // Git-aware filtering
   readonly diff?: string;
   readonly mostRecent?: number;
+  // Display settings overrides
+  readonly quiet?: boolean;
+  readonly hideComposition?: boolean;
+  readonly hideContextFit?: boolean;
+  readonly hideHealthHints?: boolean;
+  readonly hideWarnings?: boolean;
+  readonly hideCost?: boolean;
+  readonly hideRecommendations?: boolean;
 }
 
 /**
@@ -231,6 +239,14 @@ export interface CliOptions {
   // Git-aware filtering
   readonly diff?: string;
   readonly mostRecent?: number;
+  // Display settings overrides
+  readonly quiet?: boolean;
+  readonly hideComposition?: boolean;
+  readonly hideContextFit?: boolean;
+  readonly hideHealthHints?: boolean;
+  readonly hideWarnings?: boolean;
+  readonly hideCost?: boolean;
+  readonly hideRecommendations?: boolean;
 }
 
 /**
@@ -290,4 +306,14 @@ export interface ResolvedOptions {
   // Git-aware filtering
   readonly gitDiff?: string;
   readonly gitMostRecent?: number;
+  // Display settings for controlling CLI output visibility
+  readonly displaySettings: {
+    readonly showGenerationSummary: boolean;
+    readonly showCodeComposition: boolean;
+    readonly showContextFit: boolean;
+    readonly showHealthHints: boolean;
+    readonly showTokenWarnings: boolean;
+    readonly showCostEstimates: boolean;
+    readonly showRecommendations: boolean;
+  };
 }
