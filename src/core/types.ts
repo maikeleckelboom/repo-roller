@@ -149,6 +149,9 @@ export interface CommanderOptions {
   readonly validate?: boolean;
   readonly yes?: boolean;
   readonly defaults?: boolean;
+  // LLM report display options
+  readonly llm?: boolean;
+  readonly llmReport?: boolean;
 }
 
 /**
@@ -199,6 +202,8 @@ export interface CliOptions {
   readonly maxCostEur?: number;
   // DX improvements: Skip prompts
   readonly yes?: boolean;
+  // LLM report display options
+  readonly showLLMReport?: boolean;
 }
 
 /**
@@ -242,4 +247,6 @@ export interface ResolvedOptions {
   // Tracking what was explicitly specified (for smarter recommendations)
   readonly profileExplicitlySet?: boolean;
   readonly maxSizeExplicitlySet?: boolean;
+  // LLM report display options
+  readonly showLLMReport: boolean;
 }

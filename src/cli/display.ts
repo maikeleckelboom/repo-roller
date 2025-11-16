@@ -4,12 +4,19 @@
  * Functions for displaying information, analysis, and errors to the terminal.
  */
 
-import type { ResolvedOptions } from '../core/types.js';
+import type { ResolvedOptions, ScanResult } from '../core/types.js';
 import type { BudgetSelectionResult } from '../core/budget.js';
 import type { TokenAnalysisContext } from '../core/tokens.js';
 import { analyzeTokenUsage, formatNumber, calculateCost, LLM_PROVIDERS } from '../core/tokens.js';
 import { formatBudgetUsage } from '../core/budget.js';
 import * as ui from '../core/ui.js';
+import {
+  formatBytes,
+  calculateLanguageBreakdown,
+  calculateRoleBreakdown,
+  calculateTopDirectories,
+  estimateLinesOfCode,
+} from '../core/helpers.js';
 
 /**
  * Display token analysis and cost estimates
@@ -156,4 +163,192 @@ export function displayNoFilesError(options: ResolvedOptions): void {
     console.error(ui.bullet(ui.colors.muted('repo-roller . --ext ""') + ui.colors.dim(`     Remove extension filter (current: ${options.extensions.join(',')})`)));
   }
   console.error('');
+}
+
+/**
+ * Display generation summary with repo-first layout
+ * This puts bundle profile at the top and LLM info as secondary
+ */
+export function displayGenerationSummary(
+  scan: ScanResult,
+  options: ResolvedOptions,
+  estimatedTokens: number
+): void {
+  console.log('');
+  console.log(ui.section('Generation Summary'));
+
+  // Bundle Profile - Primary information
+  console.log(ui.keyValue('Files selected', ui.colors.primary(scan.files.length.toString())));
+  console.log(ui.keyValue('Total size', formatBytes(scan.totalBytes)));
+  console.log(ui.keyValue('Lines of code', `~${formatNumber(estimateLinesOfCode(scan.totalBytes))}`));
+  console.log(ui.keyValue('Output file', ui.colors.success(options.outFile)));
+  console.log('');
+
+  // Code Composition
+  console.log(ui.colors.dim('  Code Composition'));
+  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(45)));
+
+  // Language breakdown
+  const languages = calculateLanguageBreakdown(scan.files);
+  if (languages.length > 0) {
+    const langItems = languages.slice(0, 4).map(l => ({ name: l.name, percent: l.percent }));
+    console.log(`  Languages: ${ui.inlinePercentages(langItems)}`);
+  }
+
+  // Role breakdown
+  const roles = calculateRoleBreakdown(scan.files);
+  const roleItems = [];
+  if (roles.source > 0) {roleItems.push({ name: 'Src', percent: roles.source });}
+  if (roles.test > 0) {roleItems.push({ name: 'Tests', percent: roles.test });}
+  if (roles.docs > 0) {roleItems.push({ name: 'Docs', percent: roles.docs });}
+  if (roles.config > 0) {roleItems.push({ name: 'Config', percent: roles.config });}
+  if (roleItems.length > 0) {
+    console.log(`  Roles:     ${ui.inlinePercentages(roleItems)}`);
+  }
+  console.log('');
+
+  // Options summary
+  console.log(ui.colors.dim('  Options'));
+  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(30)));
+  console.log(`  ${options.stripComments ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Strip comments`);
+  console.log(`  ${options.withTree ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Directory tree view`);
+  console.log(`  ${options.withStats ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross)} Statistics section`);
+  console.log('');
+
+  // Context Fit - Secondary LLM information (minimal by default)
+  if (options.tokenCount) {
+    displayContextFit(estimatedTokens, options);
+  }
+}
+
+/**
+ * Display minimal context fit information
+ * Shows just the essential LLM info without detailed provider breakdown
+ */
+export function displayContextFit(
+  estimatedTokens: number,
+  options: ResolvedOptions
+): void {
+  console.log(ui.colors.dim('  Context Fit'));
+  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(45)));
+
+  // Token count with context fit indicators
+  const tokenStr = ui.tokenCount(estimatedTokens);
+
+  // Check common context window sizes
+  const fits128k = estimatedTokens <= 128_000;
+  const fits32k = estimatedTokens <= 32_000;
+
+  let contextInfo = '';
+  if (fits32k) {
+    contextInfo = ui.colors.success('fits 32K ctx');
+  } else if (fits128k) {
+    contextInfo = ui.colors.accent('fits 128K ctx; too large for 32K');
+  } else {
+    contextInfo = ui.colors.warning('exceeds 128K ctx');
+  }
+
+  console.log(`  Estimated tokens     ${tokenStr}       ${ui.colors.dim(`(${contextInfo})`)}`);
+
+  // If targeting a specific provider, show that
+  if (options.targetProvider) {
+    const estimate = calculateCost(estimatedTokens, options.targetProvider);
+    if (estimate) {
+      const costStr = `$${estimate.inputCost.toFixed(4)}`;
+      const utilStr = `${estimate.utilizationPercent.toFixed(0)}% of context`;
+      const icon = estimate.withinContextWindow
+        ? ui.colors.success(ui.symbols.check)
+        : ui.colors.error(ui.symbols.cross);
+      console.log(`  ${icon} ${estimate.displayName.padEnd(18)} ${costStr}  ${ui.colors.dim(utilStr)}`);
+    }
+  }
+
+  console.log('');
+}
+
+/**
+ * Display detailed LLM analysis (on-demand)
+ * Shows full provider table with costs and utilization
+ */
+export function displayDetailedLLMAnalysis(output: string, options: ResolvedOptions): void {
+  const context: TokenAnalysisContext = {
+    profileUsed: options.profileExplicitlySet,
+    maxSizeUsed: options.maxSizeExplicitlySet,
+  };
+  const analysis = analyzeTokenUsage(output, context);
+
+  console.log(ui.section('LLM Analysis'));
+  console.log(ui.keyValue('Estimated tokens', ui.tokenCount(analysis.estimatedTokens)));
+  console.log('');
+
+  // Provider comparison table
+  console.log(ui.colors.dim('  Provider             Cost         Context Utilization'));
+  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(58)));
+
+  const topProviders = ['claude-haiku', 'claude-sonnet', 'gpt-4o', 'gemini'];
+  const estimates = topProviders
+    .map(name => calculateCost(analysis.estimatedTokens, name))
+    .filter((e): e is NonNullable<typeof e> => e !== null && e !== undefined)
+    .sort((a, b) => a.inputCost - b.inputCost);
+
+  const cheapestFitting = estimates.find(e => e.withinContextWindow);
+
+  for (const estimate of estimates) {
+    const isCheapest = cheapestFitting && estimate.provider === cheapestFitting.provider;
+    console.log(ui.providerRowWithBar(
+      estimate.displayName,
+      `$${estimate.inputCost.toFixed(4)}`,
+      estimate.utilizationPercent,
+      estimate.withinContextWindow,
+      isCheapest
+    ));
+  }
+
+  // Warnings
+  if (analysis.warnings.length > 0) {
+    console.log('');
+    console.log(ui.colors.warning.bold('  Warnings'));
+    for (const warning of analysis.warnings) {
+      console.log(ui.bullet(ui.colors.warning(warning)));
+    }
+  }
+
+  // Recommendations
+  if (analysis.recommendations.length > 0) {
+    console.log('');
+    console.log(ui.colors.info.bold('  Recommendations'));
+    for (const rec of analysis.recommendations) {
+      console.log(ui.bullet(ui.colors.dim(rec)));
+    }
+  }
+
+  console.log('');
+}
+
+/**
+ * Display top directories breakdown
+ */
+export function displayTopDirectories(scan: ScanResult): void {
+  const topDirs = calculateTopDirectories(scan.files);
+  if (topDirs.length === 0) {return;}
+
+  console.log(ui.colors.dim('  Top directories by size'));
+  for (const dir of topDirs) {
+    console.log(ui.directoryBreakdown(dir.path, dir.percent));
+  }
+  console.log('');
+}
+
+/**
+ * Display language breakdown with visual bars
+ */
+export function displayLanguageBreakdown(scan: ScanResult): void {
+  const languages = calculateLanguageBreakdown(scan.files);
+  if (languages.length === 0) {return;}
+
+  console.log(ui.colors.dim('  Languages'));
+  for (const lang of languages.slice(0, 5)) {
+    console.log(ui.languageBar(lang.name, lang.percent));
+  }
+  console.log('');
 }
