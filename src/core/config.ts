@@ -85,6 +85,8 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   modelPreset: undefined,
   // Prompt helper
   showPromptHelper: false,
+  // Clipboard support
+  copyToClipboard: false,
 } as const;
 
 /**
@@ -195,6 +197,8 @@ function mergePreset(
     modelPreset: defaults.modelPreset,
     // Prompt helper
     showPromptHelper: defaults.showPromptHelper,
+    // Clipboard support
+    copyToClipboard: defaults.copyToClipboard,
   };
 }
 
@@ -358,5 +362,7 @@ export function resolveOptions(
     modelPreset: cli.model ?? options.modelPreset,
     // Prompt helper
     showPromptHelper: cli.showPromptHelper ?? options.showPromptHelper,
+    // Clipboard support
+    copyToClipboard: cli.copy ?? options.copyToClipboard,
   };
 }

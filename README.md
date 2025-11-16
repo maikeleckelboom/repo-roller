@@ -1,6 +1,28 @@
 # repo-roller
 
-A CLI tool that aggregates source code files into a single output file. Useful for feeding codebases to LLMs.
+<p align="center">
+  <img src="logo.svg" alt="repo-roller logo" width="200" height="200">
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/repo-roller"><img src="https://img.shields.io/npm/v/repo-roller" alt="npm version"></a>
+  <a href="https://github.com/maikeleckelboom/repo-roller/blob/main/LICENSE"><img src="https://img.shields.io/github/license/maikeleckelboom/repo-roller" alt="license"></a>
+  <a href="https://github.com/maikeleckelboom/repo-roller/actions"><img src="https://img.shields.io/github/actions/workflow/status/maikeleckelboom/repo-roller/ci.yml?branch=main" alt="CI"></a>
+</p>
+
+<p align="center">
+  A CLI tool that aggregates source code files into a single output file, with token counting and cost estimation for LLMs.
+</p>
+
+## Why repo-roller?
+
+Large Language Models have limited context windows. When you need to share your codebase with an LLM, you face a frustrating workflow:
+
+- **Copy-paste dance** - Manually copying files one by one is slow and error-prone
+- **Token black box** - You have no idea how many tokens you're using until you hit the limit
+- **All-or-nothing** - Either you share too much and exceed context limits, or too little and lose important context
+
+repo-roller solves this by scanning your project, respecting `.gitignore`, filtering files by your criteria, and compiling everything into a single LLM-ready file. You get token estimates and cost breakdowns upfront, so you know exactly what you're working with.
 
 ## What it does
 
@@ -31,6 +53,9 @@ repo-roller . --interactive
 
 # See token count and cost estimates
 repo-roller . --target claude-sonnet
+
+# Copy output to clipboard (paste directly into LLM)
+repo-roller . --copy
 ```
 
 ## Output formats
@@ -39,6 +64,64 @@ repo-roller . --target claude-sonnet
 - **JSON** - Structured data with metadata
 - **YAML** - Same as JSON but in YAML
 - **Plain text** - Just the files with separators
+
+### Example outputs
+
+**Markdown format** (default):
+```markdown
+# Source Code Bundle
+
+## Directory Structure
+├── src/
+│   ├── index.ts
+│   └── utils.ts
+└── package.json
+
+## Files
+
+### src/index.ts
+\`\`\`typescript
+export function main() {
+  console.log("Hello, world!");
+}
+\`\`\`
+
+### src/utils.ts
+\`\`\`typescript
+export const add = (a: number, b: number) => a + b;
+\`\`\`
+```
+
+**JSON format** (`--format json`):
+```json
+{
+  "metadata": {
+    "generatedAt": "2024-01-15T10:30:00Z",
+    "totalFiles": 2,
+    "totalTokens": 150,
+    "totalBytes": 1250
+  },
+  "files": [
+    {
+      "path": "src/index.ts",
+      "content": "export function main() {\n  console.log(\"Hello, world!\");\n}",
+      "tokens": 85,
+      "bytes": 680
+    }
+  ]
+}
+```
+
+**Plain text format** (`--format txt`):
+```
+=== src/index.ts ===
+export function main() {
+  console.log("Hello, world!");
+}
+
+=== src/utils.ts ===
+export const add = (a: number, b: number) => a + b;
+```
 
 ## Filtering options
 

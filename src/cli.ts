@@ -150,6 +150,7 @@ async function main(): Promise<void> {
     .option('--model <name>', 'Use model preset')
     .option('--list-models', 'List model presets')
     .option('--prompt-helper', 'Show prompt suggestions')
+    .option('-c, --copy', 'Copy output to clipboard')
     .action(handleMainCommand);
 
   await program.parseAsync(process.argv);
