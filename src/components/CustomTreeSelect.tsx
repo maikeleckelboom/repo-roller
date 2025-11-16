@@ -1,15 +1,18 @@
-import React, { useReducer, useMemo, useEffect, useCallback } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
+import React, { useReducer, useMemo, useEffect, useCallback, useState } from 'react';
+import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { FileInfo } from '../core/types.js';
 import { getUserSetting, setUserSetting } from '../core/userSettings.js';
-
-interface TreeNode {
-  name: string;
-  fullPath: string;
-  isFile: boolean;
-  children: TreeNode[];
-  depth: number;
-}
+import { defaultTheme, type TreeTheme } from '../core/treeTheme.js';
+import {
+  renderTreeRowParts,
+  getRowStyling,
+  formatSummaryBar,
+  calculateMaxNameWidth,
+  DEFAULT_COLUMN_WIDTHS,
+  type TreeNode,
+  type RowState,
+} from '../core/treeRenderer.js';
+import { getFileIconInfo, getFolderIconInfo } from '../core/fileIcons.js';
 
 interface CustomTreeSelectProps {
   files: readonly FileInfo[];
@@ -23,6 +26,7 @@ interface TreeSelectState {
   cursor: number;
   showExcluded: boolean;
   settingsLoaded: boolean;
+  mode: 'tree' | 'summary';
 }
 
 // Action types for the reducer
@@ -40,7 +44,8 @@ type TreeSelectAction =
   | { type: 'SET_SHOW_EXCLUDED'; payload: boolean }
   | { type: 'TOGGLE_SHOW_EXCLUDED' }
   | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
-  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } };
+  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } }
+  | { type: 'SET_MODE'; payload: 'tree' | 'summary' };
 
 // Reducer function to manage complex state
 function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): TreeSelectState {
@@ -110,6 +115,9 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
       const boundedCursor = Math.min(state.cursor, action.payload.maxIndex);
       return boundedCursor !== state.cursor ? { ...state, cursor: boundedCursor } : state;
     }
+
+    case 'SET_MODE':
+      return { ...state, mode: action.payload };
 
     default:
       return state;
@@ -185,20 +193,38 @@ function buildTreeStructure(files: readonly FileInfo[]): TreeNode {
 }
 
 /**
- * Flatten tree to a list of nodes for navigation
+ * Flatten tree to a list of nodes for navigation, with parent tracking
  */
-function flattenTree(node: TreeNode, expanded: Set<string>): TreeNode[] {
-  const result: TreeNode[] = [];
+interface FlatNode {
+  node: TreeNode;
+  isLast: boolean;
+  parentIsLast: boolean[];
+}
 
-  const traverse = (n: TreeNode) => {
-    result.push(n);
-    if (!n.isFile && expanded.has(n.fullPath)) {
-      n.children.forEach(traverse);
+function flattenTree(node: TreeNode, expanded: Set<string>): FlatNode[] {
+  const result: FlatNode[] = [];
+
+  const traverse = (n: TreeNode, parentIsLast: boolean[]) => {
+    const isLast = false; // Will be updated below
+    const children = n.children;
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      const childIsLast = i === children.length - 1;
+      result.push({
+        node: child,
+        isLast: childIsLast,
+        parentIsLast: [...parentIsLast],
+      });
+
+      if (!child.isFile && expanded.has(child.fullPath)) {
+        traverse(child, [...parentIsLast, childIsLast]);
+      }
     }
   };
 
-  // Skip root, start with its children
-  node.children.forEach(traverse);
+  // Start with root's children
+  traverse(node, []);
   return result;
 }
 
@@ -247,6 +273,24 @@ function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean
 
 export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete }) => {
   const tree = useMemo(() => buildTreeStructure(files), [files]);
+  const theme: TreeTheme = defaultTheme;
+
+  // Get terminal width for responsive truncation
+  const { stdout } = useStdout();
+  const [terminalWidth, setTerminalWidth] = useState(stdout?.columns || 80);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (stdout?.columns) {
+        setTerminalWidth(stdout.columns);
+      }
+    };
+
+    stdout?.on('resize', handleResize);
+    return () => {
+      stdout?.off('resize', handleResize);
+    };
+  }, [stdout]);
 
   // Initialize state with useReducer
   const [state, dispatch] = useReducer(treeSelectReducer, {
@@ -255,9 +299,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     cursor: 0,
     showExcluded: true,
     settingsLoaded: false,
+    mode: 'tree',
   });
 
-  const { expanded, selected, cursor, showExcluded, settingsLoaded } = state;
+  const { expanded, selected, cursor, showExcluded, settingsLoaded, mode } = state;
 
   // Load persisted setting on mount
   useEffect(() => {
@@ -330,166 +375,168 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       return;
     }
 
+    // Review selection with R (only in summary mode)
+    if ((input === 'r' || input === 'R') && mode === 'summary') {
+      dispatch({ type: 'SET_MODE', payload: 'tree' });
+      return;
+    }
+
     // Toggle showing/hiding excluded and gitignored files with H (Shift+h)
-    if (input === 'H') {
+    if (input === 'H' && mode === 'tree') {
       dispatch({ type: 'TOGGLE_SHOW_EXCLUDED' });
       return;
     }
 
-    if (key.upArrow) {
-      dispatch({ type: 'MOVE_CURSOR_UP' });
-      return;
-    }
-
-    if (key.downArrow) {
-      dispatch({ type: 'MOVE_CURSOR_DOWN', payload: { maxIndex: flatNodes.length - 1 } });
-      return;
-    }
-
-    if (key.rightArrow) {
-      // Expand directory
-      const node = flatNodes[cursor];
-      if (node && !node.isFile) {
-        dispatch({ type: 'EXPAND_NODE', payload: node.fullPath });
-      }
-      return;
-    }
-
-    if (key.leftArrow) {
-      // Collapse directory
-      const node = flatNodes[cursor];
-      if (node && !node.isFile) {
-        dispatch({ type: 'COLLAPSE_NODE', payload: node.fullPath });
-      }
-      return;
-    }
-
-    if (input === ' ') {
-      // Toggle selection
-      const node = flatNodes[cursor];
-      if (!node) {
+    if (mode === 'tree') {
+      if (key.upArrow) {
+        dispatch({ type: 'MOVE_CURSOR_UP' });
         return;
       }
 
-      if (node.isFile) {
-        // Toggle single file
-        dispatch({ type: 'TOGGLE_FILE', payload: node.fullPath });
-      } else {
-        // Toggle directory and all children
-        handleDirectoryToggle(node);
+      if (key.downArrow) {
+        dispatch({ type: 'MOVE_CURSOR_DOWN', payload: { maxIndex: flatNodes.length - 1 } });
+        return;
       }
-      return;
+
+      if (key.rightArrow) {
+        // Expand directory
+        const flatNode = flatNodes[cursor];
+        if (flatNode && !flatNode.node.isFile) {
+          dispatch({ type: 'EXPAND_NODE', payload: flatNode.node.fullPath });
+        }
+        return;
+      }
+
+      if (key.leftArrow) {
+        // Collapse directory
+        const flatNode = flatNodes[cursor];
+        if (flatNode && !flatNode.node.isFile) {
+          dispatch({ type: 'COLLAPSE_NODE', payload: flatNode.node.fullPath });
+        }
+        return;
+      }
+
+      if (input === ' ') {
+        // Toggle selection
+        const flatNode = flatNodes[cursor];
+        if (!flatNode) {
+          return;
+        }
+
+        if (flatNode.node.isFile) {
+          // Toggle single file
+          dispatch({ type: 'TOGGLE_FILE', payload: flatNode.node.fullPath });
+        } else {
+          // Toggle directory and all children
+          handleDirectoryToggle(flatNode.node);
+        }
+        return;
+      }
     }
 
     if (key.return) {
-      // Confirm selection
-      onComplete(Array.from(selected));
-      exit();
+      if (mode === 'tree') {
+        // Move to summary mode first
+        dispatch({ type: 'SET_MODE', payload: 'summary' });
+      } else {
+        // Confirm selection from summary mode
+        onComplete(Array.from(selected));
+        exit();
+      }
       return;
     }
   });
 
-  // Get file type icon based on extension
-  const getFileTypeIcon = (name: string): string => {
-    const ext = name.split('.').pop()?.toLowerCase() || '';
-    const iconMap: Record<string, string> = {
-      ts: '🔷',
-      tsx: '⚛️',
-      js: '🟨',
-      jsx: '⚛️',
-      json: '📋',
-      md: '📝',
-      yaml: '⚙️',
-      yml: '⚙️',
-      toml: '⚙️',
-      py: '🐍',
-      go: '🔵',
-      rs: '🦀',
-      java: '☕',
-      css: '🎨',
-      scss: '🎨',
-      html: '🌐',
-      sh: '💻',
-      bash: '💻',
-      sql: '🗄️',
-      env: '🔒',
+  // Render a single tree row using the theme system
+  const renderTreeRow = (flatNode: FlatNode, index: number) => {
+    const { node, isLast, parentIsLast } = flatNode;
+    const isCursor = index === cursor;
+    const isExpanded = expanded.has(node.fullPath);
+    const isFullySelected = node.isFile
+      ? selected.has(node.fullPath)
+      : areAllChildrenSelected(node, selected);
+    const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected);
+
+    const rowState: RowState = {
+      isSelected: isFullySelected,
+      isPartiallySelected,
+      isExpanded,
+      isCursor,
+      isLast,
+      parentIsLast,
     };
-    return iconMap[ext] || '📄';
+
+    // Get icon info for styling
+    const iconInfo = node.isFile
+      ? getFileIconInfo(node.name)
+      : getFolderIconInfo(isExpanded);
+
+    // Calculate max name width based on terminal width
+    const maxNameWidth = calculateMaxNameWidth(
+      terminalWidth,
+      node.depth,
+      DEFAULT_COLUMN_WIDTHS,
+      iconInfo.hint ? iconInfo.hint.length + 3 : 0
+    );
+
+    const parts = renderTreeRowParts(node, rowState, theme, DEFAULT_COLUMN_WIDTHS, maxNameWidth);
+    const styling = getRowStyling(node, rowState, iconInfo, theme);
+
+    return (
+      <Box key={node.fullPath} flexDirection="row">
+        <Text dimColor>{parts.indent}</Text>
+        <Text color={styling.selectionColor}>{parts.selection}</Text>
+        <Text color={styling.iconColor}>{parts.expandMarker}</Text>
+        <Text color={styling.iconColor}>{parts.icon}</Text>
+        <Text color={styling.nameColor} bold={styling.nameBold}>
+          {parts.name}
+        </Text>
+        <Text dimColor>{parts.hint}</Text>
+      </Box>
+    );
   };
 
-  // Render tree
-  const renderTree = () => {
-    return flatNodes.map((node, index) => {
-      const isCursor = index === cursor;
-      const isExpanded = expanded.has(node.fullPath);
-      const isFullySelected = node.isFile
-        ? selected.has(node.fullPath)
-        : areAllChildrenSelected(node, selected);
-      const isPartiallySelected = !node.isFile && areSomeChildrenSelected(node, selected);
+  // Render tree view
+  const renderTreeView = () => {
+    return flatNodes.map((flatNode, index) => renderTreeRow(flatNode, index));
+  };
 
-      // Build tree connector lines for better visual hierarchy
-      const indentParts: string[] = [];
-      for (let i = 0; i < node.depth - 1; i++) {
-        indentParts.push('│  ');
-      }
-      const indent = indentParts.join('');
+  // Calculate hidden count
+  const hiddenCount = showExcluded ? 0 : files.length - filteredFiles.length;
 
-      // Selection indicator with modern checkbox style
-      let selectionIcon = '';
-      if (node.isFile) {
-        selectionIcon = isFullySelected ? '✓ ' : '○ ';
-      } else {
-        if (isFullySelected) {
-          selectionIcon = '✓ ';
-        } else if (isPartiallySelected) {
-          selectionIcon = '◐ ';
-        } else {
-          selectionIcon = '○ ';
-        }
-      }
-
-      // Directory/file indicator
-      let typeIcon = '';
-      if (node.isFile) {
-        typeIcon = getFileTypeIcon(node.name);
-      } else {
-        typeIcon = isExpanded ? '📂' : '📁';
-      }
-
-      // Expand/collapse indicator for directories
-      const expandIcon = !node.isFile ? (isExpanded ? ' ▾' : ' ▸') : '';
-
-      // Name with visual distinction
-      const name = node.isFile ? node.name : `${node.name}`;
-
-      // Color scheme
-      let color: string | undefined;
-      if (isCursor) {
-        color = 'cyan';
-      } else if (isFullySelected) {
-        color = 'green';
-      } else if (isPartiallySelected) {
-        color = 'yellow';
-      } else {
-        color = undefined;
-      }
-      const bold = isCursor;
-
-      return (
-        <Box key={node.fullPath} flexDirection="row">
-          <Text dimColor>{indent}</Text>
-          <Text color={isFullySelected ? 'green' : isPartiallySelected ? 'yellow' : 'gray'}>
-            {selectionIcon}
-          </Text>
-          <Text>{typeIcon} </Text>
-          <Text color={color} bold={bold}>
-            {name}
-          </Text>
-          <Text dimColor>{expandIcon}</Text>
+  // Render summary view
+  const renderSummaryView = () => {
+    const summaryText = formatSummaryBar(selected.size, files.length, hiddenCount);
+    return (
+      <Box flexDirection="column" paddingY={1}>
+        <Text color="green" bold>
+          {summaryText}
+        </Text>
+        <Box marginTop={1}>
+          <Text dimColor>Press Enter to confirm or R to review selection</Text>
         </Box>
-      );
-    });
+      </Box>
+    );
   };
+
+  if (mode === 'summary') {
+    return (
+      <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="column">
+          <Text bold color="cyan">
+            ╭─────────────────────────────────────────────────────╮
+          </Text>
+          <Text bold color="cyan">
+            │  Step 2: Confirm Selection                          │
+          </Text>
+          <Text bold color="cyan">
+            ╰─────────────────────────────────────────────────────╯
+          </Text>
+        </Box>
+        {renderSummaryView()}
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column">
@@ -498,7 +545,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
           ╭─────────────────────────────────────────────────────╮
         </Text>
         <Text bold color="cyan">
-          │  🌳 Interactive File Selection                      │
+          │  Step 1: Select Files                                │
         </Text>
         <Text bold color="cyan">
           ╰─────────────────────────────────────────────────────╯
@@ -507,44 +554,44 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
       <Box marginBottom={1} flexDirection="column">
         <Text dimColor>
-          ┌─ Navigation ──────────────────────────────────────┐
+          ┌─ Controls ───────────────────────────────────────────┐
         </Text>
         <Text dimColor>
-          │ ↑↓ Navigate    ←→ Collapse/Expand    Space Toggle │
+          │ ↑↓ Navigate    ←→ Collapse/Expand    Space Toggle   │
         </Text>
         <Text dimColor>
-          │ Enter Confirm  Q Quit                H Show/Hide  │
+          │ Enter Confirm  Q Quit                 H Show/Hide   │
         </Text>
         <Text dimColor>
-          └───────────────────────────────────────────────────┘
+          └─────────────────────────────────────────────────────┘
         </Text>
       </Box>
 
       <Box flexDirection="column" paddingBottom={1}>
-        {renderTree()}
+        {renderTreeView()}
       </Box>
 
       <Box marginTop={1} flexDirection="column">
         <Text dimColor>
-          ────────────────────────────────────────────────────
+          ─────────────────────────────────────────────────────
         </Text>
         <Box>
           <Text bold color="green">
-            ✓ {selected.size}
+            {theme.markers.selected} {selected.size}
           </Text>
           <Text> / </Text>
           <Text bold color="blue">
             {files.length}
           </Text>
           <Text> files selected</Text>
-          {!showExcluded && files.length !== filteredFiles.length && (
+          {hiddenCount > 0 && (
             <Text dimColor>
-              {' '}• {files.length - filteredFiles.length} hidden
+              {' '}· {hiddenCount} hidden
             </Text>
           )}
         </Box>
         <Text dimColor>
-          {showExcluded ? '👁️  Showing all files' : '🙈 Excluded files hidden'}
+          {showExcluded ? 'Showing all files' : 'Excluded files hidden'}
         </Text>
       </Box>
     </Box>

@@ -50,7 +50,7 @@ describe('CustomTreeSelect', () => {
 
       const output = lastFrame() ?? '';
       // Should show file selection header
-      expect(output).toContain('File Selection');
+      expect(output).toContain('Step 1: Select Files');
       // Should show file count
       expect(output).toContain('files selected');
     });
@@ -88,7 +88,7 @@ describe('CustomTreeSelect', () => {
 
       // Tree should be built with directories first
       const output = lastFrame() ?? '';
-      expect(output).toContain('File Selection');
+      expect(output).toContain('Step 1: Select Files');
     });
 
     it('should handle files at root level', () => {
@@ -275,9 +275,10 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      // Press Enter to confirm
+      // First Enter goes to summary mode, second Enter confirms
       stdin.write('\r');
-
+      await new Promise(resolve => setTimeout(resolve, 50));
+      stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Should call onComplete with selected files
@@ -593,8 +594,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show partial selection indicator (◐)
-      expect(output).toContain('◐');
+      // Should show partial selection indicator ([-])
+      expect(output).toContain('[-]');
     });
 
     it('should show full selection indicator when all children selected', () => {
@@ -611,8 +612,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show full selection (✓)
-      expect(output).toContain('✓');
+      // Should show full selection ([x])
+      expect(output).toContain('[x]');
     });
 
     it('should show empty selection indicator when no children selected', () => {
@@ -629,8 +630,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show empty selection (○)
-      expect(output).toContain('○');
+      // Should show empty selection ([ ])
+      expect(output).toContain('[ ]');
     });
   });
 
@@ -764,7 +765,9 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      // Press Enter to confirm empty selection
+      // First Enter goes to summary mode, second Enter confirms
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
       stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -792,7 +795,7 @@ describe('CustomTreeSelect', () => {
       expect(lastFrame()).toContain('3 / 5 files selected');
     });
 
-    it('should show emoji icons in header', () => {
+    it('should show themed icons (Nerd Font or ASCII fallback)', () => {
       const files: FileInfo[] = [createMockFile('src/index.ts')];
 
       const { lastFrame } = render(
@@ -803,7 +806,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('📁');
+      // Should contain selection markers and expand indicators
+      expect(output).toMatch(/\[x\]|\[ \]|\[-\]/);
     });
 
     it('should show file type icons based on extension', () => {
@@ -821,8 +825,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should contain file type icons
-      expect(output).toContain('📁'); // Directory icon
+      // Should contain expand/collapse markers for directories
+      expect(output).toMatch(/▸|▾/);
     });
 
     it('should show folder icons for directories', () => {
@@ -838,8 +842,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should contain folder emoji (closed or open)
-      expect(output).toMatch(/📁|📂/);
+      // Should contain expand indicator for directories (collapsed by default)
+      expect(output).toMatch(/▸|▾/);
     });
 
     it('should show expand/collapse indicators', () => {
@@ -885,8 +889,8 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      // Should show emoji for visibility status
-      expect(output).toMatch(/👁️|🙈/);
+      // Should show text for visibility status
+      expect(output).toMatch(/Showing all files|Excluded files hidden/);
     });
 
     it('should show hidden files count when excluded files are hidden', async () => {
@@ -1081,7 +1085,9 @@ describe('CustomTreeSelect', () => {
         })
       );
 
-      // Confirm with no selection
+      // First Enter goes to summary mode, second Enter confirms
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
       stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1102,6 +1108,9 @@ describe('CustomTreeSelect', () => {
         })
       );
 
+      // First Enter goes to summary mode, second Enter confirms
+      stdin.write('\r');
+      await new Promise(resolve => setTimeout(resolve, 50));
       stdin.write('\r');
       await new Promise(resolve => setTimeout(resolve, 50));
 
