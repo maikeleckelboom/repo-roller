@@ -1,9 +1,3 @@
-/**
- * CLI Execution Modes
- *
- * Functions for different execution modes: preview (dry-run/stats) and non-interactive.
- */
-
 import { writeFile } from 'node:fs/promises';
 import type { ResolvedOptions } from '../core/types.js';
 import { scanFiles } from '../core/scan.js';
@@ -12,17 +6,11 @@ import { estimateTokens, calculateCost } from '../core/tokens.js';
 import { formatBytes } from '../core/helpers.js';
 import * as ui from '../core/ui.js';
 import { applyBudgetConstraints } from './budget.js';
-import { displayBudgetSummary, displayTokenAnalysis, displayNoFilesError, displayDetailedLLMAnalysis } from './display.js';
+import { displayBudgetSummary, displayNoFilesError, displayDetailedLLMAnalysis } from './display.js';
 import { renderGenerationSummary } from '../core/dashboard.js';
 import { getModelPreset } from '../core/modelPresets.js';
 import { renderPromptHelper } from '../core/promptHelper.js';
 import { recordHistoryEntry } from '../core/history.js';
-
-/**
- * Run preview mode (dry-run or stats-only)
- *
- * @param options - Resolved CLI options
- */
 export async function runPreview(options: ResolvedOptions): Promise<void> {
   console.log(ui.header());
   console.log(ui.status('scan', `Scanning ${ui.colors.primary(options.root)}`));

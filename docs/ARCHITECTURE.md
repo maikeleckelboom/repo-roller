@@ -43,6 +43,22 @@ src/
 └── tui.ts              # Terminal UI (interactive mode)
 ```
 
+### CLI Modules
+
+```
+src/cli/
+├── index.ts            # CLI module exports
+├── commands.ts         # Command handlers and orchestration
+├── presets.ts          # Preset display and info commands
+├── display.ts          # Terminal output formatting
+├── modes.ts            # Execution modes (preview, non-interactive)
+├── budget.ts           # CLI budget constraint application
+├── validation.ts       # CLI validation helpers
+├── parsers.ts          # Argument parsing utilities
+├── history.ts          # History CLI commands
+└── daemon.ts           # Daemon mode CLI commands
+```
+
 ### Core Modules
 
 ```
@@ -54,11 +70,16 @@ src/core/
 ├── tokens.ts           # Token estimation and cost calculation
 ├── budget.ts           # Budget constraint management
 ├── validation.ts       # Configuration validation
-├── helpers.ts          # Utility functions
-├── ui.ts               # Terminal UI components
+├── helpers.ts          # Pure utility functions (no I/O)
+├── ui.ts               # Terminal UI primitives (colors, symbols)
 ├── init.ts             # Configuration initialization
 ├── builtInPresets.ts   # Default preset definitions
-└── userSettings.ts     # User preference management
+├── modelPresets.ts     # LLM model preset definitions
+├── dashboard.ts        # Generation summary rendering
+├── promptHelper.ts     # Prompt construction helpers
+├── history.ts          # History data management
+├── schema.ts           # CLI schema introspection
+└── daemon.ts           # Daemon server implementation
 ```
 
 ## Detailed Component Analysis
