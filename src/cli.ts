@@ -16,6 +16,21 @@ import {
   runNonInteractive,
 } from './cli/index.js';
 import { listModelPresets, getModelPreset } from './core/modelPresets.js';
+import {
+  displayHistoryList,
+  displayHistoryEntry,
+  displayHistoryDiff,
+  displayHistoryStats,
+  displayHistoryExport,
+} from './cli/history.js';
+import {
+  displayJsonSchema,
+  displayLlmToolDefinition,
+  displayShellCompletions,
+  displaySchemaSummary,
+  displayOpenApiDocs,
+} from './cli/schema.js';
+import { clearHistory, tagHistoryEntry, annotateHistoryEntry, entryToCliArgs, getHistoryEntry } from './core/history.js';
 
 /**
  * Main CLI function
@@ -31,6 +46,131 @@ async function main(): Promise<void> {
     .action(async (root: string) => {
       try {
         await runInit(root);
+      } catch (error) {
+        console.error('Error:', error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
+  // History command
+  program
+    .command('history')
+    .description('View and manage bundle generation history')
+    .option('--list', 'List recent history entries (default)')
+    .option('--show <id>', 'Show details of a specific history entry (ID or index, e.g., -1 for last)')
+    .option('--diff <range>', 'Compare two history entries (e.g., -1..-2 or abc123..def456)')
+    .option('--replay <id>', 'Show command to replay a previous bundle generation')
+    .option('--export <format>', 'Export history (json, yaml, csv)')
+    .option('--stats', 'Show history statistics')
+    .option('--clear', 'Clear all history')
+    .option('--tag <id>', 'Add tags to a history entry (with --tags)')
+    .option('--tags <tags>', 'Comma-separated tags to add')
+    .option('--annotate <id>', 'Add notes to a history entry (with --notes)')
+    .option('--notes <notes>', 'Notes to add')
+    .option('--project <name>', 'Filter by project name')
+    .option('--limit <number>', 'Limit number of entries shown', parseInt)
+    .action(async (options: {
+      list?: boolean;
+      show?: string;
+      diff?: string;
+      replay?: string;
+      export?: string;
+      stats?: boolean;
+      clear?: boolean;
+      tag?: string;
+      tags?: string;
+      annotate?: string;
+      notes?: string;
+      project?: string;
+      limit?: number;
+    }) => {
+      try {
+        if (options.show) {
+          const idOrIndex = /^-?\d+$/.test(options.show) ? parseInt(options.show, 10) : options.show;
+          await displayHistoryEntry(idOrIndex);
+        } else if (options.diff) {
+          await displayHistoryDiff(options.diff);
+        } else if (options.replay) {
+          const idOrIndex = /^-?\d+$/.test(options.replay) ? parseInt(options.replay, 10) : options.replay;
+          const entry = await getHistoryEntry(idOrIndex);
+          if (!entry) {
+            console.error(ui.error(`History entry not found: ${options.replay}`));
+            process.exit(1);
+          }
+          const args = entryToCliArgs(entry);
+          console.log(ui.info('Replay command:'));
+          console.log(`  repo-roller ${args.join(' ')}`);
+        } else if (options.export) {
+          if (!['json', 'yaml', 'csv'].includes(options.export)) {
+            console.error(ui.error('Invalid export format. Use: json, yaml, or csv'));
+            process.exit(1);
+          }
+          await displayHistoryExport(options.export as 'json' | 'yaml' | 'csv');
+        } else if (options.stats) {
+          await displayHistoryStats();
+        } else if (options.clear) {
+          const count = await clearHistory({ all: true });
+          console.log(ui.success(`Cleared ${count} history entries`));
+        } else if (options.tag && options.tags) {
+          const idOrIndex = /^-?\d+$/.test(options.tag) ? parseInt(options.tag, 10) : options.tag;
+          const tags = options.tags.split(',').map((t) => t.trim());
+          await tagHistoryEntry(idOrIndex, tags);
+          console.log(ui.success(`Added tags: ${tags.join(', ')}`));
+        } else if (options.annotate && options.notes) {
+          const idOrIndex = /^-?\d+$/.test(options.annotate) ? parseInt(options.annotate, 10) : options.annotate;
+          await annotateHistoryEntry(idOrIndex, options.notes);
+          console.log(ui.success('Added notes to entry'));
+        } else {
+          // Default: list
+          await displayHistoryList({
+            limit: options.limit,
+            project: options.project,
+          });
+        }
+      } catch (error) {
+        console.error('Error:', error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
+  // Schema introspection command
+  program
+    .command('__schema')
+    .description('Output machine-readable CLI schema for introspection')
+    .option('--json', 'Output full JSON Schema')
+    .option('--for-llm', 'Output LLM tool definition (for AI agents)')
+    .option('--openapi', 'Output OpenAPI-style documentation')
+    .option('--completions <shell>', 'Generate shell completions (bash, zsh, fish)')
+    .option('--categories', 'Show options grouped by category')
+    .option('--summary', 'Show human-readable schema summary (default)')
+    .action(async (options: {
+      json?: boolean;
+      forLlm?: boolean;
+      openapi?: boolean;
+      completions?: string;
+      categories?: boolean;
+      summary?: boolean;
+    }) => {
+      try {
+        if (options.json) {
+          displayJsonSchema();
+        } else if (options.forLlm) {
+          displayLlmToolDefinition();
+        } else if (options.openapi) {
+          await displayOpenApiDocs('.');
+        } else if (options.completions) {
+          if (!['bash', 'zsh', 'fish'].includes(options.completions)) {
+            console.error(ui.error('Invalid shell. Use: bash, zsh, or fish'));
+            process.exit(1);
+          }
+          displayShellCompletions(options.completions as 'bash' | 'zsh' | 'fish');
+        } else if (options.categories) {
+          const { displayOptionsByCategory } = await import('./cli/schema.js');
+          displayOptionsByCategory();
+        } else {
+          // Default: summary
+          displaySchemaSummary();
+        }
       } catch (error) {
         console.error('Error:', error instanceof Error ? error.message : String(error));
         process.exit(1);
