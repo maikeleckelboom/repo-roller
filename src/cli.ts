@@ -32,6 +32,15 @@ import {
 } from './cli/daemon.js';
 import { startDaemon, isDaemonRunning, getDaemonPid } from './core/daemon.js';
 import { handleInfoCommands, executeMainCommand, type CommandContext } from './cli/commands.js';
+import {
+  displaySettings,
+  setDisplaySettingCommand,
+  resetDisplaySettingsCommand,
+  displayAllSettings,
+  exportSettings,
+  importSettings,
+  displaySettingsPath,
+} from './cli/settings.js';
 
 /**
  * Main CLI entry point
@@ -98,6 +107,19 @@ async function main(): Promise<void> {
     .option('--params <json>', 'JSON params for RPC')
     .action(handleDaemonCommand);
 
+  // Settings command
+  program
+    .command('settings')
+    .description('Manage CLI display settings and preferences')
+    .option('--show', 'Show current display settings (default)')
+    .option('--set <key=value>', 'Set a specific setting (e.g., showCodeComposition=false)')
+    .option('--reset', 'Reset display settings to defaults')
+    .option('--all', 'Show all user settings (not just display)')
+    .option('--export', 'Export settings as JSON')
+    .option('--import <json>', 'Import settings from JSON string')
+    .option('--path', 'Show settings file location')
+    .action(handleSettingsCommand);
+
   // Main command
   program
     .name('repo-roller')
@@ -153,6 +175,13 @@ async function main(): Promise<void> {
     .option('-c, --copy', 'Copy output to clipboard')
     .option('--diff <ref>', 'Filter to files changed since git ref (e.g., main, HEAD~3)')
     .option('--most-recent <n>', 'Filter to N most recently committed files', parseInt)
+    .option('-q, --quiet', 'Minimal output (hide all summaries except essential info)')
+    .option('--hide-composition', 'Hide code composition section')
+    .option('--hide-context-fit', 'Hide context fit section')
+    .option('--hide-health-hints', 'Hide health hints section')
+    .option('--hide-warnings', 'Hide token warnings')
+    .option('--hide-cost', 'Hide cost estimates')
+    .option('--hide-recommendations', 'Hide recommendations')
     .action(handleMainCommand);
 
   await program.parseAsync(process.argv);
@@ -296,6 +325,41 @@ async function handleDaemonCommand(options: {
     await sendDaemonRpc(options.rpc, params);
   } else {
     await displayDaemonStatus();
+  }
+}
+
+/**
+ * Handle settings subcommand
+ */
+async function handleSettingsCommand(options: {
+  show?: boolean;
+  set?: string;
+  reset?: boolean;
+  all?: boolean;
+  export?: boolean;
+  import?: string;
+  path?: boolean;
+}): Promise<void> {
+  if (options.set) {
+    const [key, value] = options.set.split('=');
+    if (!key || !value) {
+      console.error(ui.error('Invalid format. Use: --set key=value'));
+      console.error(ui.colors.dim('  Example: repo-roller settings --set showCodeComposition=false'));
+      process.exit(1);
+    }
+    await setDisplaySettingCommand(key, value);
+  } else if (options.reset) {
+    await resetDisplaySettingsCommand();
+  } else if (options.all) {
+    await displayAllSettings();
+  } else if (options.export) {
+    await exportSettings();
+  } else if (options.import) {
+    await importSettings(options.import);
+  } else if (options.path) {
+    displaySettingsPath();
+  } else {
+    await displaySettings();
   }
 }
 

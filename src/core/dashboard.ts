@@ -16,10 +16,21 @@ import { estimateTokens } from './tokens.js';
 import { getModelPreset, calculatePresetCost, calculateEffectiveBudget, getModelWarnings } from './modelPresets.js';
 import type { ModelPreset } from './modelPresets.js';
 
+export interface DashboardDisplaySettings {
+  showGenerationSummary: boolean;
+  showCodeComposition: boolean;
+  showContextFit: boolean;
+  showHealthHints: boolean;
+  showTokenWarnings: boolean;
+  showCostEstimates: boolean;
+  showRecommendations: boolean;
+}
+
 export interface DashboardOptions {
   mode: 'detailed' | 'compact';
   previousRun?: PreviousRunData;
   showPromptHelper?: boolean;
+  displaySettings?: DashboardDisplaySettings;
 }
 
 export interface PreviousRunData {
@@ -47,27 +58,50 @@ export function renderGenerationSummary(
   const { scan, options, estimatedTokens, modelPreset } = data;
   const { mode, previousRun } = dashboardOptions;
 
+  // Get display settings with defaults
+  const displaySettings: DashboardDisplaySettings = {
+    showGenerationSummary: true,
+    showCodeComposition: true,
+    showContextFit: true,
+    showHealthHints: true,
+    showTokenWarnings: true,
+    showCostEstimates: true,
+    showRecommendations: true,
+    ...dashboardOptions.displaySettings,
+  };
+
+  // If generation summary is completely hidden, return minimal output
+  if (!displaySettings.showGenerationSummary) {
+    return lines;
+  }
+
   // Section header
   lines.push('');
   lines.push(ui.section('Generation Summary'));
 
-  // Core metrics
+  // Core metrics (always show basic metrics)
   lines.push(...renderCoreMetrics(scan, options, estimatedTokens, previousRun));
   lines.push('');
 
   // Code composition with colored bars
-  lines.push(...renderCodeComposition(scan.files, mode));
-  lines.push('');
+  if (displaySettings.showCodeComposition) {
+    lines.push(...renderCodeComposition(scan.files, mode));
+    lines.push('');
+  }
 
   // Context fit section
-  lines.push(...renderContextFit(estimatedTokens, options, modelPreset));
-  lines.push('');
+  if (displaySettings.showContextFit) {
+    lines.push(...renderContextFit(estimatedTokens, options, modelPreset, displaySettings));
+    lines.push('');
+  }
 
   // Health hints
-  const healthHints = generateHealthHints(scan, estimatedTokens, modelPreset);
-  if (healthHints.length > 0) {
-    lines.push(...renderHealthHints(healthHints));
-    lines.push('');
+  if (displaySettings.showHealthHints) {
+    const healthHints = generateHealthHints(scan, estimatedTokens, modelPreset);
+    if (healthHints.length > 0) {
+      lines.push(...renderHealthHints(healthHints));
+      lines.push('');
+    }
   }
 
   // Options summary (detailed mode only)
@@ -288,9 +322,13 @@ function getBarColor(type: string): (str: string) => string {
 function renderContextFit(
   estimatedTokens: number,
   options: ResolvedOptions,
-  modelPreset?: ModelPreset
+  modelPreset?: ModelPreset,
+  displaySettings?: DashboardDisplaySettings
 ): string[] {
   const lines: string[] = [];
+  const showCost = displaySettings?.showCostEstimates ?? true;
+  const showWarnings = displaySettings?.showTokenWarnings ?? true;
+
   lines.push(ui.colors.dim('  Context Fit'));
   lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(78)));
 
@@ -318,12 +356,17 @@ function renderContextFit(
 
     lines.push(`  ${statusIcon} ${tokenStr} / ${budgetStr} tokens ${ui.colors.dim(`(${costInfo.utilizationPercent.toFixed(0)}%)`)}`);
     lines.push(`    ${statusText}`);
-    lines.push(`    ${ui.colors.dim(`Cost: $${costInfo.inputCost.toFixed(4)}`)}`);
+
+    if (showCost) {
+      lines.push(`    ${ui.colors.dim(`Cost: $${costInfo.inputCost.toFixed(4)}`)}`);
+    }
 
     // Show warnings if any
-    const warnings = getModelWarnings(estimatedTokens, modelPreset);
-    for (const warning of warnings) {
-      lines.push(`    ${ui.colors.warning(ui.symbols.warning)} ${ui.colors.warning(warning)}`);
+    if (showWarnings) {
+      const warnings = getModelWarnings(estimatedTokens, modelPreset);
+      for (const warning of warnings) {
+        lines.push(`    ${ui.colors.warning(ui.symbols.warning)} ${ui.colors.warning(warning)}`);
+      }
     }
   } else {
     // Generic context fit check
