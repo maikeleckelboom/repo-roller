@@ -188,22 +188,28 @@ export function displayGenerationSummary(
   console.log(ui.colors.dim('  Code Composition'));
   console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(45)));
 
-  // Language breakdown
+  // Language breakdown with visual bars
   const languages = calculateLanguageBreakdown(scan.files);
   if (languages.length > 0) {
-    const langItems = languages.slice(0, 4).map(l => ({ name: l.name, percent: l.percent }));
-    console.log(`  Languages: ${ui.inlinePercentages(langItems)}`);
+    console.log(ui.colors.dim('  Languages'));
+    for (const lang of languages.slice(0, 4)) {
+      console.log(ui.languageBar(lang.name, lang.percent));
+    }
   }
 
-  // Role breakdown
+  // Role breakdown with visual bars
   const roles = calculateRoleBreakdown(scan.files);
-  const roleItems = [];
-  if (roles.source > 0) {roleItems.push({ name: 'Src', percent: roles.source });}
+  const roleItems: Array<{ name: string; percent: number }> = [];
+  if (roles.source > 0) {roleItems.push({ name: 'Source', percent: roles.source });}
   if (roles.test > 0) {roleItems.push({ name: 'Tests', percent: roles.test });}
   if (roles.docs > 0) {roleItems.push({ name: 'Docs', percent: roles.docs });}
   if (roles.config > 0) {roleItems.push({ name: 'Config', percent: roles.config });}
   if (roleItems.length > 0) {
-    console.log(`  Roles:     ${ui.inlinePercentages(roleItems)}`);
+    console.log('');
+    console.log(ui.colors.dim('  Roles'));
+    for (const role of roleItems) {
+      console.log(ui.languageBar(role.name, role.percent));
+    }
   }
   console.log('');
 
