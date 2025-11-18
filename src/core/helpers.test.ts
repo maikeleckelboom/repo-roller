@@ -210,13 +210,36 @@ describe('helpers', () => {
       expect(resolveOutputPath({ format: 'txt', defaultBaseName: 'output' })).toBe('output.txt');
     });
 
-    it('should use out path as-is when it has an extension', () => {
+    it('should use out path as-is when it has a valid format extension', () => {
       const result = resolveOutputPath({
         out: 'custom-output.md',
         format: 'json',
         defaultBaseName: 'default',
       });
       expect(result).toBe('custom-output.md');
+    });
+
+    it('should append format extension when out has a non-format extension', () => {
+      const result = resolveOutputPath({
+        out: 'seqlok-2025-11-18.bench',
+        format: 'md',
+        defaultBaseName: 'default',
+      });
+      expect(result).toBe('seqlok-2025-11-18.bench.md');
+    });
+
+    it('should append format extension when out has various non-format extensions', () => {
+      expect(resolveOutputPath({
+        out: 'output.tmp',
+        format: 'json',
+        defaultBaseName: 'default',
+      })).toBe('output.tmp.json');
+
+      expect(resolveOutputPath({
+        out: 'report.backup',
+        format: 'yaml',
+        defaultBaseName: 'default',
+      })).toBe('report.backup.yaml');
     });
 
     it('should append format extension when out has no extension', () => {
