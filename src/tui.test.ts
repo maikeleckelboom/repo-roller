@@ -21,6 +21,7 @@ vi.mock('./core/render.js', () => ({
 vi.mock('./core/userSettings.js', () => ({
   loadUserSettings: vi.fn(),
   saveUserSettings: vi.fn(),
+  setLastSelectedFiles: vi.fn(),
 }));
 
 vi.mock('./core/history.js', () => ({

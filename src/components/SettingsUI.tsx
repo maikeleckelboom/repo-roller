@@ -232,10 +232,11 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         <Text bold color="cyanBright">⚙ Settings</Text>
       </Box>
 
-      <Box marginBottom={1}>
+      <Box marginBottom={1} flexDirection="column">
         <Text color="gray">
           <Text color="blueBright">↑↓</Text> navigate  <Text color="blueBright">Space</Text> toggle  <Text color="blueBright">S</Text> save & exit  <Text color="blueBright">Q</Text> quit without saving
         </Text>
+        <Text color="dim">These settings persist across all runs and apply to both interactive and non-interactive modes.</Text>
       </Box>
 
       <Box flexDirection="column" marginBottom={1}>
@@ -243,13 +244,14 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         {displaySettings.map((setting, index) => {
           const globalIndex = state.settings.indexOf(setting);
           const isCursor = globalIndex === state.cursor;
-          const checkbox = setting.value ? '☑' : '☐';
+          const checkbox = setting.value ? '◉' : '○';
           const cursorMark = isCursor ? '→' : ' ';
 
           return (
             <Box key={setting.key} flexDirection="row">
               <Text color={isCursor ? 'cyanBright' : 'gray'}>{cursorMark} </Text>
-              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox} </Text>
+              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox}</Text>
+              <Text> </Text>
               <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
                 {setting.label}
               </Text>
@@ -263,13 +265,14 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         {interactiveSettings.map((setting, index) => {
           const globalIndex = state.settings.indexOf(setting);
           const isCursor = globalIndex === state.cursor;
-          const checkbox = setting.value ? '☑' : '☐';
+          const checkbox = setting.value ? '◉' : '○';
           const cursorMark = isCursor ? '→' : ' ';
 
           return (
             <Box key={setting.key} flexDirection="row">
               <Text color={isCursor ? 'cyanBright' : 'gray'}>{cursorMark} </Text>
-              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox} </Text>
+              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox}</Text>
+              <Text> </Text>
               <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
                 {setting.label}
               </Text>
@@ -282,6 +285,15 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         <Text color="gray">
           Settings are stored in <Text color="cyanBright">~/.config/repo-roller/settings.json</Text>
         </Text>
+      </Box>
+
+      <Box marginTop={1} flexDirection="column">
+        <Text bold color="yellowBright">Quick Reference</Text>
+        <Text color="gray">  • Use <Text color="cyanBright">--list-presets</Text> to view available presets</Text>
+        <Text color="gray">  • Use <Text color="cyanBright">--list-profiles</Text> to view available profiles</Text>
+        <Text color="gray">  • Use <Text color="cyanBright">--preset &lt;name&gt;</Text> to apply a preset</Text>
+        <Text color="gray">  • Use <Text color="cyanBright">--profile &lt;name&gt;</Text> to apply a profile</Text>
+        <Text color="gray">  • Use <Text color="cyanBright">-I</Text> or <Text color="cyanBright">--interactive</Text> for visual file selection</Text>
       </Box>
     </Box>
   );

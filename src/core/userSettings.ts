@@ -18,6 +18,12 @@ export interface TreeViewState {
   lastRoot?: string;    // Last root directory path for context
 }
 
+export interface LastSelectedFiles {
+  files?: string[];     // Array of selected file paths
+  root?: string;        // Root directory for the selection
+  timestamp?: number;   // When the selection was made
+}
+
 export interface UserSettings {
   showExcludedFiles?: boolean;
   // DX improvements: Remember user preferences for interactive mode
@@ -28,6 +34,8 @@ export interface UserSettings {
   displaySettings?: DisplaySettings;
   // Tree view state persistence
   treeViewState?: TreeViewState;
+  // Last selected files for quick re-runs
+  lastSelectedFiles?: LastSelectedFiles;
 }
 
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');
@@ -166,6 +174,34 @@ export async function setTreeViewState(root: string, expanded: string[], selecte
       expanded,
       selected,
       lastRoot: root,
+    },
+  });
+}
+
+/**
+ * Get the last selected files for a specific root directory
+ */
+export async function getLastSelectedFiles(root: string): Promise<string[]> {
+  const settings = await loadUserSettings();
+  const lastSelected = settings.lastSelectedFiles;
+
+  // Only return files if they match the current root
+  if (lastSelected?.root === root && lastSelected.files) {
+    return lastSelected.files;
+  }
+
+  return [];
+}
+
+/**
+ * Save the last selected files for a specific root directory
+ */
+export async function setLastSelectedFiles(root: string, files: string[]): Promise<void> {
+  await saveUserSettings({
+    lastSelectedFiles: {
+      files,
+      root,
+      timestamp: Date.now(),
     },
   });
 }
