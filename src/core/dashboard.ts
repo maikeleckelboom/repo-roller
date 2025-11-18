@@ -221,7 +221,7 @@ function renderCodeComposition(
     if (roles.docs > 0) allItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
     if (roles.config > 0) allItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
 
-    const gridLines = compactColoredBarsGrid(allItems, 10);
+    const gridLines = compactColoredBarsGrid(allItems, 8);
     lines.push(...gridLines);
   }
 
@@ -263,7 +263,7 @@ function renderColoredBar(name: string, percent: number, type: string, barWidth 
  */
 function compactColoredBarsGrid(
   items: Array<{ name: string; percent: number; type: string }>,
-  barWidth = 10
+  barWidth = 8
 ): string[] {
   const lines: string[] = [];
   const nameWidth = 10;
