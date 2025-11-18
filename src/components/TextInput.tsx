@@ -69,15 +69,20 @@ export const TextInput: React.FC<TextInputProps> = ({
     }
 
     // Backspace: delete character before cursor
-    if (key.backspace || key.delete) {
+    // Handle both Ink's key.backspace flag and raw backspace/delete characters
+    // \x7F is DEL (127), \x08 is BS (8) - both used by different terminals for backspace
+    const isBackspace = key.backspace || input === '\x7F' || input === '\x08';
+    const isDelete = key.delete;
+
+    if (isBackspace || isDelete) {
       const currentPos = cursorRef.current;
       const currentValue = valueRef.current;
 
-      if (key.backspace && currentPos > 0) {
+      if (isBackspace && currentPos > 0) {
         const newValue = currentValue.slice(0, currentPos - 1) + currentValue.slice(currentPos);
         setValue(newValue);
         setCursorPosition(currentPos - 1);
-      } else if (key.delete && currentPos < currentValue.length) {
+      } else if (isDelete && currentPos < currentValue.length) {
         const newValue = currentValue.slice(0, currentPos) + currentValue.slice(currentPos + 1);
         setValue(newValue);
       }
@@ -85,7 +90,7 @@ export const TextInput: React.FC<TextInputProps> = ({
     }
 
     // Only add printable characters (exclude newlines and control characters)
-    if (input && !key.ctrl && !key.meta && input !== '\n' && input !== '\r') {
+    if (input && !key.ctrl && !key.meta && input !== '\n' && input !== '\r' && input !== '\x7F' && input !== '\x08') {
       const currentPos = cursorRef.current;
       const currentValue = valueRef.current;
       const newValue = currentValue.slice(0, currentPos) + input + currentValue.slice(currentPos);

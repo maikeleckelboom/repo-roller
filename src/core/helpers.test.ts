@@ -8,6 +8,7 @@ import {
   calculateRoleBreakdown,
   calculateTopDirectories,
   estimateLinesOfCode,
+  resolveOutputPath,
 } from './helpers.js';
 
 describe('helpers', () => {
@@ -191,6 +192,67 @@ describe('helpers', () => {
     it('should return 0 for 0 bytes', () => {
       const lines = estimateLinesOfCode(0);
       expect(lines).toBe(0);
+    });
+  });
+
+  describe('resolveOutputPath', () => {
+    it('should use default basename when out is not provided', () => {
+      const result = resolveOutputPath({
+        format: 'md',
+        defaultBaseName: 'repo-roller-2025-11-18',
+      });
+      expect(result).toBe('repo-roller-2025-11-18.md');
+    });
+
+    it('should use default basename with different formats', () => {
+      expect(resolveOutputPath({ format: 'json', defaultBaseName: 'output' })).toBe('output.json');
+      expect(resolveOutputPath({ format: 'yaml', defaultBaseName: 'output' })).toBe('output.yaml');
+      expect(resolveOutputPath({ format: 'txt', defaultBaseName: 'output' })).toBe('output.txt');
+    });
+
+    it('should use out path as-is when it has an extension', () => {
+      const result = resolveOutputPath({
+        out: 'custom-output.md',
+        format: 'json',
+        defaultBaseName: 'default',
+      });
+      expect(result).toBe('custom-output.md');
+    });
+
+    it('should append format extension when out has no extension', () => {
+      const result = resolveOutputPath({
+        out: 'custom-output',
+        format: 'json',
+        defaultBaseName: 'default',
+      });
+      expect(result).toBe('custom-output.json');
+    });
+
+    it('should handle paths with directories', () => {
+      const result = resolveOutputPath({
+        out: './dist/output',
+        format: 'yaml',
+        defaultBaseName: 'default',
+      });
+      expect(result).toBe('./dist/output.yaml');
+    });
+
+    it('should not create weird extensions like ._md', () => {
+      const result = resolveOutputPath({
+        out: '.',
+        format: 'md',
+        defaultBaseName: 'default',
+      });
+      expect(result).toBe('..md');
+    });
+
+    it('should handle output paths ending with slash', () => {
+      const result = resolveOutputPath({
+        out: 'dist/',
+        format: 'md',
+        defaultBaseName: 'default',
+      });
+      expect(result).toBe('dist/.md');
     });
   });
 });

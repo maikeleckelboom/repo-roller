@@ -1,3 +1,19 @@
+/**
+ * @module components/OutputOptions
+ *
+ * Interactive output configuration step (Step 2/3).
+ *
+ * OWNS:
+ * - Toggle UI for output options (strip comments, tree, stats)
+ * - File selection summary display
+ * - Keyboard navigation for option toggling
+ *
+ * DOES NOT OWN:
+ * - File scanning or filtering logic
+ * - Actual output generation
+ * - Format selection (see OutputFormatSelect)
+ */
+
 import React, { useState } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 
