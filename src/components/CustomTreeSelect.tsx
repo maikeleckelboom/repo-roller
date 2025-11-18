@@ -328,6 +328,17 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   const tree = useMemo(() => buildTreeStructure(files), [files]);
   const theme: TreeTheme = defaultTheme;
 
+  // Blinking cursor state for better visibility
+  const [cursorVisible, setCursorVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCursorVisible(prev => !prev);
+    }, 500); // Blink every 500ms
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Track terminal width for responsive name truncation
   // This ensures long file names don't break the layout when terminal is resized
   const { stdout } = useStdout();
@@ -588,8 +599,12 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     const parts = renderTreeRowParts(node, rowState, theme, DEFAULT_COLUMN_WIDTHS, maxNameWidth);
     const styling = getRowStyling(node, rowState, iconInfo, theme);
 
+    // Show blinking cursor indicator for better visibility
+    const cursorIndicator = isCursor && cursorVisible ? '❯ ' : '  ';
+
     return (
       <Box key={node.fullPath} flexDirection="row">
+        <Text color="cyanBright" bold>{cursorIndicator}</Text>
         <Text dimColor>{parts.indent}</Text>
         <Text color={styling.selectionColor}>{parts.selection}</Text>
         <Text color={styling.iconColor}>{parts.expandMarker}</Text>
