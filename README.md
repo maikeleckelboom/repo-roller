@@ -41,6 +41,8 @@ npx repo-roller .
 ```bash
 # Dump current directory to markdown
 repo-roller .
+# or use the short alias
+rr .
 
 # Only TypeScript files, no tests
 repo-roller . --lang typescript --no-tests
@@ -48,15 +50,51 @@ repo-roller . --lang typescript --no-tests
 # Preview what would be included
 repo-roller . --dry-run
 
-# Interactive file picker
+# Interactive file picker with tree view
 repo-roller . --interactive
+# or simply
+rr . -I
 
 # See token count and cost estimates
 repo-roller . --target claude-sonnet
 
 # Copy output to clipboard (paste directly into LLM)
 repo-roller . --copy
+
+# Interactive settings management
+repo-roller settings
+# or
+rr settings
 ```
+
+## Interactive Mode
+
+The interactive mode provides a modern TUI for selecting files and customizing output:
+
+### File Tree Selection
+- **↑↓** - Navigate through files and directories
+- **←→** - Expand/collapse directories
+- **Space** - Toggle file/directory selection
+- **A** - Toggle all files (select/deselect all)
+- **E** - Expand all directories
+- **C** - Collapse all directories
+- **H** - Toggle showing excluded/ignored files
+- **Enter** - Confirm selection
+- **Q** - Quit
+
+### Features
+- **Tree state persistence** - Your expanded directories are remembered across sessions
+- **Custom filename** - Set the output filename with smart defaults (repo-name_date.ext)
+- **Streamlined flow** - No redundant confirmations, just select and go
+
+### Settings Management
+
+Run `repo-roller settings` or `rr settings` to open an interactive TUI for managing all settings:
+- Display preferences (generation summary, code composition, etc.)
+- Interactive mode defaults (strip comments, include tree, include stats)
+- Tree view preferences (show excluded files)
+
+All settings are automatically saved to `~/.config/repo-roller/settings.json`.
 
 ## Output formats
 

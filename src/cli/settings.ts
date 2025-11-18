@@ -10,6 +10,9 @@ import {
   type DisplaySettings,
 } from '../core/userSettings.js';
 import * as ui from '../core/ui.js';
+import { render } from 'ink';
+import React from 'react';
+import { SettingsUI } from '../components/SettingsUI.js';
 
 /**
  * Display current settings
@@ -191,4 +194,18 @@ export function displaySettingsPath(): void {
   console.log(ui.info('Settings location:'));
   console.log(`  ${ui.colors.primary(configDir + '/settings.json')}`);
   console.log('');
+}
+
+/**
+ * Run interactive settings UI
+ */
+export async function runInteractiveSettings(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const { waitUntilExit } = render(
+      React.createElement(SettingsUI, {
+        onComplete: () => resolve(),
+      })
+    );
+    waitUntilExit().then(() => resolve());
+  });
 }
