@@ -392,10 +392,11 @@ export function analyzeSelectedFolders(
     return '';
   }
 
+  const pathsArray = Array.from(folderPaths);
+
   // If too many unique folder paths, find common parent or take first N
-  if (folderPaths.size > maxFolders) {
+  if (pathsArray.length > maxFolders) {
     // Try to find common parent directory
-    const pathsArray = Array.from(folderPaths);
     const commonParent = findCommonParent(pathsArray);
 
     if (commonParent) {
@@ -414,8 +415,35 @@ export function analyzeSelectedFolders(
     return sanitized.join('-');
   }
 
+  // Even when not exceeding maxFolders, check for common parent to avoid repetition
+  const commonParent = findCommonParent(pathsArray);
+
+  // If all paths share a common parent and there are unique suffixes, use only the unique parts
+  if (commonParent && pathsArray.length > 1) {
+    // Extract unique suffixes by removing the common parent prefix
+    const uniqueSuffixes = pathsArray
+      .map(path => {
+        // Remove common parent prefix (e.g., 'src-cli' -> 'cli' when commonParent is 'src')
+        const prefix = commonParent + '-';
+        return path.startsWith(prefix) ? path.slice(prefix.length) : path;
+      })
+      .filter(suffix => suffix.length > 0); // Filter out empty strings
+
+    // If we have unique suffixes (not just the common parent), use them
+    if (uniqueSuffixes.length > 0 && uniqueSuffixes.length === pathsArray.length) {
+      const sortedSuffixes = uniqueSuffixes.sort();
+      const sanitized = sortedSuffixes.map(suffix =>
+        suffix
+          .replace(/[^a-zA-Z0-9-.]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+      );
+      return sanitized.join('-');
+    }
+  }
+
   // Sort folder paths alphabetically for consistency
-  const sortedPaths = Array.from(folderPaths).sort();
+  const sortedPaths = pathsArray.sort();
 
   // Sanitize folder paths (remove special chars, keep alphanumeric, dashes, and dots for separator)
   const sanitized = sortedPaths.map(folderPath =>

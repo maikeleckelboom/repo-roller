@@ -451,6 +451,16 @@ describe('helpers', () => {
       expect(result).toBe('lib-src-core-test');
     });
 
+    it('should strip common parent when multiple nested paths share the same root', () => {
+      const result = analyzeSelectedFolders([
+        'src/cli/app.ts',
+        'src/components/button.ts',
+        'src/core/helpers.ts',
+      ], 3);
+      // Should strip 'src' prefix and use unique suffixes: cli, components, core
+      expect(result).toBe('cli-components-core');
+    });
+
     it('should handle folders with numbers', () => {
       const result = analyzeSelectedFolders([
         'v1/api/app.ts',
