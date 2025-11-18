@@ -273,6 +273,8 @@ export interface CliOptions {
   readonly hideWarnings?: boolean;
   readonly hideCost?: boolean;
   readonly hideRecommendations?: boolean;
+  // Smart filename generation
+  readonly maxNestedFolders?: number;
 }
 
 /**
@@ -342,4 +344,6 @@ export interface ResolvedOptions {
     readonly showCostEstimates: boolean;
     readonly showRecommendations: boolean;
   };
+  // Smart filename generation
+  readonly maxNestedFolders: number;
 }

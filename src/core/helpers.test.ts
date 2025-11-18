@@ -296,7 +296,33 @@ describe('helpers', () => {
       expect(result).toBe('src');
     });
 
-    it('should include multiple folders up to max (3 by default)', () => {
+    it('should include nested folder paths', () => {
+      const result = analyzeSelectedFolders([
+        'src/core/helpers.ts',
+        'src/core/utils.ts',
+      ]);
+      expect(result).toBe('src-core');
+    });
+
+    it('should include multiple different nested paths', () => {
+      const result = analyzeSelectedFolders([
+        'src/core/helpers.ts',
+        'src/utils/format.ts',
+        'lib/external/api.ts',
+      ]);
+      expect(result).toBe('lib-external-src-core-src-utils');
+    });
+
+    it('should deduplicate same nested paths', () => {
+      const result = analyzeSelectedFolders([
+        'src/core/helpers.ts',
+        'src/core/utils.ts',
+        'src/core/format.ts',
+      ]);
+      expect(result).toBe('src-core');
+    });
+
+    it('should include multiple top-level folders up to max (3 by default)', () => {
       const result = analyzeSelectedFolders([
         'src/app.ts',
         'lib/helpers.ts',
@@ -305,16 +331,16 @@ describe('helpers', () => {
       expect(result).toBe('lib-src-test');
     });
 
-    it('should sort folders alphabetically for consistency', () => {
+    it('should sort folder paths alphabetically for consistency', () => {
       const result = analyzeSelectedFolders([
-        'test/app.test.ts',
-        'src/app.ts',
+        'test/unit/app.test.ts',
+        'src/core/app.ts',
         'lib/helpers.ts',
       ]);
-      expect(result).toBe('lib-src-test');
+      expect(result).toBe('lib-src-core-test-unit');
     });
 
-    it('should show count when exceeding max folders (default 3)', () => {
+    it('should show count when exceeding max unique paths (default 3)', () => {
       const result = analyzeSelectedFolders([
         'src/app.ts',
         'lib/helpers.ts',
@@ -332,88 +358,128 @@ describe('helpers', () => {
       expect(result).toBe('3folders');
     });
 
-    it('should handle nested folder paths correctly', () => {
-      const result = analyzeSelectedFolders([
-        'src/core/helpers.ts',
-        'src/utils/format.ts',
-        'lib/external/api.ts',
-      ]);
-      expect(result).toBe('lib-src');
+    it('should truncate deeply nested paths (> maxNestedDepth)', () => {
+      // Default maxNestedDepth is 4, so 5+ levels should be truncated
+      const result = analyzeSelectedFolders(
+        ['src/components/features/auth/login/form.ts'],
+        3,
+        4
+      );
+      expect(result).toBe('src-...-login');
+    });
+
+    it('should handle multiple deep paths with truncation', () => {
+      const result = analyzeSelectedFolders(
+        [
+          'src/a/b/c/d/e/f.ts',
+          'lib/x/y/z/w/q.ts',
+        ],
+        3,
+        4
+      );
+      expect(result).toBe('lib-...-w-src-...-e');
+    });
+
+    it('should respect custom maxNestedDepth parameter', () => {
+      const result = analyzeSelectedFolders(
+        ['src/core/utils/helpers.ts'],
+        3,
+        2
+      );
+      expect(result).toBe('src-...-utils');
+    });
+
+    it('should not truncate when exactly at maxNestedDepth', () => {
+      const result = analyzeSelectedFolders(
+        ['src/core/utils/format.ts'],
+        3,
+        3
+      );
+      expect(result).toBe('src-core-utils');
     });
 
     it('should sanitize folder names with special characters', () => {
       const result = analyzeSelectedFolders([
-        'my@folder/file.ts',
+        'my@folder/sub/file.ts',
         'another_folder/test.ts',
       ]);
-      expect(result).toBe('another-folder-my-folder');
+      expect(result).toBe('another-folder-my-folder-sub');
     });
 
     it('should handle Windows-style paths', () => {
       const result = analyzeSelectedFolders([
-        'src\\app.ts',
+        'src\\core\\app.ts',
         'lib\\helpers.ts',
       ]);
-      expect(result).toBe('lib-src');
+      expect(result).toBe('lib-src-core');
     });
 
     it('should handle mixed path separators', () => {
       const result = analyzeSelectedFolders([
-        'src/app.ts',
+        'src/core/app.ts',
         'lib\\helpers.ts',
       ]);
-      expect(result).toBe('lib-src');
+      expect(result).toBe('lib-src-core');
     });
 
-    it('should deduplicate folders from multiple files', () => {
+    it('should deduplicate nested folders from multiple files', () => {
       const result = analyzeSelectedFolders([
-        'src/app.ts',
-        'src/helpers.ts',
-        'src/utils.ts',
+        'src/core/app.ts',
+        'src/core/helpers.ts',
+        'src/core/utils.ts',
         'lib/external.ts',
       ]);
-      expect(result).toBe('lib-src');
+      expect(result).toBe('lib-src-core');
     });
 
-    it('should handle edge case with exactly max folders', () => {
+    it('should handle edge case with exactly max unique paths', () => {
       const result = analyzeSelectedFolders([
-        'src/app.ts',
+        'src/core/app.ts',
         'lib/helpers.ts',
         'test/app.test.ts',
       ], 3);
-      expect(result).toBe('lib-src-test');
+      expect(result).toBe('lib-src-core-test');
     });
 
     it('should handle folders with numbers', () => {
       const result = analyzeSelectedFolders([
-        'v1/app.ts',
-        'v2/app.ts',
+        'v1/api/app.ts',
+        'v2/api/app.ts',
       ]);
-      expect(result).toBe('v1-v2');
+      expect(result).toBe('v1-api-v2-api');
     });
 
     it('should handle folders with hyphens (preserve kebab-case)', () => {
       const result = analyzeSelectedFolders([
-        'my-folder/app.ts',
+        'my-folder/sub-dir/app.ts',
         'another-one/test.ts',
       ]);
-      expect(result).toBe('another-one-my-folder');
+      expect(result).toBe('another-one-my-folder-sub-dir');
     });
 
     it('should remove consecutive hyphens from sanitized names', () => {
       const result = analyzeSelectedFolders([
-        'my___folder/app.ts',
+        'my___folder/sub/app.ts',
       ]);
-      expect(result).toBe('my-folder');
+      expect(result).toBe('my-folder-sub');
     });
 
     it('should handle mix of root and nested files', () => {
       const result = analyzeSelectedFolders([
         'readme.md',
-        'src/app.ts',
+        'src/core/app.ts',
         'lib/helpers.ts',
       ]);
-      expect(result).toBe('lib-src');
+      expect(result).toBe('lib-src-core');
+    });
+
+    it('should preserve ellipsis separator in deep paths', () => {
+      const result = analyzeSelectedFolders(
+        ['very/deep/nested/folder/structure/file.ts'],
+        3,
+        4
+      );
+      expect(result).toBe('very-...-structure');
     });
   });
 });

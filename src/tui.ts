@@ -233,8 +233,12 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       const repoName = basename(options.root);
       const timestamp = new Date().toISOString().split('T')[0];
 
-      // Analyze selected folders for smart naming (max 3 folders)
-      const folderSuffix = analyzeSelectedFolders(selectedPaths, 3);
+      // Analyze selected folders for smart naming (max 3 unique paths, max 4 levels deep)
+      const folderSuffix = analyzeSelectedFolders(
+        selectedPaths,
+        3,
+        options.maxNestedFolders
+      );
 
       // Include folder context if available
       if (folderSuffix) {

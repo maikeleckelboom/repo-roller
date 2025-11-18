@@ -143,6 +143,8 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
     showCostEstimates: true,
     showRecommendations: true,
   },
+  // Smart filename generation
+  maxNestedFolders: 4,
 } as const;
 
 /**
@@ -260,6 +262,8 @@ function mergePreset(
     gitMostRecent: defaults.gitMostRecent,
     // Display settings
     displaySettings: defaults.displaySettings,
+    // Smart filename generation
+    maxNestedFolders: defaults.maxNestedFolders,
   };
 }
 
@@ -469,5 +473,7 @@ export function resolveOptions(
       showCostEstimates: cli.quiet || cli.hideCost ? false : options.displaySettings.showCostEstimates,
       showRecommendations: cli.quiet || cli.hideRecommendations ? false : options.displaySettings.showRecommendations,
     },
+    // Smart filename generation
+    maxNestedFolders: cli.maxNestedFolders ?? options.maxNestedFolders,
   };
 }
