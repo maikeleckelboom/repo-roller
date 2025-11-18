@@ -423,6 +423,10 @@ export function analyzeSelectedFolders(
     // Extract unique suffixes by removing the common parent prefix
     const uniqueSuffixes = pathsArray
       .map(path => {
+        // If path equals the common parent exactly, return empty string
+        if (path === commonParent) {
+          return '';
+        }
         // Remove common parent prefix (e.g., 'src-cli' -> 'cli' when commonParent is 'src')
         const prefix = commonParent + '-';
         return path.startsWith(prefix) ? path.slice(prefix.length) : path;
@@ -430,6 +434,7 @@ export function analyzeSelectedFolders(
       .filter(suffix => suffix.length > 0); // Filter out empty strings
 
     // If we have unique suffixes (not just the common parent), use them
+    // ONLY if all paths produced non-empty suffixes
     if (uniqueSuffixes.length > 0 && uniqueSuffixes.length === pathsArray.length) {
       const sortedSuffixes = uniqueSuffixes.sort();
       const sanitized = sortedSuffixes.map(suffix =>
@@ -439,6 +444,15 @@ export function analyzeSelectedFolders(
           .replace(/^-|-$/g, '')
       );
       return sanitized.join('-');
+    }
+
+    // If some paths were the common parent itself (produced empty suffixes),
+    // just return the common parent to show the full breadcrumb context
+    if (uniqueSuffixes.length < pathsArray.length) {
+      return commonParent
+        .replace(/[^a-zA-Z0-9-.]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
     }
   }
 

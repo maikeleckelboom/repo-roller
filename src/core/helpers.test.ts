@@ -461,6 +461,37 @@ describe('helpers', () => {
       expect(result).toBe('cli-components-core');
     });
 
+    it('should include all breadcrumb folders when selecting from deeply nested common path', () => {
+      // Simulating: packages/core/src/backing, packages/core/src/binding, etc.
+      const result = analyzeSelectedFolders([
+        'packages/core/src/backing/file1.ts',
+        'packages/core/src/binding/file2.ts',
+        'packages/core/src/diagnostics/file3.ts',
+        'packages/core/src/errors/file4.ts',
+        'packages/core/src/handoff/file5.ts',
+        'packages/core/src/plan/file6.ts',
+        'packages/core/src/primitives/file7.ts',
+        'packages/core/src/spec/file8.ts',
+        'packages/core/src/array-helpers.ts',
+        'packages/core/src/index.ts',
+      ], 3, 4);
+      // Should include full breadcrumb path: packages-core-src
+      expect(result).toBe('packages-core-src');
+    });
+
+    it('should return full breadcrumb when files are in both parent and subdirectories', () => {
+      // When selecting files directly in a folder AND in subdirectories,
+      // return the full common parent path, not the mix of suffixes and parent
+      const result = analyzeSelectedFolders([
+        'packages/core/src/backing/file1.ts',
+        'packages/core/src/binding/file2.ts',
+        'packages/core/src/array-helpers.ts', // File directly in src/
+      ], 3, 4);
+      // Should return the full common parent: packages-core-src
+      // NOT: backing-binding-packages-core-src (alphabetically sorted mix)
+      expect(result).toBe('packages-core-src');
+    });
+
     it('should handle folders with numbers', () => {
       const result = analyzeSelectedFolders([
         'v1/api/app.ts',
