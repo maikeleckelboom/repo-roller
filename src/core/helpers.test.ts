@@ -340,14 +340,24 @@ describe('helpers', () => {
       expect(result).toBe('lib-src-core-test-unit');
     });
 
-    it('should show count when exceeding max unique paths (default 3)', () => {
+    it('should use common parent when exceeding max unique paths with shared root', () => {
+      const result = analyzeSelectedFolders([
+        'src/cli/app.ts',
+        'src/core/helpers.ts',
+        'src/components/button.ts',
+        'src/utils/format.ts',
+      ]);
+      expect(result).toBe('src');
+    });
+
+    it('should take first N folders when exceeding max without common parent', () => {
       const result = analyzeSelectedFolders([
         'src/app.ts',
         'lib/helpers.ts',
         'test/app.test.ts',
         'docs/readme.md',
       ]);
-      expect(result).toBe('4folders');
+      expect(result).toBe('docs-lib-src');
     });
 
     it('should respect custom maxFolders parameter', () => {
@@ -355,7 +365,7 @@ describe('helpers', () => {
         ['src/app.ts', 'lib/helpers.ts', 'test/app.test.ts'],
         2
       );
-      expect(result).toBe('3folders');
+      expect(result).toBe('lib-src');
     });
 
     it('should truncate deeply nested paths (> maxNestedDepth)', () => {
