@@ -4,7 +4,7 @@
  * Simple text input component for terminal UI
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 
 interface TextInputProps {
@@ -24,9 +24,18 @@ export const TextInput: React.FC<TextInputProps> = ({
   const [cursorPosition, setCursorPosition] = useState(defaultValue.length);
   const { exit } = useApp();
 
+  // Use refs to track latest state values for input handler
+  const valueRef = useRef(value);
+  const cursorRef = useRef(cursorPosition);
+
+  useEffect(() => {
+    valueRef.current = value;
+    cursorRef.current = cursorPosition;
+  }, [value, cursorPosition]);
+
   useInput((input, key) => {
     if (key.return) {
-      onSubmit(value || defaultValue);
+      onSubmit(valueRef.current || defaultValue);
       exit();
       return;
     }
@@ -39,12 +48,12 @@ export const TextInput: React.FC<TextInputProps> = ({
 
     // Navigate cursor with left/right arrows only (not < > to allow typing those characters)
     if (key.leftArrow) {
-      setCursorPosition(Math.max(0, cursorPosition - 1));
+      setCursorPosition(pos => Math.max(0, pos - 1));
       return;
     }
 
     if (key.rightArrow) {
-      setCursorPosition(Math.min(value.length, cursorPosition + 1));
+      setCursorPosition(pos => Math.min(valueRef.current.length, pos + 1));
       return;
     }
 
@@ -55,18 +64,21 @@ export const TextInput: React.FC<TextInputProps> = ({
     }
 
     if ((key.ctrl && input === 'e') || input === '\x05') {
-      setCursorPosition(value.length);
+      setCursorPosition(valueRef.current.length);
       return;
     }
 
     // Backspace: delete character before cursor
     if (key.backspace || key.delete) {
-      if (key.backspace && cursorPosition > 0) {
-        const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
+      const currentPos = cursorRef.current;
+      const currentValue = valueRef.current;
+
+      if (key.backspace && currentPos > 0) {
+        const newValue = currentValue.slice(0, currentPos - 1) + currentValue.slice(currentPos);
         setValue(newValue);
-        setCursorPosition(cursorPosition - 1);
-      } else if (key.delete && cursorPosition < value.length) {
-        const newValue = value.slice(0, cursorPosition) + value.slice(cursorPosition + 1);
+        setCursorPosition(currentPos - 1);
+      } else if (key.delete && currentPos < currentValue.length) {
+        const newValue = currentValue.slice(0, currentPos) + currentValue.slice(currentPos + 1);
         setValue(newValue);
       }
       return;
@@ -74,9 +86,11 @@ export const TextInput: React.FC<TextInputProps> = ({
 
     // Only add printable characters (exclude newlines and control characters)
     if (input && !key.ctrl && !key.meta && input !== '\n' && input !== '\r') {
-      const newValue = value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
+      const currentPos = cursorRef.current;
+      const currentValue = valueRef.current;
+      const newValue = currentValue.slice(0, currentPos) + input + currentValue.slice(currentPos);
       setValue(newValue);
-      setCursorPosition(cursorPosition + 1);
+      setCursorPosition(currentPos + 1);
     }
   });
 
