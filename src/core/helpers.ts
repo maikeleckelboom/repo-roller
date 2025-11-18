@@ -322,3 +322,62 @@ export function resolveOutputPath(opts: {
     return `${out}.${format}`;
   }
 }
+
+/**
+ * Analyze selected file paths to extract folder information for smart filename generation.
+ *
+ * @param selectedPaths - Array of selected file paths (relative)
+ * @param maxFolders - Maximum number of folders to include in filename (default: 3)
+ * @returns Folder suffix to add to filename, or empty string if none
+ *
+ * @example
+ * ```typescript
+ * analyzeSelectedFolders(['src/utils/helpers.ts', 'src/utils/format.ts']) // 'src-utils'
+ * analyzeSelectedFolders(['src/a.ts', 'lib/b.ts', 'test/c.ts']) // 'src-lib-test'
+ * analyzeSelectedFolders(['a/b/c.ts', 'd/e/f.ts', 'g/h/i.ts', 'j/k/l.ts', 'm/n/o.ts']) // '5folders'
+ * ```
+ */
+export function analyzeSelectedFolders(
+  selectedPaths: readonly string[],
+  maxFolders: number = 3
+): string {
+  if (selectedPaths.length === 0) {
+    return '';
+  }
+
+  // Extract unique top-level folders
+  const topLevelFolders = new Set<string>();
+
+  for (const path of selectedPaths) {
+    // Normalize path separators
+    const normalizedPath = path.replace(/\\/g, '/');
+    const parts = normalizedPath.split('/');
+
+    // Skip files in root directory
+    if (parts.length > 1 && parts[0]) {
+      // Add the top-level folder
+      topLevelFolders.add(parts[0]);
+    }
+  }
+
+  // If no folders found (all files in root), return empty string
+  if (topLevelFolders.size === 0) {
+    return '';
+  }
+
+  // If too many folders, return count
+  if (topLevelFolders.size > maxFolders) {
+    return `${topLevelFolders.size}folders`;
+  }
+
+  // Sort folders alphabetically for consistency
+  const sortedFolders = Array.from(topLevelFolders).sort();
+
+  // Sanitize folder names (remove special chars, keep alphanumeric and dashes)
+  const sanitized = sortedFolders.map(folder =>
+    folder.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  );
+
+  // Join with kebab-case
+  return sanitized.join('-');
+}

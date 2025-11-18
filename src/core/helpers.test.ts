@@ -9,6 +9,7 @@ import {
   calculateTopDirectories,
   estimateLinesOfCode,
   resolveOutputPath,
+  analyzeSelectedFolders,
 } from './helpers.js';
 
 describe('helpers', () => {
@@ -276,6 +277,143 @@ describe('helpers', () => {
         defaultBaseName: 'default',
       });
       expect(result).toBe('dist/.md');
+    });
+  });
+
+  describe('analyzeSelectedFolders', () => {
+    it('should return empty string for empty selection', () => {
+      const result = analyzeSelectedFolders([]);
+      expect(result).toBe('');
+    });
+
+    it('should return empty string for files in root directory only', () => {
+      const result = analyzeSelectedFolders(['file1.ts', 'file2.ts', 'readme.md']);
+      expect(result).toBe('');
+    });
+
+    it('should include single folder in filename', () => {
+      const result = analyzeSelectedFolders(['src/helpers.ts', 'src/utils.ts']);
+      expect(result).toBe('src');
+    });
+
+    it('should include multiple folders up to max (3 by default)', () => {
+      const result = analyzeSelectedFolders([
+        'src/app.ts',
+        'lib/helpers.ts',
+        'test/app.test.ts',
+      ]);
+      expect(result).toBe('lib-src-test');
+    });
+
+    it('should sort folders alphabetically for consistency', () => {
+      const result = analyzeSelectedFolders([
+        'test/app.test.ts',
+        'src/app.ts',
+        'lib/helpers.ts',
+      ]);
+      expect(result).toBe('lib-src-test');
+    });
+
+    it('should show count when exceeding max folders (default 3)', () => {
+      const result = analyzeSelectedFolders([
+        'src/app.ts',
+        'lib/helpers.ts',
+        'test/app.test.ts',
+        'docs/readme.md',
+      ]);
+      expect(result).toBe('4folders');
+    });
+
+    it('should respect custom maxFolders parameter', () => {
+      const result = analyzeSelectedFolders(
+        ['src/app.ts', 'lib/helpers.ts', 'test/app.test.ts'],
+        2
+      );
+      expect(result).toBe('3folders');
+    });
+
+    it('should handle nested folder paths correctly', () => {
+      const result = analyzeSelectedFolders([
+        'src/core/helpers.ts',
+        'src/utils/format.ts',
+        'lib/external/api.ts',
+      ]);
+      expect(result).toBe('lib-src');
+    });
+
+    it('should sanitize folder names with special characters', () => {
+      const result = analyzeSelectedFolders([
+        'my@folder/file.ts',
+        'another_folder/test.ts',
+      ]);
+      expect(result).toBe('another-folder-my-folder');
+    });
+
+    it('should handle Windows-style paths', () => {
+      const result = analyzeSelectedFolders([
+        'src\\app.ts',
+        'lib\\helpers.ts',
+      ]);
+      expect(result).toBe('lib-src');
+    });
+
+    it('should handle mixed path separators', () => {
+      const result = analyzeSelectedFolders([
+        'src/app.ts',
+        'lib\\helpers.ts',
+      ]);
+      expect(result).toBe('lib-src');
+    });
+
+    it('should deduplicate folders from multiple files', () => {
+      const result = analyzeSelectedFolders([
+        'src/app.ts',
+        'src/helpers.ts',
+        'src/utils.ts',
+        'lib/external.ts',
+      ]);
+      expect(result).toBe('lib-src');
+    });
+
+    it('should handle edge case with exactly max folders', () => {
+      const result = analyzeSelectedFolders([
+        'src/app.ts',
+        'lib/helpers.ts',
+        'test/app.test.ts',
+      ], 3);
+      expect(result).toBe('lib-src-test');
+    });
+
+    it('should handle folders with numbers', () => {
+      const result = analyzeSelectedFolders([
+        'v1/app.ts',
+        'v2/app.ts',
+      ]);
+      expect(result).toBe('v1-v2');
+    });
+
+    it('should handle folders with hyphens (preserve kebab-case)', () => {
+      const result = analyzeSelectedFolders([
+        'my-folder/app.ts',
+        'another-one/test.ts',
+      ]);
+      expect(result).toBe('another-one-my-folder');
+    });
+
+    it('should remove consecutive hyphens from sanitized names', () => {
+      const result = analyzeSelectedFolders([
+        'my___folder/app.ts',
+      ]);
+      expect(result).toBe('my-folder');
+    });
+
+    it('should handle mix of root and nested files', () => {
+      const result = analyzeSelectedFolders([
+        'readme.md',
+        'src/app.ts',
+        'lib/helpers.ts',
+      ]);
+      expect(result).toBe('lib-src');
     });
   });
 });
