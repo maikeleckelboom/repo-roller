@@ -402,6 +402,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         if (state.expanded && state.expanded.length > 0) {
           dispatch({ type: 'SET_EXPANDED', payload: new Set(state.expanded) });
         }
+        if (state.selected && state.selected.length > 0) {
+          dispatch({ type: 'SET_SELECTED', payload: new Set(state.selected) });
+        }
       }).catch(() => {
         // Silently ignore errors
       });
@@ -608,7 +611,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     if (key.return) {
       // Save tree view state before exiting
       if (rootPath) {
-        setTreeViewState(rootPath, Array.from(expanded)).catch(() => {
+        setTreeViewState(rootPath, Array.from(expanded), Array.from(selected)).catch(() => {
           // Silently ignore save errors
         });
       }

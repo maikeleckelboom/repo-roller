@@ -267,7 +267,7 @@ function compactColoredBarsGrid(
 ): string[] {
   const lines: string[] = [];
   const nameWidth = 10;
-  const pctWidth = 3;
+  const pctWidth = 4;
 
   for (let i = 0; i < items.length; i += 2) {
     const item1 = items[i];
@@ -276,7 +276,8 @@ function compactColoredBarsGrid(
     const filled1 = Math.round((item1.percent / 100) * barWidth);
     const empty1 = barWidth - filled1;
     const bar1 = getBarColor(item1.type)('█'.repeat(filled1)) + ui.colors.dim('░'.repeat(empty1));
-    const col1 = `${item1.name.padEnd(nameWidth)} ${bar1} ${ui.colors.dim(`${item1.percent.toFixed(0)}%`.padStart(pctWidth))}`;
+    const pct1 = ui.colors.dim(`${item1.percent.toFixed(0)}%`.padStart(pctWidth));
+    const col1 = `${item1.name.padEnd(nameWidth)} ${bar1} ${pct1}`;
 
     if (i + 1 < items.length) {
       const item2 = items[i + 1];
@@ -285,7 +286,8 @@ function compactColoredBarsGrid(
       const filled2 = Math.round((item2.percent / 100) * barWidth);
       const empty2 = barWidth - filled2;
       const bar2 = getBarColor(item2.type)('█'.repeat(filled2)) + ui.colors.dim('░'.repeat(empty2));
-      const col2 = `${item2.name.padEnd(nameWidth)} ${bar2} ${ui.colors.dim(`${item2.percent.toFixed(0)}%`.padStart(pctWidth))}`;
+      const pct2 = ui.colors.dim(`${item2.percent.toFixed(0)}%`.padStart(pctWidth));
+      const col2 = `${item2.name.padEnd(nameWidth)} ${bar2} ${pct2}`;
       lines.push(`    ${col1}  ${col2}`);
     } else {
       lines.push(`    ${col1}`);
