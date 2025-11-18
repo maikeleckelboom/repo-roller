@@ -70,29 +70,29 @@ describe('treeRenderer', () => {
   describe('renderSelectionMarker', () => {
     it('should render selected marker', () => {
       const marker = renderSelectionMarker(true, false, defaultTheme);
-      expect(marker).toBe('[x] ');
+      expect(marker).toBe('◉ ');
     });
 
     it('should render unselected marker', () => {
       const marker = renderSelectionMarker(false, false, defaultTheme);
-      expect(marker).toBe('[ ] ');
+      expect(marker).toBe('○ ');
     });
 
     it('should render partially selected marker', () => {
       const marker = renderSelectionMarker(false, true, defaultTheme);
-      expect(marker).toBe('[-] ');
+      expect(marker).toBe('◐ ');
     });
   });
 
   describe('renderExpandMarker', () => {
     it('should render expanded marker for directory', () => {
       const marker = renderExpandMarker(false, true, defaultTheme);
-      expect(marker).toBe('▾ ');
+      expect(marker).toBe('⌄ ');
     });
 
     it('should render collapsed marker for directory', () => {
       const marker = renderExpandMarker(false, false, defaultTheme);
-      expect(marker).toBe('▸ ');
+      expect(marker).toBe('› ');
     });
 
     it('should render leaf marker for file', () => {
@@ -125,10 +125,10 @@ describe('treeRenderer', () => {
       const state = createRowState();
       const row = renderTreeRow(node, state, defaultTheme);
 
-      // Check structure: selection (4) + expandMarker (2) + name (no icon column)
-      expect(row).toMatch(/^\[ \]   index\.ts$/);
+      // Check structure: selection (2) + expandMarker (2) + name (no icon column)
+      expect(row).toMatch(/^○   index\.ts$/);
       expect(row).toContain('index.ts');
-      expect(row.substring(0, 4)).toBe('[ ] ');
+      expect(row.substring(0, 2)).toBe('○ ');
     });
 
     it('should render a selected file row', () => {
@@ -136,8 +136,8 @@ describe('treeRenderer', () => {
       const state = createRowState({ isSelected: true });
       const row = renderTreeRow(node, state, defaultTheme);
 
-      expect(row).toMatch(/^\[x\]   app\.js$/);
-      expect(row.substring(0, 4)).toBe('[x] ');
+      expect(row).toMatch(/^◉   app\.js$/);
+      expect(row.substring(0, 2)).toBe('◉ ');
     });
 
     it('should render an expanded directory row', () => {
@@ -145,7 +145,7 @@ describe('treeRenderer', () => {
       const state = createRowState({ isExpanded: true });
       const row = renderTreeRow(node, state, defaultTheme);
 
-      expect(row).toMatch(/^\[ \] ▾ src$/);
+      expect(row).toMatch(/^○ ⌄ src$/);
       expect(row).toContain('src');
     });
 
@@ -154,7 +154,7 @@ describe('treeRenderer', () => {
       const state = createRowState({ isExpanded: false });
       const row = renderTreeRow(node, state, defaultTheme);
 
-      expect(row).toMatch(/^\[ \] ▸ tests$/);
+      expect(row).toMatch(/^○ › tests$/);
       expect(row).toContain('tests');
     });
 
@@ -180,7 +180,7 @@ describe('treeRenderer', () => {
       const row = renderTreeRow(node, state, defaultTheme);
 
       // Should have vertical lines for indentation
-      expect(row).toMatch(/^│ │ \[ \]   nested\.ts$/);
+      expect(row).toMatch(/^│ │ ○   nested\.ts$/);
       expect(row).toContain('nested.ts');
       expect(row.substring(0, 4)).toBe('│ │ ');
     });
@@ -194,11 +194,11 @@ describe('treeRenderer', () => {
       const row2 = renderTreeRow(node2, state, defaultTheme);
 
       // Selection marker should start at same position (0)
-      // Name should start at same position (4 + 2 = 6) - no icon column
+      // Name should start at same position (2 + 2 = 4) - no icon column
       const namePos1 = row1.indexOf('short.ts');
       const namePos2 = row2.indexOf('very-long-name.ts');
       expect(namePos1).toBe(namePos2);
-      expect(namePos1).toBe(6); // After selection marker + expand marker
+      expect(namePos1).toBe(4); // After selection marker + expand marker
     });
 
     it('should not jitter when selection state changes', () => {
@@ -249,7 +249,7 @@ describe('treeRenderer', () => {
       const state = createRowState();
       const parts = renderTreeRowParts(node, state, defaultTheme);
 
-      expect(parts.selection).toHaveLength(4);
+      expect(parts.selection).toHaveLength(2);
       expect(parts.expandMarker).toHaveLength(2);
       expect(parts.icon).toHaveLength(0); // No icon column - badges removed
       expect(parts.name).toBe('file.ts');
@@ -276,22 +276,22 @@ describe('treeRenderer', () => {
   describe('getFixedWidth', () => {
     it('should calculate fixed width for depth 1', () => {
       const width = getFixedWidth(1);
-      // selection (4) + expand (2) + icon (0) + indent (0)
-      expect(width).toBe(6);
+      // selection (2) + expand (2) + icon (0) + indent (0)
+      expect(width).toBe(4);
     });
 
     it('should calculate fixed width for depth 3', () => {
       const width = getFixedWidth(3);
-      // selection (4) + expand (2) + icon (0) + indent (2 * 2)
-      expect(width).toBe(10);
+      // selection (2) + expand (2) + icon (0) + indent (2 * 2)
+      expect(width).toBe(8);
     });
   });
 
   describe('calculateMaxNameWidth', () => {
     it('should calculate available width for name', () => {
       const width = calculateMaxNameWidth(80, 1, DEFAULT_COLUMN_WIDTHS, 10);
-      // 80 - 6 (fixed) - 10 (hint) = 64
-      expect(width).toBe(64);
+      // 80 - 4 (fixed) - 10 (hint) = 66
+      expect(width).toBe(66);
     });
 
     it('should ensure minimum width of 10', () => {

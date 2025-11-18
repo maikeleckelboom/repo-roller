@@ -50,7 +50,7 @@ describe('CustomTreeSelect', () => {
 
       const output = lastFrame() ?? '';
       // Should show file selection header
-      expect(output).toContain('Select Files');
+      expect(output).toContain('Step 1/3 · File Selection');
       // Should show file count
       expect(output).toContain('selected');
     });
@@ -88,7 +88,7 @@ describe('CustomTreeSelect', () => {
 
       // Tree should be built with directories first
       const output = lastFrame() ?? '';
-      expect(output).toContain('Select Files');
+      expect(output).toContain('Step 1/3 · File Selection');
     });
 
     it('should handle files at root level', () => {
@@ -877,7 +877,7 @@ describe('CustomTreeSelect', () => {
       );
 
       const output = lastFrame() ?? '';
-      expect(output).toContain('Select Files');
+      expect(output).toContain('Step 1/3 · File Selection');
     });
 
     it('should show visibility status indicator', () => {
