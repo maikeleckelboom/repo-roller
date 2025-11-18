@@ -59,7 +59,6 @@ interface TreeSelectState {
   cursor: number;
   showExcluded: boolean;
   settingsLoaded: boolean;
-  mode: 'tree' | 'summary';
 }
 
 // Action types for the reducer
@@ -81,8 +80,7 @@ type TreeSelectAction =
   | { type: 'SET_SHOW_EXCLUDED'; payload: boolean }
   | { type: 'TOGGLE_SHOW_EXCLUDED' }
   | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
-  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } }
-  | { type: 'SET_MODE'; payload: 'tree' | 'summary' };
+  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } };
 
 // Reducer function to manage complex state
 function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): TreeSelectState {
@@ -171,9 +169,6 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
       const boundedCursor = Math.min(state.cursor, action.payload.maxIndex);
       return boundedCursor !== state.cursor ? { ...state, cursor: boundedCursor } : state;
     }
-
-    case 'SET_MODE':
-      return { ...state, mode: action.payload };
 
     default:
       return state;
@@ -362,10 +357,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     cursor: 0,
     showExcluded: true,  // Show all files by default, user can filter
     settingsLoaded: false,  // Track if we've loaded persisted settings
-    mode: 'tree',  // Start in tree view mode (vs summary confirmation)
   });
 
-  const { expanded, selected, cursor, showExcluded, settingsLoaded, mode } = state;
+  const { expanded, selected, cursor, showExcluded, settingsLoaded } = state;
 
   // Load persisted setting on mount
   useEffect(() => {
@@ -461,113 +455,100 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       return;
     }
 
-    // Review selection with R (only in summary mode)
-    if ((input === 'r' || input === 'R') && mode === 'summary') {
-      dispatch({ type: 'SET_MODE', payload: 'tree' });
-      return;
-    }
-
     // Toggle showing/hiding excluded and gitignored files with H (Shift+h)
-    if (input === 'H' && mode === 'tree') {
+    if (input === 'H') {
       dispatch({ type: 'TOGGLE_SHOW_EXCLUDED' });
       return;
     }
 
-    if (mode === 'tree') {
-      // Toggle All Selection with 'A' or 'a'
-      if (input === 'a' || input === 'A') {
-        const allFilePaths = filteredFiles.map(f => f.relativePath);
-        if (selected.size === allFilePaths.length) {
-          // All selected, deselect all
-          dispatch({ type: 'DESELECT_ALL' });
-        } else {
-          // Select all
-          dispatch({ type: 'SELECT_ALL', payload: allFilePaths });
+    // Toggle All Selection with 'A' or 'a'
+    if (input === 'a' || input === 'A') {
+      const allFilePaths = filteredFiles.map(f => f.relativePath);
+      if (selected.size === allFilePaths.length) {
+        // All selected, deselect all
+        dispatch({ type: 'DESELECT_ALL' });
+      } else {
+        // Select all
+        dispatch({ type: 'SELECT_ALL', payload: allFilePaths });
+      }
+      return;
+    }
+
+    // Expand All with 'E'
+    if (input === 'E') {
+      const allDirPaths: string[] = [];
+      const traverse = (node: TreeNode) => {
+        if (!node.isFile) {
+          allDirPaths.push(node.fullPath);
         }
+        node.children.forEach(traverse);
+      };
+      traverse(showExcluded ? tree : filteredTree);
+      dispatch({ type: 'EXPAND_ALL', payload: allDirPaths });
+      return;
+    }
+
+    // Collapse All with 'C'
+    if (input === 'C') {
+      dispatch({ type: 'COLLAPSE_ALL' });
+      return;
+    }
+
+    if (key.upArrow) {
+      dispatch({ type: 'MOVE_CURSOR_UP' });
+      return;
+    }
+
+    if (key.downArrow) {
+      dispatch({ type: 'MOVE_CURSOR_DOWN', payload: { maxIndex: flatNodes.length - 1 } });
+      return;
+    }
+
+    if (key.rightArrow) {
+      // Expand directory
+      const flatNode = flatNodes[cursor];
+      if (flatNode && !flatNode.node.isFile) {
+        dispatch({ type: 'EXPAND_NODE', payload: flatNode.node.fullPath });
+      }
+      return;
+    }
+
+    if (key.leftArrow) {
+      // Collapse directory
+      const flatNode = flatNodes[cursor];
+      if (flatNode && !flatNode.node.isFile) {
+        dispatch({ type: 'COLLAPSE_NODE', payload: flatNode.node.fullPath });
+      }
+      return;
+    }
+
+    if (input === ' ') {
+      // Toggle selection
+      const flatNode = flatNodes[cursor];
+      if (!flatNode) {
         return;
       }
 
-      // Expand All with 'E'
-      if (input === 'E') {
-        const allDirPaths: string[] = [];
-        const traverse = (node: TreeNode) => {
-          if (!node.isFile) {
-            allDirPaths.push(node.fullPath);
-          }
-          node.children.forEach(traverse);
-        };
-        traverse(showExcluded ? tree : filteredTree);
-        dispatch({ type: 'EXPAND_ALL', payload: allDirPaths });
-        return;
+      if (flatNode.node.isFile) {
+        // Toggle single file
+        dispatch({ type: 'TOGGLE_FILE', payload: flatNode.node.fullPath });
+      } else {
+        // Toggle directory and all children
+        handleDirectoryToggle(flatNode.node);
       }
-
-      // Collapse All with 'C'
-      if (input === 'C') {
-        dispatch({ type: 'COLLAPSE_ALL' });
-        return;
-      }
-
-      if (key.upArrow) {
-        dispatch({ type: 'MOVE_CURSOR_UP' });
-        return;
-      }
-
-      if (key.downArrow) {
-        dispatch({ type: 'MOVE_CURSOR_DOWN', payload: { maxIndex: flatNodes.length - 1 } });
-        return;
-      }
-
-      if (key.rightArrow) {
-        // Expand directory
-        const flatNode = flatNodes[cursor];
-        if (flatNode && !flatNode.node.isFile) {
-          dispatch({ type: 'EXPAND_NODE', payload: flatNode.node.fullPath });
-        }
-        return;
-      }
-
-      if (key.leftArrow) {
-        // Collapse directory
-        const flatNode = flatNodes[cursor];
-        if (flatNode && !flatNode.node.isFile) {
-          dispatch({ type: 'COLLAPSE_NODE', payload: flatNode.node.fullPath });
-        }
-        return;
-      }
-
-      if (input === ' ') {
-        // Toggle selection
-        const flatNode = flatNodes[cursor];
-        if (!flatNode) {
-          return;
-        }
-
-        if (flatNode.node.isFile) {
-          // Toggle single file
-          dispatch({ type: 'TOGGLE_FILE', payload: flatNode.node.fullPath });
-        } else {
-          // Toggle directory and all children
-          handleDirectoryToggle(flatNode.node);
-        }
-        return;
-      }
+      return;
     }
 
     if (key.return) {
-      if (mode === 'tree') {
-        // Move to summary mode first
-        dispatch({ type: 'SET_MODE', payload: 'summary' });
-      } else {
-        // Save tree view state before exiting
-        if (rootPath) {
-          setTreeViewState(rootPath, Array.from(expanded)).catch(() => {
-            // Silently ignore save errors
-          });
-        }
-        // Confirm selection from summary mode
-        onComplete(Array.from(selected));
-        exit();
+      // Save tree view state before exiting
+      if (rootPath) {
+        setTreeViewState(rootPath, Array.from(expanded)).catch(() => {
+          // Silently ignore save errors
+        });
       }
+      // Complete selection immediately
+      onComplete(Array.from(selected));
+      exit();
       return;
     }
   });
@@ -628,50 +609,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Calculate hidden count
   const hiddenCount = showExcluded ? 0 : files.length - filteredFiles.length;
 
-  // Render summary view
-  const renderSummaryView = () => {
-    return (
-      <Box flexDirection="column" paddingY={1}>
-        <Box borderStyle="round" borderColor="greenBright" paddingX={2} paddingY={1}>
-          <Box flexDirection="column">
-            <Box>
-              <Text color="greenBright" bold>✓ </Text>
-              <Text color="white" bold>{selected.size}</Text>
-              <Text color="gray"> / </Text>
-              <Text color="blueBright">{files.length}</Text>
-              <Text color="gray"> files selected</Text>
-            </Box>
-            {hiddenCount > 0 && (
-              <Box marginTop={1}>
-                <Text color="yellowBright">  {hiddenCount} files hidden by filter</Text>
-              </Box>
-            )}
-          </Box>
-        </Box>
-        <Box marginTop={2}>
-          <Text color="gray">
-            <Text color="greenBright">Enter</Text> to continue  <Text color="blueBright">R</Text> to review selection  <Text color="red">Q</Text> to quit
-          </Text>
-        </Box>
-      </Box>
-    );
-  };
-
-  if (mode === 'summary') {
-    return (
-      <Box flexDirection="column">
-        <Box marginBottom={1}>
-          <Text bold color="cyanBright">✓ Selection Confirmed</Text>
-        </Box>
-        {renderSummaryView()}
-      </Box>
-    );
-  }
-
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text bold color="cyanBright">◉ File Selection</Text>
+        <Text bold color="cyanBright">◉ Step 1/3 · File Selection</Text>
       </Box>
 
       <Box marginBottom={1}>
