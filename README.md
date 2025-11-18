@@ -69,9 +69,9 @@ rr settings
 
 ## Interactive Mode
 
-The interactive mode provides a modern TUI for selecting files and customizing output:
+The interactive mode provides a modern TUI with a streamlined 3-step wizard:
 
-### File Tree Selection
+### Step 1: File Selection
 - **↑↓** - Navigate through files and directories
 - **←→** - Expand/collapse directories
 - **Space** - Toggle file/directory selection
@@ -79,13 +79,32 @@ The interactive mode provides a modern TUI for selecting files and customizing o
 - **E** - Expand all directories
 - **C** - Collapse all directories
 - **H** - Toggle showing excluded/ignored files
-- **Enter** - Confirm selection
+- **Enter** - Confirm selection and proceed to Step 2
 - **Q** - Quit
 
+### Step 2: Output Configuration
+- Shows selection summary (e.g., "✓ 5 / 110 files selected · 21 hidden")
+- Configure three output options:
+  - Strip comments from source files
+  - Include directory tree view
+  - Include statistics section
+- **↑↓** - Navigate between options
+- **Space** - Toggle option on/off
+- **Enter** - Continue to filename prompt
+- **R** - Return to file selection to adjust your choices
+- **Q** - Quit
+
+### Step 3: Generation Summary
+- Review token count and cost estimates
+- See final file list and configuration
+- Output is automatically generated
+
 ### Features
-- **Tree state persistence** - Your expanded directories are remembered across sessions
-- **Custom filename** - Set the output filename with smart defaults (repo-name_date.ext)
-- **Streamlined flow** - No redundant confirmations, just select and go
+- **No redundant confirmations** - Press Enter once in the tree to continue
+- **Easy reselection** - Press R in the output step to go back and adjust files
+- **Settings persistence** - Your preferences are saved automatically
+- **Tree state persistence** - Expanded directories are remembered across sessions
+- **Custom filename** - Smart defaults with repo name and date
 
 ### Settings Management
 
