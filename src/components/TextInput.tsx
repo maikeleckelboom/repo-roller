@@ -60,26 +60,20 @@ export const TextInput: React.FC<TextInputProps> = ({
     }
 
     // Backspace: delete character before cursor
-    if (key.backspace) {
-      if (cursorPosition > 0) {
+    if (key.backspace || key.delete) {
+      if (key.backspace && cursorPosition > 0) {
         const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
         setValue(newValue);
         setCursorPosition(cursorPosition - 1);
-      }
-      return;
-    }
-
-    // Delete: delete character at cursor
-    if (key.delete) {
-      if (cursorPosition < value.length) {
+      } else if (key.delete && cursorPosition < value.length) {
         const newValue = value.slice(0, cursorPosition) + value.slice(cursorPosition + 1);
         setValue(newValue);
       }
       return;
     }
 
-    // Only add printable characters
-    if (input && !key.ctrl && !key.meta) {
+    // Only add printable characters (exclude newlines and control characters)
+    if (input && !key.ctrl && !key.meta && input !== '\n' && input !== '\r') {
       const newValue = value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
       setValue(newValue);
       setCursorPosition(cursorPosition + 1);
@@ -104,13 +98,13 @@ export const TextInput: React.FC<TextInputProps> = ({
         <Text color="gray">{'> '}</Text>
         {showCursor ? (
           <>
-            <Text color={displayColor}>{textBeforeCursor}</Text>
-            <Text color="black" backgroundColor="cyanBright">{textAtCursor}</Text>
-            <Text color={displayColor}>{textAfterCursor}</Text>
+            <Text color={displayColor} wrap="truncate">{textBeforeCursor}</Text>
+            <Text color="black" backgroundColor="cyanBright" wrap="truncate">{textAtCursor}</Text>
+            <Text color={displayColor} wrap="truncate">{textAfterCursor}</Text>
           </>
         ) : (
           <>
-            <Text color={displayColor}>{displayValue}</Text>
+            <Text color={displayColor} wrap="truncate">{displayValue}</Text>
             <Text color="cyanBright">{'█'}</Text>
           </>
         )}
