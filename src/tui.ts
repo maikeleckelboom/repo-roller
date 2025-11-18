@@ -227,11 +227,10 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     // Update scan with selected files
     scan = selectedScan;
 
-    // Generate default filename base: reponame-timestamp
+    // Generate default filename base: just the repo name (no timestamp)
     const generateDefaultFilenameBase = (): string => {
       const repoName = basename(options.root);
-      const timestamp = new Date().toISOString().split('T')[0];
-      return `${repoName}-${timestamp}`;
+      return repoName;
     };
 
     // Prompt for output format (unless --yes mode)
