@@ -33,6 +33,7 @@ import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { TextInput } from './components/TextInput.js';
 import { OutputOptions } from './components/OutputOptions.js';
 import { OutputFormatSelect } from './components/OutputFormatSelect.js';
+import { FilenameInput } from './components/FilenameInput.js';
 import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost } from './core/tokens.js';
@@ -233,24 +234,21 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       return `${repoName}-${timestamp}`;
     };
 
-    // Prompt for output format and filename (unless --yes mode)
+    // Prompt for output format (unless --yes mode)
     let outFile = options.outFile;
     let selectedFormat: OutputFormat = options.format;
 
     if (!options.yes) {
       console.log('');
 
-      const defaultFilenameBase = generateDefaultFilenameBase();
-      const defaultFilename = `${defaultFilenameBase}.${options.format}`;
-
+      // Step 3: Format selection
       let inkExitPromise: Promise<void> | undefined;
-      const formatResult = await new Promise<{ filename: string; format: OutputFormat } | 'cancel'>((resolve) => {
+      const formatResult = await new Promise<OutputFormat | 'cancel'>((resolve) => {
         const { waitUntilExit } = render(
           React.createElement(OutputFormatSelect, {
-            defaultFilename,
             defaultFormat: options.format,
-            onSubmit: (values: { filename: string; format: OutputFormat }) => {
-              resolve(values);
+            onSubmit: (format: OutputFormat) => {
+              resolve(format);
             },
             onCancel: () => {
               resolve('cancel');
@@ -273,8 +271,45 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
         return;
       }
 
-      selectedFormat = formatResult.format;
-      outFile = formatResult.filename;
+      selectedFormat = formatResult;
+
+      // Step 4: Filename input
+      console.log('');
+
+      const defaultFilenameBase = generateDefaultFilenameBase();
+
+      inkExitPromise = undefined;
+      const filenameResult = await new Promise<string | 'cancel'>((resolve) => {
+        const { waitUntilExit } = render(
+          React.createElement(FilenameInput, {
+            defaultFilename: defaultFilenameBase,
+            format: selectedFormat,
+            onSubmit: (filename: string) => {
+              resolve(filename);
+            },
+            onCancel: () => {
+              resolve('cancel');
+            },
+          })
+        );
+
+        inkExitPromise = waitUntilExit().catch(() => {
+          // Ignore exit errors
+        });
+      });
+
+      // Wait for Ink to fully exit before continuing
+      if (inkExitPromise) {
+        await inkExitPromise;
+      }
+
+      if (filenameResult === 'cancel') {
+        console.log('Cancelled by user.');
+        return;
+      }
+
+      // Combine filename with extension
+      outFile = `${filenameResult}.${selectedFormat}`;
     }
 
     // Ensure output path has correct extension using helper
@@ -303,7 +338,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
 
     // Display generation summary
     console.log('');
-    console.log(ui.colors.accent('● Step 3/3 · Generation Summary'));
+    console.log(ui.colors.accent('● Generation Summary'));
     console.log('');
 
     const dashboardLines = renderGenerationSummary(
