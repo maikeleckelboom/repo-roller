@@ -28,6 +28,7 @@ import React from 'react';
 import { basename } from 'node:path';
 import type { ResolvedOptions, ScanResult, OutputFormat } from './core/types.js';
 import { scanFiles } from './core/scan.js';
+import { analyzeSelectedFolders } from './core/helpers.js';
 import { render as renderOutput } from './core/render.js';
 import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { TextInput } from './components/TextInput.js';
@@ -227,10 +228,19 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     // Update scan with selected files
     scan = selectedScan;
 
-    // Generate default filename base: reponame-timestamp
+    // Generate default filename base: reponame[-folders]-timestamp
     const generateDefaultFilenameBase = (): string => {
       const repoName = basename(options.root);
       const timestamp = new Date().toISOString().split('T')[0];
+
+      // Analyze selected folders for smart naming (max 3 folders)
+      const folderSuffix = analyzeSelectedFolders(selectedPaths, 3);
+
+      // Include folder context if available
+      if (folderSuffix) {
+        return `${repoName}-${folderSuffix}-${timestamp}`;
+      }
+
       return `${repoName}-${timestamp}`;
     };
 
