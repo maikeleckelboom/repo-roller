@@ -178,7 +178,7 @@ function renderCodeComposition(
 ): string[] {
   const lines: string[] = [];
   lines.push(ui.colors.dim('  Code Composition'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(78)));
+  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(40)));
 
   const languages = calculateLanguageBreakdown(files);
   const roles = calculateRoleBreakdown(files);
@@ -188,7 +188,7 @@ function renderCodeComposition(
     if (languages.length > 0) {
       lines.push(ui.colors.dim('    Languages'));
       for (const lang of languages.slice(0, 5)) {
-        lines.push(renderColoredBar(lang.name, lang.percent, 'language'));
+        lines.push(renderColoredBar(lang.name, lang.percent, 'language', 12));
       }
       lines.push('');
     }
@@ -196,23 +196,23 @@ function renderCodeComposition(
     if (roles.source + roles.test + roles.docs + roles.config > 0) {
       lines.push(ui.colors.dim('    File Roles'));
       if (roles.source > 0) {
-        lines.push(renderColoredBar('Source', roles.source, 'role-source'));
+        lines.push(renderColoredBar('Source', roles.source, 'role-source', 12));
       }
       if (roles.test > 0) {
-        lines.push(renderColoredBar('Tests', roles.test, 'role-test'));
+        lines.push(renderColoredBar('Tests', roles.test, 'role-test', 12));
       }
       if (roles.docs > 0) {
-        lines.push(renderColoredBar('Docs', roles.docs, 'role-docs'));
+        lines.push(renderColoredBar('Docs', roles.docs, 'role-docs', 12));
       }
       if (roles.config > 0) {
-        lines.push(renderColoredBar('Config', roles.config, 'role-config'));
+        lines.push(renderColoredBar('Config', roles.config, 'role-config', 12));
       }
     }
   } else {
     // Compact two-column grid
     const allItems: Array<{ name: string; percent: number; type: string }> = [];
 
-    for (const lang of languages.slice(0, 3)) {
+    for (const lang of languages.slice(0, 2)) {
       allItems.push({ name: lang.name, percent: lang.percent, type: 'language' });
     }
 
@@ -221,7 +221,7 @@ function renderCodeComposition(
     if (roles.docs > 0) allItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
     if (roles.config > 0) allItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
 
-    const gridLines = compactColoredBarsGrid(allItems);
+    const gridLines = compactColoredBarsGrid(allItems, 10);
     lines.push(...gridLines);
   }
 
@@ -231,8 +231,7 @@ function renderCodeComposition(
 /**
  * Render a single colored bar based on type
  */
-function renderColoredBar(name: string, percent: number, type: string): string {
-  const barWidth = 20;
+function renderColoredBar(name: string, percent: number, type: string, barWidth = 12): string {
   const nameWidth = 11;
   const filled = Math.round((percent / 100) * barWidth);
   const empty = barWidth - filled;
@@ -264,11 +263,11 @@ function renderColoredBar(name: string, percent: number, type: string): string {
  */
 function compactColoredBarsGrid(
   items: Array<{ name: string; percent: number; type: string }>,
-  barWidth = 20
+  barWidth = 10
 ): string[] {
   const lines: string[] = [];
-  const nameWidth = 11;
-  const pctWidth = 4;
+  const nameWidth = 10;
+  const pctWidth = 3;
 
   for (let i = 0; i < items.length; i += 2) {
     const item1 = items[i];
@@ -287,7 +286,7 @@ function compactColoredBarsGrid(
       const empty2 = barWidth - filled2;
       const bar2 = getBarColor(item2.type)('█'.repeat(filled2)) + ui.colors.dim('░'.repeat(empty2));
       const col2 = `${item2.name.padEnd(nameWidth)} ${bar2} ${ui.colors.dim(`${item2.percent.toFixed(0)}%`.padStart(pctWidth))}`;
-      lines.push(`    ${col1}   ${col2}`);
+      lines.push(`    ${col1}  ${col2}`);
     } else {
       lines.push(`    ${col1}`);
     }
@@ -330,7 +329,7 @@ function renderContextFit(
   const showWarnings = displaySettings?.showTokenWarnings ?? true;
 
   lines.push(ui.colors.dim('  Context Fit'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(78)));
+  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(40)));
 
   if (modelPreset) {
     // Show specific model preset info
@@ -348,24 +347,23 @@ function renderContextFit(
       statusText = ui.colors.success(`fits ${modelPreset.displayName}`);
     } else if (costInfo.warningLevel === 'caution') {
       statusIcon = ui.colors.warning(ui.symbols.warning);
-      statusText = ui.colors.warning(`tight fit for ${modelPreset.displayName}`);
+      statusText = ui.colors.warning(`tight fit`);
     } else {
       statusIcon = ui.colors.error(ui.symbols.cross);
-      statusText = ui.colors.error(`exceeds ${modelPreset.displayName} budget`);
+      statusText = ui.colors.error(`exceeds budget`);
     }
 
-    lines.push(`  ${statusIcon} ${tokenStr} / ${budgetStr} tokens ${ui.colors.dim(`(${costInfo.utilizationPercent.toFixed(0)}%)`)}`);
-    lines.push(`    ${statusText}`);
+    lines.push(`  ${statusIcon} ${tokenStr} / ${budgetStr} ${ui.colors.dim(`(${costInfo.utilizationPercent.toFixed(0)}%)`)} · ${statusText}`);
 
     if (showCost) {
-      lines.push(`    ${ui.colors.dim(`Cost: $${costInfo.inputCost.toFixed(4)}`)}`);
+      lines.push(`  ${ui.colors.dim(`Cost: $${costInfo.inputCost.toFixed(4)}`)}`);
     }
 
-    // Show warnings if any
+    // Show warnings if any (only first warning to save space)
     if (showWarnings) {
       const warnings = getModelWarnings(estimatedTokens, modelPreset);
-      for (const warning of warnings) {
-        lines.push(`    ${ui.colors.warning(ui.symbols.warning)} ${ui.colors.warning(warning)}`);
+      if (warnings.length > 0) {
+        lines.push(`  ${ui.colors.warning(ui.symbols.warning)} ${ui.colors.dim(warnings[0])}`);
       }
     }
   } else {
@@ -376,22 +374,16 @@ function renderContextFit(
 
     let contextInfo: string;
     if (fits32k) {
-      contextInfo = ui.colors.success(`${ui.symbols.check} fits all models (32K+)`);
+      contextInfo = ui.colors.success(`${ui.symbols.check} fits all models`);
     } else if (fits128k) {
-      contextInfo = ui.colors.accent(`${ui.symbols.check} fits 128K+ models`);
+      contextInfo = ui.colors.accent(`${ui.symbols.check} fits 128K+`);
     } else if (fits200k) {
-      contextInfo = ui.colors.warning(`${ui.symbols.warning} requires 200K context`);
+      contextInfo = ui.colors.warning(`${ui.symbols.warning} needs 200K`);
     } else {
-      contextInfo = ui.colors.error(`${ui.symbols.cross} exceeds most context windows`);
+      contextInfo = ui.colors.error(`${ui.symbols.cross} exceeds most`);
     }
 
-    lines.push(`  Estimated tokens: ${ui.tokenCount(estimatedTokens)}`);
-    lines.push(`  ${contextInfo}`);
-
-    // Suggest using --model flag
-    lines.push('');
-    lines.push(ui.colors.dim('  Tip: Use --model <name> for model-specific budgets'));
-    lines.push(ui.colors.muted('       e.g., --model claude-3.5-sonnet'));
+    lines.push(`  ${ui.tokenCount(estimatedTokens)} · ${contextInfo}`);
   }
 
   return lines;
