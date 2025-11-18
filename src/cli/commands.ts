@@ -6,7 +6,7 @@ import { runInteractive } from '../tui.js';
 import { displayProviders, validateConfigs, runPreview, runNonInteractive } from './index.js';
 import { listModelPresets } from '../core/modelPresets.js';
 import * as ui from '../core/ui.js';
-import { getDisplaySettings, loadUserSettings } from '../core/userSettings.js';
+import { getDisplaySettings, loadUserSettings, getLastSelectedFiles } from '../core/userSettings.js';
 
 export interface CommandContext {
   root: string;
@@ -223,6 +223,22 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
   const userSettings = await loadUserSettings();
   const userDisplaySettings = await getDisplaySettings();
 
+  // Check if we should use last selected files
+  // Use last selected files if:
+  // 1. Not in interactive mode
+  // 2. No explicit include patterns provided
+  // 3. Last selected files exist for this root
+  const shouldUseLastSelected = !cliOptions.interactive &&
+    (!cliOptions.include || cliOptions.include.length === 0);
+
+  let lastSelectedFiles: string[] = [];
+  if (shouldUseLastSelected) {
+    lastSelectedFiles = await getLastSelectedFiles(cliOptions.root);
+    if (lastSelectedFiles.length > 0) {
+      console.log(ui.colors.dim(`Using ${lastSelectedFiles.length} previously selected files`));
+    }
+  }
+
   // Get explicit flag information (reuse helper function to avoid duplication)
   const explicitFlags = detectExplicitFlags();
 
@@ -230,6 +246,8 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
   // CLI flags will override these in resolveOptions
   const cliOptionsWithUserSettings = {
     ...cliOptions,
+    // Apply last selected files if available and no explicit include patterns
+    include: lastSelectedFiles.length > 0 ? lastSelectedFiles : cliOptions.include,
     // Apply user settings for stripComments/withTree/withStats if not explicitly set via CLI
     // This ensures user preferences are respected in non-interactive mode
     stripComments: explicitFlags.stripComments

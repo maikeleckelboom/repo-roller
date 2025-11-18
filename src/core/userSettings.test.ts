@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, readFile as fsReadFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
-import { loadUserSettings, saveUserSettings, getUserSetting, setUserSetting } from './userSettings.js';
+import { loadUserSettings, saveUserSettings, getUserSetting, setUserSetting, getLastSelectedFiles, setLastSelectedFiles } from './userSettings.js';
 
 // Test the user settings logic by directly manipulating the expected paths
 describe('userSettings', () => {
@@ -466,6 +466,100 @@ describe('userSettings', () => {
       expect(merged.showTokenWarnings).toBe(true);
       expect(merged.showCostEstimates).toBe(true);
       expect(merged.showRecommendations).toBe(true);
+    });
+  });
+
+  describe('lastSelectedFiles - remember file selection for quick re-runs', () => {
+    it('should save and load last selected files for a specific root', async () => {
+      const root = '/home/user/my-project';
+      const selectedFiles = ['src/index.ts', 'src/utils.ts', 'README.md'];
+
+      await setLastSelectedFiles(root, selectedFiles);
+      const loaded = await getLastSelectedFiles(root);
+
+      expect(loaded).toEqual(selectedFiles);
+    });
+
+    it('should return empty array when no files saved for root', async () => {
+      const root = '/home/user/new-project';
+      const loaded = await getLastSelectedFiles(root);
+
+      expect(loaded).toEqual([]);
+    });
+
+    it('should return empty array when different root is requested', async () => {
+      const root1 = '/home/user/project1';
+      const root2 = '/home/user/project2';
+      const selectedFiles = ['src/index.ts', 'src/utils.ts'];
+
+      await setLastSelectedFiles(root1, selectedFiles);
+      const loaded = await getLastSelectedFiles(root2);
+
+      expect(loaded).toEqual([]);
+    });
+
+    it('should overwrite previous selection for same root', async () => {
+      const root = '/home/user/my-project';
+      const firstSelection = ['src/index.ts', 'src/utils.ts'];
+      const secondSelection = ['README.md', 'package.json'];
+
+      await setLastSelectedFiles(root, firstSelection);
+      await setLastSelectedFiles(root, secondSelection);
+      const loaded = await getLastSelectedFiles(root);
+
+      expect(loaded).toEqual(secondSelection);
+    });
+
+    it('should include timestamp when saving', async () => {
+      const root = '/home/user/my-project';
+      const selectedFiles = ['src/index.ts'];
+      const beforeTimestamp = Date.now();
+
+      await setLastSelectedFiles(root, selectedFiles);
+
+      const settings = await loadUserSettings();
+      expect(settings.lastSelectedFiles).toBeDefined();
+      expect(settings.lastSelectedFiles?.timestamp).toBeDefined();
+      expect(settings.lastSelectedFiles?.timestamp).toBeGreaterThanOrEqual(beforeTimestamp);
+    });
+
+    it('should persist lastSelectedFiles in settings file', async () => {
+      await mkdir(configDir, { recursive: true });
+
+      const lastSelectedData = {
+        lastSelectedFiles: {
+          files: ['src/index.ts', 'src/utils.ts'],
+          root: '/home/user/my-project',
+          timestamp: Date.now(),
+        },
+      };
+
+      await writeFile(settingsFile, JSON.stringify(lastSelectedData), 'utf-8');
+      const content = await fsReadFile(settingsFile, 'utf-8');
+      const loaded = JSON.parse(content);
+
+      expect(loaded.lastSelectedFiles).toBeDefined();
+      expect(loaded.lastSelectedFiles.files).toEqual(['src/index.ts', 'src/utils.ts']);
+      expect(loaded.lastSelectedFiles.root).toBe('/home/user/my-project');
+      expect(loaded.lastSelectedFiles.timestamp).toBeDefined();
+    });
+
+    it('should handle empty file selection', async () => {
+      const root = '/home/user/my-project';
+      const emptySelection: string[] = [];
+
+      await setLastSelectedFiles(root, emptySelection);
+      const loaded = await getLastSelectedFiles(root);
+
+      expect(loaded).toEqual([]);
+    });
+
+    it('should export getLastSelectedFiles function', () => {
+      expect(typeof getLastSelectedFiles).toBe('function');
+    });
+
+    it('should export setLastSelectedFiles function', () => {
+      expect(typeof setLastSelectedFiles).toBe('function');
     });
   });
 });

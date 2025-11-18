@@ -35,7 +35,7 @@ import { TextInput } from './components/TextInput.js';
 import { OutputOptions } from './components/OutputOptions.js';
 import { OutputFormatSelect } from './components/OutputFormatSelect.js';
 import { FilenameInput } from './components/FilenameInput.js';
-import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS } from './core/userSettings.js';
+import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS, setLastSelectedFiles } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost } from './core/tokens.js';
 import { formatBytes, resolveOutputPath } from './core/helpers.js';
@@ -108,6 +108,9 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       console.log('No files selected. Exiting.');
       return;
     }
+
+    // Save selected files for future quick re-runs
+    await setLastSelectedFiles(options.root, selectedPaths);
 
     // Filter scan results to only selected files
     const selectedFiles = scan.files.filter((f) => selectedPaths.includes(f.relativePath));
