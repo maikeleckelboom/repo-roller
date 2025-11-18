@@ -276,8 +276,8 @@ export function estimateLinesOfCode(totalBytes: number): number {
  * Resolve output file path with consistent extension handling.
  *
  * Rules:
- * - If `out` is given and has an extension, use it as-is
- * - If `out` is given without an extension, append `.${format}`
+ * - If `out` is given and has a valid format extension (md, json, yaml, txt), use it as-is
+ * - If `out` is given without an extension or with a non-format extension, append `.${format}`
  * - If `out` is not given, use `<defaultBaseName>.${format}`
  * - Never generate paths with `._md`, stray dots, or duplicate extensions
  *
@@ -304,8 +304,19 @@ export function resolveOutputPath(opts: {
   const hasExtension = lastDotIndex > lastSlashIndex && lastDotIndex > 0;
 
   if (hasExtension) {
-    // Use path as-is if it has an extension
-    return out;
+    // Extract the extension (without the dot)
+    const existingExtension = out.slice(lastDotIndex + 1);
+
+    // Valid format extensions
+    const validExtensions = ['md', 'json', 'yaml', 'txt'];
+
+    // If it has a valid format extension, use path as-is
+    if (validExtensions.includes(existingExtension)) {
+      return out;
+    }
+
+    // Otherwise, append the format extension
+    return `${out}.${format}`;
   } else {
     // Append format extension if no extension present
     return `${out}.${format}`;
