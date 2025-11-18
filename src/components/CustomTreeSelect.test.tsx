@@ -218,8 +218,11 @@ describe('CustomTreeSelect', () => {
 
       const output = lastFrame() ?? '';
       expect(output).toContain('navigate');
-      expect(output).toContain('toggle');
-      expect(output).toContain('confirm');
+      expect(output).toContain('select');
+      expect(output).toContain('toggle all');
+      expect(output).toContain('expand all');
+      expect(output).toContain('collapse all');
+      expect(output).toContain('continue');
       expect(output).toContain('quit');
     });
 

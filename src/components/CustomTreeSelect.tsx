@@ -33,7 +33,7 @@
 import React, { useReducer, useMemo, useEffect, useCallback, useState } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { FileInfo } from '../core/types.js';
-import { getUserSetting, setUserSetting } from '../core/userSettings.js';
+import { getUserSetting, setUserSetting, getTreeViewState, setTreeViewState } from '../core/userSettings.js';
 import { defaultTheme, type TreeTheme } from '../core/treeTheme.js';
 import {
   renderTreeRowParts,
@@ -49,6 +49,7 @@ import { getFileIconInfo, getFolderIconInfo } from '../core/fileIcons.js';
 interface CustomTreeSelectProps {
   files: readonly FileInfo[];
   onComplete: (selectedPaths: string[]) => void;
+  rootPath?: string;  // Root path for persisting tree state
 }
 
 // State type for the reducer
@@ -66,10 +67,14 @@ type TreeSelectAction =
   | { type: 'SET_EXPANDED'; payload: Set<string> }
   | { type: 'EXPAND_NODE'; payload: string }
   | { type: 'COLLAPSE_NODE'; payload: string }
+  | { type: 'EXPAND_ALL'; payload: string[] }
+  | { type: 'COLLAPSE_ALL' }
   | { type: 'SET_SELECTED'; payload: Set<string> }
   | { type: 'TOGGLE_FILE'; payload: string }
   | { type: 'SELECT_FILES'; payload: string[] }
   | { type: 'DESELECT_FILES'; payload: string[] }
+  | { type: 'SELECT_ALL'; payload: string[] }
+  | { type: 'DESELECT_ALL' }
   | { type: 'SET_CURSOR'; payload: number }
   | { type: 'MOVE_CURSOR_UP' }
   | { type: 'MOVE_CURSOR_DOWN'; payload: { maxIndex: number } }
@@ -97,6 +102,17 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
       return { ...state, expanded: newExpanded };
     }
 
+    case 'EXPAND_ALL': {
+      const newExpanded = new Set(state.expanded);
+      action.payload.forEach(path => newExpanded.add(path));
+      return { ...state, expanded: newExpanded };
+    }
+
+    case 'COLLAPSE_ALL': {
+      // Keep root expanded, collapse everything else
+      return { ...state, expanded: new Set(['.']) };
+    }
+
     case 'SET_SELECTED':
       return { ...state, selected: action.payload };
 
@@ -120,6 +136,14 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
       const newSelected = new Set(state.selected);
       action.payload.forEach(f => newSelected.delete(f));
       return { ...state, selected: newSelected };
+    }
+
+    case 'SELECT_ALL': {
+      return { ...state, selected: new Set(action.payload) };
+    }
+
+    case 'DESELECT_ALL': {
+      return { ...state, selected: new Set() };
     }
 
     case 'SET_CURSOR':
@@ -303,7 +327,7 @@ function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean
   return selectedCount > 0 && selectedCount < allFiles.length;
 }
 
-export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete }) => {
+export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete, rootPath }) => {
   // Build tree structure once from flat file list
   // This is memoized because tree building is O(n*m) where m is path depth
   const tree = useMemo(() => buildTreeStructure(files), [files]);
@@ -354,6 +378,19 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       dispatch({ type: 'SET_SETTINGS_LOADED', payload: true });
     });
   }, []);
+
+  // Load persisted tree view state on mount
+  useEffect(() => {
+    if (rootPath) {
+      getTreeViewState(rootPath).then(state => {
+        if (state.expanded && state.expanded.length > 0) {
+          dispatch({ type: 'SET_EXPANDED', payload: new Set(state.expanded) });
+        }
+      }).catch(() => {
+        // Silently ignore errors
+      });
+    }
+  }, [rootPath]);
 
   // Save setting when it changes (after initial load)
   useEffect(() => {
@@ -437,6 +474,39 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     }
 
     if (mode === 'tree') {
+      // Toggle All Selection with 'A' or 'a'
+      if (input === 'a' || input === 'A') {
+        const allFilePaths = filteredFiles.map(f => f.relativePath);
+        if (selected.size === allFilePaths.length) {
+          // All selected, deselect all
+          dispatch({ type: 'DESELECT_ALL' });
+        } else {
+          // Select all
+          dispatch({ type: 'SELECT_ALL', payload: allFilePaths });
+        }
+        return;
+      }
+
+      // Expand All with 'E'
+      if (input === 'E') {
+        const allDirPaths: string[] = [];
+        const traverse = (node: TreeNode) => {
+          if (!node.isFile) {
+            allDirPaths.push(node.fullPath);
+          }
+          node.children.forEach(traverse);
+        };
+        traverse(showExcluded ? tree : filteredTree);
+        dispatch({ type: 'EXPAND_ALL', payload: allDirPaths });
+        return;
+      }
+
+      // Collapse All with 'C'
+      if (input === 'C') {
+        dispatch({ type: 'COLLAPSE_ALL' });
+        return;
+      }
+
       if (key.upArrow) {
         dispatch({ type: 'MOVE_CURSOR_UP' });
         return;
@@ -488,6 +558,12 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
         // Move to summary mode first
         dispatch({ type: 'SET_MODE', payload: 'summary' });
       } else {
+        // Save tree view state before exiting
+        if (rootPath) {
+          setTreeViewState(rootPath, Array.from(expanded)).catch(() => {
+            // Silently ignore save errors
+          });
+        }
         // Confirm selection from summary mode
         onComplete(Array.from(selected));
         exit();
@@ -600,7 +676,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
       <Box marginBottom={1}>
         <Text color="gray">
-          <Text color="blueBright">↑↓</Text> navigate  <Text color="blueBright">←→</Text> expand/collapse  <Text color="blueBright">Space</Text> select  <Text color="blueBright">Enter</Text> continue  <Text color="blueBright">H</Text> filter  <Text color="blueBright">Q</Text> quit
+          <Text color="blueBright">↑↓</Text> navigate  <Text color="blueBright">←→</Text> expand/collapse  <Text color="blueBright">Space</Text> select  <Text color="blueBright">A</Text> toggle all  <Text color="blueBright">E</Text> expand all  <Text color="blueBright">C</Text> collapse all  <Text color="blueBright">H</Text> filter  <Text color="blueBright">Enter</Text> continue  <Text color="blueBright">Q</Text> quit
         </Text>
       </Box>
 

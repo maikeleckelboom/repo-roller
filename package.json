@@ -4,7 +4,8 @@
   "description": "Context Engine for LLMs - Aggregate source code into optimized formats for AI assistants",
   "type": "module",
   "bin": {
-    "repo-roller": "./dist/cli.js"
+    "repo-roller": "./dist/cli.js",
+    "rr": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",

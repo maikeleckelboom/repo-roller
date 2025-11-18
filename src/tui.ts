@@ -1,11 +1,13 @@
 import { writeFile } from 'node:fs/promises';
 import { render } from 'ink';
 import React from 'react';
+import { basename } from 'node:path';
 import type { ResolvedOptions, ScanResult } from './core/types.js';
 import { scanFiles } from './core/scan.js';
 import { render as renderOutput } from './core/render.js';
 import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { Confirm } from './components/Confirm.js';
+import { TextInput } from './components/TextInput.js';
 import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost } from './core/tokens.js';
@@ -55,6 +57,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
           onComplete: (paths: string[]) => {
             resolve(paths);
           },
+          rootPath: options.root,
         })
       );
 
@@ -131,6 +134,37 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     const withTree = await promptConfirm('Include directory tree view?', defaults.withTree);
     const withStats = await promptConfirm('Include statistics section?', defaults.withStats);
     return { stripComments, withTree, withStats };
+  };
+
+  // Helper function to prompt for text input using Ink
+  const promptTextInput = async (prompt: string, defaultValue: string, placeholder?: string): Promise<string> => {
+    let result: string = defaultValue;
+    let inkExitPromise: Promise<void> | undefined;
+
+    await new Promise<void>((resolvePrompt) => {
+      const { waitUntilExit } = render(
+        React.createElement(TextInput, {
+          prompt,
+          defaultValue,
+          placeholder,
+          onSubmit: (value: string) => {
+            result = value;
+            resolvePrompt();
+          },
+        })
+      );
+
+      inkExitPromise = waitUntilExit().catch(() => {
+        // Ignore exit errors
+      });
+    });
+
+    // Wait for Ink to fully exit before continuing
+    if (inkExitPromise) {
+      await inkExitPromise;
+    }
+
+    return result;
   };
 
   // Determine final options for strip/tree/stats
@@ -215,9 +249,40 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     }
   }
 
+  // Generate default filename: reponame_timestamp.ext
+  const generateDefaultFilename = (): string => {
+    const repoName = basename(options.root);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+    const ext = options.format === 'markdown' ? 'md' : options.format;
+    return `${repoName}_${timestamp}.${ext}`;
+  };
+
+  // Prompt for output filename (unless --yes mode)
+  let outFile = options.outFile;
+  if (!options.yes) {
+    console.log('');
+    console.log(ui.colors.accent('━━━ Output File ━━━'));
+    console.log('');
+
+    const defaultFilename = generateDefaultFilename();
+    const currentFilename = basename(outFile);
+    const filenameToShow = currentFilename !== 'output.md' ? currentFilename : defaultFilename;
+
+    const customFilename = await promptTextInput(
+      'Enter output filename:',
+      filenameToShow,
+      defaultFilename
+    );
+
+    // Update outFile with the custom filename (keep directory path)
+    const dir = outFile.substring(0, outFile.lastIndexOf('/'));
+    outFile = dir ? `${dir}/${customFilename}` : customFilename;
+  }
+
   // Update options with user selections
   const updatedOptions: ResolvedOptions = {
     ...options,
+    outFile,
     stripComments,
     withTree,
     withStats,
@@ -243,22 +308,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     console.log(line);
   }
 
-  let shouldGenerate: boolean;
-  if (options.yes) {
-    // Skip confirmation in --yes mode
-    shouldGenerate = true;
-    console.log(ui.colors.accent('  ⚡ Auto-generating...'));
-  } else {
-    console.log('');
-    shouldGenerate = await promptConfirm('Generate output?', true);
-  }
-
-  if (!shouldGenerate) {
-    console.log(ui.colors.dim('\n  ✗ Cancelled'));
-    return;
-  }
-
-  // Generate output using the format-aware render function
+  // Generate output using the format-aware render function (no confirmation prompt)
   const formatLabel = updatedOptions.format.toUpperCase();
   console.log('');
   console.log(ui.status('render', `Rendering ${ui.colors.accent(formatLabel)} output`));

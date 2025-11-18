@@ -12,6 +12,11 @@ export interface DisplaySettings {
   showRecommendations?: boolean;
 }
 
+export interface TreeViewState {
+  expanded?: string[];  // Array of expanded directory paths
+  lastRoot?: string;    // Last root directory path for context
+}
+
 export interface UserSettings {
   showExcludedFiles?: boolean;
   // DX improvements: Remember user preferences for interactive mode
@@ -20,6 +25,8 @@ export interface UserSettings {
   withStats?: boolean;
   // Display preferences for CLI output
   displaySettings?: DisplaySettings;
+  // Tree view state persistence
+  treeViewState?: TreeViewState;
 }
 
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');
@@ -132,4 +139,31 @@ export async function resetInteractiveSettings(): Promise<void> {
   const { stripComments: _, withTree: __, withStats: ___, ...rest } = current;
   await ensureConfigDir();
   await writeFile(SETTINGS_FILE, JSON.stringify(rest, null, 2), 'utf-8');
+}
+
+/**
+ * Get tree view state for a specific root directory
+ */
+export async function getTreeViewState(root: string): Promise<TreeViewState> {
+  const settings = await loadUserSettings();
+  const state = settings.treeViewState || {};
+
+  // Only return state if it matches the current root
+  if (state.lastRoot === root) {
+    return state;
+  }
+
+  return {};
+}
+
+/**
+ * Save tree view state for a specific root directory
+ */
+export async function setTreeViewState(root: string, expanded: string[]): Promise<void> {
+  await saveUserSettings({
+    treeViewState: {
+      expanded,
+      lastRoot: root,
+    },
+  });
 }

@@ -41,6 +41,7 @@ import {
   exportSettings,
   importSettings,
   displaySettingsPath,
+  runInteractiveSettings,
 } from './cli/settings.js';
 
 /**
@@ -380,8 +381,11 @@ async function handleSettingsCommand(options: {
     await importSettings(options.import);
   } else if (options.path) {
     displaySettingsPath();
-  } else {
+  } else if (options.show) {
     await displaySettings();
+  } else {
+    // Run interactive settings UI by default
+    await runInteractiveSettings();
   }
 }
 
