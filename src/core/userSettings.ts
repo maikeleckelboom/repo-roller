@@ -14,6 +14,7 @@ export interface DisplaySettings {
 
 export interface TreeViewState {
   expanded?: string[];  // Array of expanded directory paths
+  selected?: string[];  // Array of selected file paths
   lastRoot?: string;    // Last root directory path for context
 }
 
@@ -159,10 +160,11 @@ export async function getTreeViewState(root: string): Promise<TreeViewState> {
 /**
  * Save tree view state for a specific root directory
  */
-export async function setTreeViewState(root: string, expanded: string[]): Promise<void> {
+export async function setTreeViewState(root: string, expanded: string[], selected?: string[]): Promise<void> {
   await saveUserSettings({
     treeViewState: {
       expanded,
+      selected,
       lastRoot: root,
     },
   });
