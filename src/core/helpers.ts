@@ -341,8 +341,9 @@ export function resolveOutputPath(opts: {
  * // When exceeding depth, take first and last
  * analyzeSelectedFolders(['a/b/c/d/e/f.ts'], 3, 4) // 'a-...-f'
  *
- * // When exceeding max folders
- * analyzeSelectedFolders(['a/b.ts', 'c/d.ts', 'e/f.ts', 'g/h.ts'], 3, 4) // '4folders'
+ * // When exceeding max folders, find common parent or take first N
+ * analyzeSelectedFolders(['src/a/f.ts', 'src/b/f.ts', 'src/c/f.ts', 'src/d/f.ts'], 3, 4) // 'src'
+ * analyzeSelectedFolders(['a/b.ts', 'c/d.ts', 'e/f.ts', 'g/h.ts'], 3, 4) // 'a-c-e'
  * ```
  */
 export function analyzeSelectedFolders(
@@ -391,9 +392,26 @@ export function analyzeSelectedFolders(
     return '';
   }
 
-  // If too many unique folder paths, return count
+  // If too many unique folder paths, find common parent or take first N
   if (folderPaths.size > maxFolders) {
-    return `${folderPaths.size}folders`;
+    // Try to find common parent directory
+    const pathsArray = Array.from(folderPaths);
+    const commonParent = findCommonParent(pathsArray);
+
+    if (commonParent) {
+      // If all paths share a common parent, use that
+      return commonParent.replace(/[^a-zA-Z0-9-.]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    // Otherwise, take the first maxFolders paths
+    const sortedPaths = pathsArray.sort().slice(0, maxFolders);
+    const sanitized = sortedPaths.map(folderPath =>
+      folderPath
+        .replace(/[^a-zA-Z0-9-.]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+    );
+    return sanitized.join('-');
   }
 
   // Sort folder paths alphabetically for consistency
@@ -409,4 +427,42 @@ export function analyzeSelectedFolders(
 
   // Join multiple paths with kebab-case
   return sanitized.join('-');
+}
+
+/**
+ * Find the common parent directory from a list of folder paths.
+ * Returns the longest common prefix that represents a complete directory.
+ *
+ * @param paths - Array of folder paths (e.g., ['src-cli', 'src-core', 'src-components'])
+ * @returns Common parent path or empty string if none
+ *
+ * @example
+ * ```typescript
+ * findCommonParent(['src-cli', 'src-core', 'src-components']) // 'src'
+ * findCommonParent(['a-b', 'a-c', 'a-d']) // 'a'
+ * findCommonParent(['foo', 'bar']) // ''
+ * ```
+ */
+function findCommonParent(paths: string[]): string {
+  if (paths.length === 0) return '';
+  if (paths.length === 1) return paths[0] ?? '';
+
+  // Split each path by '-' to get segments
+  const segments = paths.map(p => p.split('-'));
+
+  // Find the minimum segment length
+  const minLength = Math.min(...segments.map(s => s.length));
+
+  // Find common prefix segments
+  const commonSegments: string[] = [];
+  for (let i = 0; i < minLength; i++) {
+    const firstSegment = segments[0]?.[i];
+    if (firstSegment !== undefined && segments.every(s => s[i] === firstSegment)) {
+      commonSegments.push(firstSegment);
+    } else {
+      break;
+    }
+  }
+
+  return commonSegments.join('-');
 }
