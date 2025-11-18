@@ -63,38 +63,41 @@ export interface TreeTheme {
 }
 
 /**
- * Default color palette (ANSI color names for Ink/Chalk)
+ * Modern color palette (ANSI color names for Ink/Chalk)
+ * Updated for a cleaner, more sophisticated look
  */
 const defaultColors: TreeColors = {
-  folder: 'yellow',
+  folder: 'blueBright',
   typescript: 'blue',
   javascript: 'yellow',
-  test: 'magenta',
-  doc: 'cyan',
+  test: 'magentaBright',
+  doc: 'cyanBright',
   config: 'gray',
   lockfile: 'gray',
   default: 'white',
-  selected: 'green',
-  partial: 'yellow',
+  selected: 'greenBright',
+  partial: 'yellowBright',
   unselected: 'gray',
-  cursor: 'cyan',
+  cursor: 'cyanBright',
   dim: 'gray',
 };
 
 /**
- * Selection and expansion markers
+ * Modern selection and expansion markers
+ * Using contemporary Unicode symbols for a cleaner, more polished look
  */
 const defaultMarkers: TreeMarkers = {
-  selected: '[x]',
-  unselected: '[ ]',
-  partial: '[-]',
-  expanded: '▾',
-  collapsed: '▸',
+  selected: '◉',
+  unselected: '○',
+  partial: '◐',
+  expanded: '⌄',
+  collapsed: '›',
   leaf: ' ',
 };
 
 /**
- * Tree branch characters (Unicode box drawing)
+ * Modern tree branch characters (Unicode box drawing)
+ * Clean, minimal structure for visual hierarchy
  */
 const defaultBranches: TreeBranches = {
   vertical: '│',
@@ -223,6 +226,7 @@ export const defaultTheme: TreeTheme = {
 
 /**
  * ASCII-only theme for terminals without special font support
+ * Simplified for maximum compatibility
  */
 export const asciiTheme: TreeTheme = {
   name: 'ascii',
@@ -233,7 +237,7 @@ export const asciiTheme: TreeTheme = {
     partial: '[-]',
     expanded: 'v',
     collapsed: '>',
-    leaf: '-',
+    leaf: ' ',
   },
   branches: {
     vertical: '|',

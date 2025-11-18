@@ -34,7 +34,7 @@
  */
 import chalk from 'chalk';
 
-// Color palette - modern, muted, professional
+// Color palette - modern, vibrant, clean
 const colors = {
   primary: chalk.hex('#FBBF24'),      // Yellow (brand color)
   secondary: chalk.hex('#06B6D4'),    // Cyan
@@ -46,6 +46,11 @@ const colors = {
   dim: chalk.hex('#9CA3AF'),          // Light gray
   highlight: chalk.hex('#FBBF24'),    // Yellow
   info: chalk.hex('#3B82F6'),         // Blue
+  blueBright: chalk.hex('#60A5FA'),   // Bright blue
+  greenBright: chalk.hex('#34D399'),  // Bright green
+  cyanBright: chalk.hex('#22D3EE'),   // Bright cyan
+  magentaBright: chalk.hex('#E879F9'),// Bright magenta
+  yellowBright: chalk.hex('#FBBF24'), // Bright yellow
 };
 
 // Unicode box-drawing characters
@@ -78,12 +83,16 @@ const symbols = {
   diamond: '◆',
   circle: '○',
   filledCircle: '●',
+  hollowCircle: '◯',
+  halfCircle: '◐',
   square: '■',
   triangle: '▲',
   info: 'ℹ',
   warning: '⚠',
   pointer: '▸',
+  pointerDown: '⌄',
   line: '━',
+  thinLine: '─',
 };
 
 /**
