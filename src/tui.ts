@@ -155,27 +155,21 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       userSettings.withTree !== undefined ||
       userSettings.withStats !== undefined;
 
+    console.log('');
+    console.log(ui.colors.accent('━━━ Output Options ━━━'));
+    console.log('');
+
     if (hasSavedPreferences) {
-      console.log('');
-      console.log(ui.colors.accent('  💾 Saved preferences detected'));
-      console.log(ui.colors.dim(`     Strip comments: ${userSettings.stripComments ?? DEFAULT_INTERACTIVE_SETTINGS.stripComments ? 'Yes' : 'No'}`));
-      console.log(ui.colors.dim(`     Include tree: ${userSettings.withTree ?? DEFAULT_INTERACTIVE_SETTINGS.withTree ? 'Yes' : 'No'}`));
-      console.log(ui.colors.dim(`     Include stats: ${userSettings.withStats ?? DEFAULT_INTERACTIVE_SETTINGS.withStats ? 'Yes' : 'No'}`));
+      // Show saved preferences inline (non-blocking)
+      console.log(ui.colors.dim('  💾 Using saved preferences:'));
+      console.log(ui.colors.cyanBright(`     • Strip comments: ${userSettings.stripComments ?? DEFAULT_INTERACTIVE_SETTINGS.stripComments ? 'Yes' : 'No'}`));
+      console.log(ui.colors.cyanBright(`     • Include tree: ${userSettings.withTree ?? DEFAULT_INTERACTIVE_SETTINGS.withTree ? 'Yes' : 'No'}`));
+      console.log(ui.colors.cyanBright(`     • Include stats: ${userSettings.withStats ?? DEFAULT_INTERACTIVE_SETTINGS.withStats ? 'Yes' : 'No'}`));
       console.log('');
 
-      const shouldReset = await promptConfirm('Reset preferences to defaults?', false);
+      const shouldReset = await promptConfirm('Use different settings?', false);
       if (shouldReset) {
-        await resetInteractiveSettings();
-        console.log(ui.colors.success('  ✓ Preferences reset to defaults'));
-        console.log(ui.colors.dim(`     Strip comments: ${DEFAULT_INTERACTIVE_SETTINGS.stripComments ? 'Yes' : 'No'}`));
-        console.log(ui.colors.dim(`     Include tree: ${DEFAULT_INTERACTIVE_SETTINGS.withTree ? 'Yes' : 'No'}`));
-        console.log(ui.colors.dim(`     Include stats: ${DEFAULT_INTERACTIVE_SETTINGS.withStats ? 'Yes' : 'No'}`));
-        // Use defaults after reset
-        stripComments = DEFAULT_INTERACTIVE_SETTINGS.stripComments;
-        withTree = DEFAULT_INTERACTIVE_SETTINGS.withTree;
-        withStats = DEFAULT_INTERACTIVE_SETTINGS.withStats;
-      } else {
-        // Interactive prompts with user preferences as defaults
+        // Interactive prompts with current preferences as defaults
         console.log('');
         const prefs = await promptForPreferences({
           stripComments: userSettings.stripComments ?? options.stripComments,
@@ -186,20 +180,25 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
         withTree = prefs.withTree;
         withStats = prefs.withStats;
 
-        // Save user preferences for next time
+        // Save updated preferences
         await saveUserSettings({
           stripComments,
           withTree,
           withStats,
         });
+        console.log(ui.colors.success('  ✓ Preferences updated'));
+      } else {
+        // Use saved preferences
+        stripComments = userSettings.stripComments ?? options.stripComments;
+        withTree = userSettings.withTree ?? options.withTree;
+        withStats = userSettings.withStats ?? options.withStats;
       }
     } else {
-      // No saved preferences - use standard flow
-      console.log('');
+      // No saved preferences - prompt for each option
       const prefs = await promptForPreferences({
-        stripComments: userSettings.stripComments ?? options.stripComments,
-        withTree: userSettings.withTree ?? options.withTree,
-        withStats: userSettings.withStats ?? options.withStats,
+        stripComments: options.stripComments,
+        withTree: options.withTree,
+        withStats: options.withStats,
       });
       stripComments = prefs.stripComments;
       withTree = prefs.withTree;
@@ -212,8 +211,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
         withStats,
       });
 
-      console.log(ui.colors.dim('  💾 Your preferences have been saved for next time'));
-      console.log(ui.colors.dim('     To reset: run with -I again and choose "Reset preferences to defaults"'));
+      console.log(ui.colors.dim('  ✓ Preferences saved'));
     }
   }
 
@@ -232,8 +230,11 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   // Get model preset if specified
   const modelPreset = updatedOptions.modelPreset ? getModelPreset(updatedOptions.modelPreset) : undefined;
 
-  // Display repo-first generation summary using new dashboard
-  // Use 'compact' mode for horizontal two-column layout (consistent with non-interactive mode)
+  // Display generation summary
+  console.log('');
+  console.log(ui.colors.accent('━━━ Generation Summary ━━━'));
+  console.log('');
+
   const dashboardLines = renderGenerationSummary(
     { scan, options: updatedOptions, estimatedTokens, modelPreset },
     { mode: 'compact', displaySettings: updatedOptions.displaySettings }
@@ -246,13 +247,14 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
   if (options.yes) {
     // Skip confirmation in --yes mode
     shouldGenerate = true;
-    console.log(ui.colors.accent('  Auto-generating (--yes mode)...'));
+    console.log(ui.colors.accent('  ⚡ Auto-generating...'));
   } else {
-    shouldGenerate = await promptConfirm('Press ENTER to generate, or N to cancel', true);
+    console.log('');
+    shouldGenerate = await promptConfirm('Generate output?', true);
   }
 
   if (!shouldGenerate) {
-    console.log(ui.colors.dim('\n  Cancelled.'));
+    console.log(ui.colors.dim('\n  ✗ Cancelled'));
     return;
   }
 

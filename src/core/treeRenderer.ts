@@ -61,10 +61,10 @@ export interface TreeColumnWidths {
   indent: number;
 }
 
-/** Default column widths */
+/** Default column widths for modern theme */
 export const DEFAULT_COLUMN_WIDTHS: TreeColumnWidths = {
-  selection: 4, // "[x] " or "[ ] "
-  expandMarker: 2, // "▾ " or "▸ " or "  "
+  selection: 2, // "◉ " or "○ " (modern circular markers)
+  expandMarker: 2, // "⌄ " or "› " or "  "
   icon: 0, // No badges - rely on color and suffixes
   indent: 2, // Two spaces per depth level
 };
