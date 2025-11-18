@@ -456,8 +456,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
   // Calculate viewport dimensions
   // Reserve space for: header (2 lines), help text (2 lines), footer (2 lines)
+  // Additional buffer for terminal overlays (e.g., Warp sticky header ~200px ≈ 10 lines)
   const RESERVED_LINES = 6;
-  const maxVisibleRows = Math.max(5, terminalHeight - RESERVED_LINES);
+  const TERMINAL_OVERLAY_BUFFER = 10;
+  const maxVisibleRows = Math.max(5, terminalHeight - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER);
 
   // Calculate viewport boundaries to keep cursor visible
   // We try to keep the cursor in the middle of the viewport for better context

@@ -37,13 +37,13 @@ export const TextInput: React.FC<TextInputProps> = ({
       return;
     }
 
-    // Navigate cursor with left/right arrows or < >
-    if (key.leftArrow || input === '<') {
+    // Navigate cursor with left/right arrows only (not < > to allow typing those characters)
+    if (key.leftArrow) {
       setCursorPosition(Math.max(0, cursorPosition - 1));
       return;
     }
 
-    if (key.rightArrow || input === '>') {
+    if (key.rightArrow) {
       setCursorPosition(Math.min(value.length, cursorPosition + 1));
       return;
     }
@@ -78,8 +78,8 @@ export const TextInput: React.FC<TextInputProps> = ({
       return;
     }
 
-    // Only add printable characters (excluding < and > which are used for navigation)
-    if (input && !key.ctrl && !key.meta && input !== '<' && input !== '>') {
+    // Only add printable characters
+    if (input && !key.ctrl && !key.meta) {
       const newValue = value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
       setValue(newValue);
       setCursorPosition(cursorPosition + 1);
