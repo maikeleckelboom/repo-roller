@@ -308,8 +308,8 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
         return;
       }
 
-      // Combine filename with extension
-      outFile = `${filenameResult}.${selectedFormat}`;
+      // Use the user-provided filename directly
+      outFile = filenameResult;
     }
 
     // Ensure output path has correct extension using helper
