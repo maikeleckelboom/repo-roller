@@ -284,8 +284,11 @@ function renderColoredBar(name: string, percent: number, type: string, barWidth 
     barColor = ui.colors.warning;
   }
 
+  // Sanitize name by removing any newlines, tabs, or other whitespace characters
+  const sanitizedName = name.replace(/[\r\n\t]/g, ' ').trim();
+
   const bar = barColor('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
-  const nameFormatted = name.padEnd(nameWidth);
+  const nameFormatted = sanitizedName.padEnd(nameWidth);
   const pct = `${percent.toFixed(0)}%`.padStart(4);
 
   return `    ${nameFormatted} ${bar} ${pct}`;
@@ -306,21 +309,27 @@ function compactColoredBarsGrid(
     const item1 = items[i];
     if (!item1) continue;
 
+    // Sanitize names to prevent alignment issues
+    const name1 = item1.name.replace(/[\r\n\t]/g, ' ').trim();
+
     const filled1 = Math.round((item1.percent / 100) * barWidth);
     const empty1 = barWidth - filled1;
     const bar1 = getBarColor(item1.type)('█'.repeat(filled1)) + ui.colors.dim('░'.repeat(empty1));
     const pct1 = ui.colors.dim(`${item1.percent.toFixed(0)}%`.padStart(pctWidth));
-    const col1 = `${item1.name.padEnd(nameWidth)} ${bar1} ${pct1}`;
+    const col1 = `${name1.padEnd(nameWidth)} ${bar1} ${pct1}`;
 
     if (i + 1 < items.length) {
       const item2 = items[i + 1];
       if (!item2) continue;
 
+      // Sanitize names to prevent alignment issues
+      const name2 = item2.name.replace(/[\r\n\t]/g, ' ').trim();
+
       const filled2 = Math.round((item2.percent / 100) * barWidth);
       const empty2 = barWidth - filled2;
       const bar2 = getBarColor(item2.type)('█'.repeat(filled2)) + ui.colors.dim('░'.repeat(empty2));
       const pct2 = ui.colors.dim(`${item2.percent.toFixed(0)}%`.padStart(pctWidth));
-      const col2 = `${item2.name.padEnd(nameWidth)} ${bar2} ${pct2}`;
+      const col2 = `${name2.padEnd(nameWidth)} ${bar2} ${pct2}`;
       lines.push(`    ${col1}  ${col2}`);
     } else {
       lines.push(`    ${col1}`);
