@@ -249,7 +249,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
           return (
             <Box key={setting.key} flexDirection="row">
               <Text color={isCursor ? 'cyanBright' : 'gray'}>{cursorMark} </Text>
-              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox} </Text>
+              <Text color={setting.value ? 'greenBright' : 'gray'} marginRight={1}>{checkbox}</Text>
               <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
                 {setting.label}
               </Text>
@@ -269,7 +269,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
           return (
             <Box key={setting.key} flexDirection="row">
               <Text color={isCursor ? 'cyanBright' : 'gray'}>{cursorMark} </Text>
-              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox} </Text>
+              <Text color={setting.value ? 'greenBright' : 'gray'} marginRight={1}>{checkbox}</Text>
               <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
                 {setting.label}
               </Text>
