@@ -1,10 +1,30 @@
 /**
+ * @module core/dashboard
+ *
  * Generation Summary Dashboard
+ *
+ * OWNS:
+ * - Dashboard rendering logic (generation summary, code composition, context fit)
+ * - Layout and formatting of summary sections with aligned labels and bars
+ * - Health hints generation based on bundle composition
+ * - Delta comparison vs previous runs
+ *
+ * DOES NOT OWN:
+ * - Filesystem I/O (no file reading or writing)
+ * - Color/symbol definitions (uses ui.ts primitives)
+ * - Token calculation (uses tokens.ts)
+ * - Model preset logic (uses modelPresets.ts)
+ *
+ * DESIGN PRINCIPLES:
+ * - Pure presentation layer - takes data, returns formatted strings
+ * - Consistent spacing and alignment across all sections
+ * - Respects display settings for conditional rendering
+ * - No side effects, easily testable
  *
  * Shared dashboard rendering for both interactive and non-interactive modes.
  * Features:
- * - Detailed vs compact modes
- * - Colored language and role bars
+ * - Detailed vs compact modes with clean, aligned sections
+ * - Colored language and role bars with consistent spacing
  * - Health hints and context-fit indicators
  * - Delta tracking vs previous runs
  */
@@ -77,7 +97,8 @@ export function renderGenerationSummary(
 
   // Section header
   lines.push('');
-  lines.push(ui.section('Generation Summary'));
+  lines.push(ui.colors.primary.bold('Generation Summary'));
+  lines.push(ui.colors.muted(ui.symbols.line.repeat(30)));
 
   // Core metrics (always show basic metrics)
   lines.push(...renderCoreMetrics(scan, options, estimatedTokens, previousRun));
@@ -123,9 +144,10 @@ function renderCoreMetrics(
   previousRun?: PreviousRunData
 ): string[] {
   const lines: string[] = [];
+  const labelWidth = 18;
 
   // Files selected with delta
-  let filesLine = ui.keyValue('Files selected', ui.colors.primary(scan.files.length.toString()));
+  let filesLine = ui.keyValue('Files selected', ui.colors.primary(scan.files.length.toString()), labelWidth);
   if (previousRun) {
     const delta = scan.files.length - previousRun.fileCount;
     if (delta !== 0) {
@@ -137,7 +159,7 @@ function renderCoreMetrics(
   lines.push(filesLine);
 
   // Total size with delta
-  let sizeLine = ui.keyValue('Total size', formatBytes(scan.totalBytes));
+  let sizeLine = ui.keyValue('Total size', formatBytes(scan.totalBytes), labelWidth);
   if (previousRun) {
     const delta = scan.totalBytes - previousRun.totalBytes;
     if (delta !== 0) {
@@ -149,10 +171,10 @@ function renderCoreMetrics(
   lines.push(sizeLine);
 
   // Lines of code
-  lines.push(ui.keyValue('Lines of code', `~${formatNumber(estimateLinesOfCode(scan.totalBytes))}`));
+  lines.push(ui.keyValue('Lines of code', `~${formatNumber(estimateLinesOfCode(scan.totalBytes))}`, labelWidth));
 
   // Estimated tokens with delta
-  let tokensLine = ui.keyValue('Estimated tokens', ui.tokenCount(estimatedTokens));
+  let tokensLine = ui.keyValue('Estimated tokens', ui.tokenCount(estimatedTokens), labelWidth);
   if (previousRun) {
     const delta = estimatedTokens - previousRun.estimatedTokens;
     if (Math.abs(delta) > 100) {
@@ -164,7 +186,7 @@ function renderCoreMetrics(
   lines.push(tokensLine);
 
   // Output file
-  lines.push(ui.keyValue('Output file', ui.colors.success(options.outFile)));
+  lines.push(ui.keyValue('Output file', ui.colors.success(options.outFile), labelWidth));
 
   return lines;
 }
@@ -177,8 +199,9 @@ function renderCodeComposition(
   mode: 'detailed' | 'compact'
 ): string[] {
   const lines: string[] = [];
-  lines.push(ui.colors.dim('  Code Composition'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(40)));
+  lines.push('');
+  lines.push(ui.colors.primary.bold('Code Composition'));
+  lines.push(ui.colors.muted(ui.symbols.line.repeat(30)));
 
   const languages = calculateLanguageBreakdown(files);
   const roles = calculateRoleBreakdown(files);
@@ -186,43 +209,53 @@ function renderCodeComposition(
   if (mode === 'detailed') {
     // Show languages and roles separately with more detail
     if (languages.length > 0) {
-      lines.push(ui.colors.dim('    Languages'));
+      lines.push('  ' + ui.colors.dim('Languages'));
       for (const lang of languages.slice(0, 5)) {
-        lines.push(renderColoredBar(lang.name, lang.percent, 'language', 12));
+        lines.push(renderColoredBar(lang.name, lang.percent, 'language', 10));
       }
       lines.push('');
     }
 
     if (roles.source + roles.test + roles.docs + roles.config > 0) {
-      lines.push(ui.colors.dim('    File Roles'));
+      lines.push('  ' + ui.colors.dim('Roles'));
       if (roles.source > 0) {
-        lines.push(renderColoredBar('Source', roles.source, 'role-source', 12));
+        lines.push(renderColoredBar('Source', roles.source, 'role-source', 10));
       }
       if (roles.test > 0) {
-        lines.push(renderColoredBar('Tests', roles.test, 'role-test', 12));
+        lines.push(renderColoredBar('Tests', roles.test, 'role-test', 10));
       }
       if (roles.docs > 0) {
-        lines.push(renderColoredBar('Docs', roles.docs, 'role-docs', 12));
+        lines.push(renderColoredBar('Docs', roles.docs, 'role-docs', 10));
       }
       if (roles.config > 0) {
-        lines.push(renderColoredBar('Config', roles.config, 'role-config', 12));
+        lines.push(renderColoredBar('Config', roles.config, 'role-config', 10));
       }
     }
   } else {
-    // Compact two-column grid
-    const allItems: Array<{ name: string; percent: number; type: string }> = [];
-
-    for (const lang of languages.slice(0, 2)) {
-      allItems.push({ name: lang.name, percent: lang.percent, type: 'language' });
+    // Compact mode: show languages first, then roles
+    if (languages.length > 0) {
+      lines.push('  ' + ui.colors.dim('Languages'));
+      for (const lang of languages.slice(0, 3)) {
+        lines.push(renderColoredBar(lang.name, lang.percent, 'language', 10));
+      }
+      lines.push('');
     }
 
-    if (roles.source > 0) allItems.push({ name: 'Source', percent: roles.source, type: 'role-source' });
-    if (roles.test > 0) allItems.push({ name: 'Tests', percent: roles.test, type: 'role-test' });
-    if (roles.docs > 0) allItems.push({ name: 'Docs', percent: roles.docs, type: 'role-docs' });
-    if (roles.config > 0) allItems.push({ name: 'Config', percent: roles.config, type: 'role-config' });
-
-    const gridLines = compactColoredBarsGrid(allItems, 8);
-    lines.push(...gridLines);
+    if (roles.source + roles.test + roles.docs + roles.config > 0) {
+      lines.push('  ' + ui.colors.dim('Roles'));
+      if (roles.source > 0) {
+        lines.push(renderColoredBar('Source', roles.source, 'role-source', 10));
+      }
+      if (roles.test > 0) {
+        lines.push(renderColoredBar('Tests', roles.test, 'role-test', 10));
+      }
+      if (roles.docs > 0) {
+        lines.push(renderColoredBar('Docs', roles.docs, 'role-docs', 10));
+      }
+      if (roles.config > 0) {
+        lines.push(renderColoredBar('Config', roles.config, 'role-config', 10));
+      }
+    }
   }
 
   return lines;
@@ -231,8 +264,8 @@ function renderCodeComposition(
 /**
  * Render a single colored bar based on type
  */
-function renderColoredBar(name: string, percent: number, type: string, barWidth = 12): string {
-  const nameWidth = 11;
+function renderColoredBar(name: string, percent: number, type: string, barWidth = 10): string {
+  const nameWidth = 13;
   const filled = Math.round((percent / 100) * barWidth);
   const empty = barWidth - filled;
 
@@ -253,9 +286,9 @@ function renderColoredBar(name: string, percent: number, type: string, barWidth 
 
   const bar = barColor('█'.repeat(filled)) + ui.colors.dim('░'.repeat(empty));
   const nameFormatted = name.padEnd(nameWidth);
-  const pct = ui.colors.dim(`${percent.toFixed(0)}%`.padStart(4));
+  const pct = `${percent.toFixed(0)}%`.padStart(4);
 
-  return `      ${nameFormatted} ${bar} ${pct}`;
+  return `    ${nameFormatted} ${bar} ${pct}`;
 }
 
 /**
@@ -330,8 +363,9 @@ function renderContextFit(
   const showCost = displaySettings?.showCostEstimates ?? true;
   const showWarnings = displaySettings?.showTokenWarnings ?? true;
 
-  lines.push(ui.colors.dim('  Context Fit'));
-  lines.push(ui.colors.muted('  ' + ui.symbols.line.repeat(40)));
+  lines.push('');
+  lines.push(ui.colors.primary.bold('Context Fit'));
+  lines.push(ui.colors.muted(ui.symbols.line.repeat(30)));
 
   if (modelPreset) {
     // Show specific model preset info
@@ -386,6 +420,7 @@ function renderContextFit(
     }
 
     lines.push(`  ${ui.tokenCount(estimatedTokens)} · ${contextInfo}`);
+    lines.push(`  ${ui.colors.dim('Tip: Use --model to see cost estimates')}`);
   }
 
   return lines;

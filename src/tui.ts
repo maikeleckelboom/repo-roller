@@ -1,17 +1,42 @@
+/**
+ * @module tui
+ *
+ * Interactive TUI (Terminal User Interface) mode orchestration.
+ *
+ * OWNS:
+ * - Interactive workflow step coordination (file selection → options → format → output)
+ * - Ink component rendering and lifecycle management
+ * - User preference loading and saving
+ * - Output file path resolution and writing
+ *
+ * DOES NOT OWN:
+ * - Individual UI components (see components/ directory)
+ * - Dashboard rendering logic (see core/dashboard.ts)
+ * - File scanning (see core/scan.ts)
+ * - Output formatting (see core/render.ts)
+ *
+ * DESIGN PRINCIPLES:
+ * - Sequential step-based workflow with clear progression
+ * - Proper Ink component lifecycle (render → wait → cleanup)
+ * - User preferences persist across sessions
+ * - Clean error handling and cancellation support
+ */
+
 import { writeFile } from 'node:fs/promises';
 import { render } from 'ink';
 import React from 'react';
 import { basename } from 'node:path';
-import type { ResolvedOptions, ScanResult } from './core/types.js';
+import type { ResolvedOptions, ScanResult, OutputFormat } from './core/types.js';
 import { scanFiles } from './core/scan.js';
 import { render as renderOutput } from './core/render.js';
 import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { TextInput } from './components/TextInput.js';
 import { OutputOptions } from './components/OutputOptions.js';
+import { OutputFormatSelect } from './components/OutputFormatSelect.js';
 import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS } from './core/userSettings.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost } from './core/tokens.js';
-import { formatBytes } from './core/helpers.js';
+import { formatBytes, resolveOutputPath } from './core/helpers.js';
 import { displayDetailedLLMAnalysis } from './cli/display.js';
 import { renderGenerationSummary } from './core/dashboard.js';
 import { getModelPreset } from './core/modelPresets.js';
@@ -201,38 +226,69 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     // Update scan with selected files
     scan = selectedScan;
 
-    // Generate default filename: reponame_timestamp.ext
-    const generateDefaultFilename = (): string => {
+    // Generate default filename base: reponame-timestamp
+    const generateDefaultFilenameBase = (): string => {
       const repoName = basename(options.root);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-      const ext = options.format === 'markdown' ? 'md' : options.format;
-      return `${repoName}_${timestamp}.${ext}`;
+      const timestamp = new Date().toISOString().split('T')[0];
+      return `${repoName}-${timestamp}`;
     };
 
-    // Prompt for output filename (unless --yes mode)
+    // Prompt for output format and filename (unless --yes mode)
     let outFile = options.outFile;
+    let selectedFormat: OutputFormat = options.format;
+
     if (!options.yes) {
       console.log('');
 
-      const defaultFilename = generateDefaultFilename();
-      const currentFilename = basename(outFile);
-      const filenameToShow = currentFilename !== 'output.md' ? currentFilename : defaultFilename;
+      const defaultFilenameBase = generateDefaultFilenameBase();
+      const defaultFilename = `${defaultFilenameBase}.${options.format}`;
 
-      const customFilename = await promptTextInput(
-        'Enter output filename:',
-        filenameToShow,
-        defaultFilename
-      );
+      let inkExitPromise: Promise<void> | undefined;
+      const formatResult = await new Promise<{ filename: string; format: OutputFormat } | 'cancel'>((resolve) => {
+        const { waitUntilExit } = render(
+          React.createElement(OutputFormatSelect, {
+            defaultFilename,
+            defaultFormat: options.format,
+            onSubmit: (values: { filename: string; format: OutputFormat }) => {
+              resolve(values);
+            },
+            onCancel: () => {
+              resolve('cancel');
+            },
+          })
+        );
 
-      // Update outFile with the custom filename (keep directory path)
-      const dir = outFile.substring(0, outFile.lastIndexOf('/'));
-      outFile = dir ? `${dir}/${customFilename}` : customFilename;
+        inkExitPromise = waitUntilExit().catch(() => {
+          // Ignore exit errors
+        });
+      });
+
+      // Wait for Ink to fully exit before continuing
+      if (inkExitPromise) {
+        await inkExitPromise;
+      }
+
+      if (formatResult === 'cancel') {
+        console.log('Cancelled by user.');
+        return;
+      }
+
+      selectedFormat = formatResult.format;
+      outFile = formatResult.filename;
     }
+
+    // Ensure output path has correct extension using helper
+    outFile = resolveOutputPath({
+      out: outFile,
+      format: selectedFormat,
+      defaultBaseName: generateDefaultFilenameBase(),
+    });
 
     // Update options with user selections
     const updatedOptions: ResolvedOptions = {
       ...options,
       outFile,
+      format: selectedFormat,
       stripComments,
       withTree,
       withStats,
