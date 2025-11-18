@@ -325,59 +325,88 @@ export function resolveOutputPath(opts: {
 
 /**
  * Analyze selected file paths to extract folder information for smart filename generation.
+ * Now supports nested folder paths with configurable depth.
  *
  * @param selectedPaths - Array of selected file paths (relative)
- * @param maxFolders - Maximum number of folders to include in filename (default: 3)
+ * @param maxFolders - Maximum number of unique folder paths to include (default: 3)
+ * @param maxNestedDepth - Maximum depth of nested folders to include (default: 4)
  * @returns Folder suffix to add to filename, or empty string if none
  *
  * @example
  * ```typescript
- * analyzeSelectedFolders(['src/utils/helpers.ts', 'src/utils/format.ts']) // 'src-utils'
- * analyzeSelectedFolders(['src/a.ts', 'lib/b.ts', 'test/c.ts']) // 'src-lib-test'
- * analyzeSelectedFolders(['a/b/c.ts', 'd/e/f.ts', 'g/h/i.ts', 'j/k/l.ts', 'm/n/o.ts']) // '5folders'
+ * // With nested folders (maxNestedDepth=4)
+ * analyzeSelectedFolders(['src/utils/helpers.ts', 'src/utils/format.ts'], 3, 4) // 'src-utils'
+ * analyzeSelectedFolders(['src/core/auth/login.ts', 'src/core/db/models.ts'], 3, 4) // 'src-core-auth-src-core-db'
+ *
+ * // When exceeding depth, take first and last
+ * analyzeSelectedFolders(['a/b/c/d/e/f.ts'], 3, 4) // 'a-...-f'
+ *
+ * // When exceeding max folders
+ * analyzeSelectedFolders(['a/b.ts', 'c/d.ts', 'e/f.ts', 'g/h.ts'], 3, 4) // '4folders'
  * ```
  */
 export function analyzeSelectedFolders(
   selectedPaths: readonly string[],
-  maxFolders: number = 3
+  maxFolders: number = 3,
+  maxNestedDepth: number = 4
 ): string {
   if (selectedPaths.length === 0) {
     return '';
   }
 
-  // Extract unique top-level folders
-  const topLevelFolders = new Set<string>();
+  // Extract unique nested folder paths (up to maxNestedDepth)
+  const folderPaths = new Set<string>();
 
   for (const path of selectedPaths) {
     // Normalize path separators
     const normalizedPath = path.replace(/\\/g, '/');
     const parts = normalizedPath.split('/');
 
-    // Skip files in root directory
-    if (parts.length > 1 && parts[0]) {
-      // Add the top-level folder
-      topLevelFolders.add(parts[0]);
+    // Skip files in root directory (no folder path)
+    if (parts.length <= 1) {
+      continue;
+    }
+
+    // Remove the filename (last part)
+    const folders = parts.slice(0, -1);
+
+    if (folders.length === 0) {
+      continue;
+    }
+
+    // If the folder path exceeds maxNestedDepth, take first and last folders
+    if (folders.length > maxNestedDepth) {
+      // Take first folder and last folder with a separator
+      const firstFolder = folders[0];
+      const lastFolder = folders[folders.length - 1];
+      folderPaths.add(`${firstFolder}-...-${lastFolder}`);
+    } else {
+      // Use the full nested path
+      folderPaths.add(folders.join('-'));
     }
   }
 
   // If no folders found (all files in root), return empty string
-  if (topLevelFolders.size === 0) {
+  if (folderPaths.size === 0) {
     return '';
   }
 
-  // If too many folders, return count
-  if (topLevelFolders.size > maxFolders) {
-    return `${topLevelFolders.size}folders`;
+  // If too many unique folder paths, return count
+  if (folderPaths.size > maxFolders) {
+    return `${folderPaths.size}folders`;
   }
 
-  // Sort folders alphabetically for consistency
-  const sortedFolders = Array.from(topLevelFolders).sort();
+  // Sort folder paths alphabetically for consistency
+  const sortedPaths = Array.from(folderPaths).sort();
 
-  // Sanitize folder names (remove special chars, keep alphanumeric and dashes)
-  const sanitized = sortedFolders.map(folder =>
-    folder.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  // Sanitize folder paths (remove special chars, keep alphanumeric, dashes, and dots for separator)
+  const sanitized = sortedPaths.map(folderPath =>
+    folderPath
+      .replace(/[^a-zA-Z0-9-.]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
   );
 
-  // Join with kebab-case
+  // Join multiple paths with kebab-case
   return sanitized.join('-');
 }
