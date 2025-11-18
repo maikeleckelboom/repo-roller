@@ -59,6 +59,7 @@ interface TreeSelectState {
   cursor: number;
   showExcluded: boolean;
   settingsLoaded: boolean;
+  viewportOffset: number;  // First visible row in the viewport
 }
 
 // Action types for the reducer
@@ -80,7 +81,8 @@ type TreeSelectAction =
   | { type: 'SET_SHOW_EXCLUDED'; payload: boolean }
   | { type: 'TOGGLE_SHOW_EXCLUDED' }
   | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
-  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } };
+  | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } }
+  | { type: 'SET_VIEWPORT_OFFSET'; payload: number };
 
 // Reducer function to manage complex state
 function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): TreeSelectState {
@@ -169,6 +171,9 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
       const boundedCursor = Math.min(state.cursor, action.payload.maxIndex);
       return boundedCursor !== state.cursor ? { ...state, cursor: boundedCursor } : state;
     }
+
+    case 'SET_VIEWPORT_OFFSET':
+      return { ...state, viewportOffset: Math.max(0, action.payload) };
 
     default:
       return state;
@@ -339,15 +344,20 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     return () => clearInterval(interval);
   }, []);
 
-  // Track terminal width for responsive name truncation
+  // Track terminal dimensions for responsive rendering
   // This ensures long file names don't break the layout when terminal is resized
+  // and that we don't render more rows than can fit on screen
   const { stdout } = useStdout();
   const [terminalWidth, setTerminalWidth] = useState(stdout?.columns || 80);
+  const [terminalHeight, setTerminalHeight] = useState(stdout?.rows || 24);
 
   useEffect(() => {
     const handleResize = () => {
       if (stdout?.columns) {
         setTerminalWidth(stdout.columns);
+      }
+      if (stdout?.rows) {
+        setTerminalHeight(stdout.rows);
       }
     };
 
@@ -368,9 +378,10 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     cursor: 0,
     showExcluded: true,  // Show all files by default, user can filter
     settingsLoaded: false,  // Track if we've loaded persisted settings
+    viewportOffset: 0,  // Start at the top of the tree
   });
 
-  const { expanded, selected, cursor, showExcluded, settingsLoaded } = state;
+  const { expanded, selected, cursor, showExcluded, settingsLoaded, viewportOffset } = state;
 
   // Load persisted setting on mount
   useEffect(() => {
@@ -442,6 +453,48 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       dispatch({ type: 'SET_CURSOR', payload: boundedCursor });
     }
   }, [boundedCursor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Calculate viewport dimensions
+  // Reserve space for: header (2 lines), help text (2 lines), footer (2 lines)
+  const RESERVED_LINES = 6;
+  const maxVisibleRows = Math.max(5, terminalHeight - RESERVED_LINES);
+
+  // Calculate viewport boundaries to keep cursor visible
+  // We try to keep the cursor in the middle of the viewport for better context
+  const viewportStart = useMemo(() => {
+    const halfViewport = Math.floor(maxVisibleRows / 2);
+
+    // If cursor is near the top, show from beginning
+    if (cursor < halfViewport) {
+      return 0;
+    }
+
+    // If cursor is near the end, show the last page
+    if (cursor >= flatNodes.length - halfViewport) {
+      return Math.max(0, flatNodes.length - maxVisibleRows);
+    }
+
+    // Otherwise, center the cursor in the viewport
+    return cursor - halfViewport;
+  }, [cursor, flatNodes.length, maxVisibleRows]);
+
+  // Auto-adjust viewport offset when cursor moves
+  useEffect(() => {
+    if (viewportStart !== viewportOffset) {
+      dispatch({ type: 'SET_VIEWPORT_OFFSET', payload: viewportStart });
+    }
+  }, [viewportStart, viewportOffset]);
+
+  // Calculate visible nodes slice
+  const visibleNodes = useMemo(() => {
+    return flatNodes.slice(viewportOffset, viewportOffset + maxVisibleRows);
+  }, [flatNodes, viewportOffset, maxVisibleRows]);
+
+  // Calculate scroll indicators
+  const hasMoreAbove = viewportOffset > 0;
+  const hasMoreBelow = viewportOffset + maxVisibleRows < flatNodes.length;
+  const itemsAbove = viewportOffset;
+  const itemsBelow = flatNodes.length - (viewportOffset + maxVisibleRows);
 
   const { exit } = useApp();
 
@@ -565,9 +618,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   });
 
   // Render a single tree row using the theme system
-  const renderTreeRow = (flatNode: FlatNode, index: number) => {
+  const renderTreeRow = (flatNode: FlatNode, viewportIndex: number) => {
     const { node, isLast, parentIsLast } = flatNode;
-    const isCursor = index === cursor;
+    // Calculate the actual index in the full flatNodes array
+    const actualIndex = viewportOffset + viewportIndex;
+    const isCursor = actualIndex === cursor;
     const isExpanded = expanded.has(node.fullPath);
     const isFullySelected = node.isFile
       ? selected.has(node.fullPath)
@@ -616,9 +671,32 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     );
   };
 
-  // Render tree view
+  // Render tree view with viewport
   const renderTreeView = () => {
-    return flatNodes.map((flatNode, index) => renderTreeRow(flatNode, index));
+    const rows = [];
+
+    // Show scroll indicator at top if there are items above
+    if (hasMoreAbove) {
+      rows.push(
+        <Box key="scroll-up" flexDirection="row">
+          <Text color="gray" dimColor>  ↑ {itemsAbove} more above...</Text>
+        </Box>
+      );
+    }
+
+    // Render visible nodes
+    rows.push(...visibleNodes.map((flatNode, index) => renderTreeRow(flatNode, index)));
+
+    // Show scroll indicator at bottom if there are items below
+    if (hasMoreBelow) {
+      rows.push(
+        <Box key="scroll-down" flexDirection="row">
+          <Text color="gray" dimColor>  ↓ {itemsBelow} more below...</Text>
+        </Box>
+      );
+    }
+
+    return rows;
   };
 
   // Calculate hidden count
