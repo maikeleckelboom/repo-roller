@@ -247,7 +247,7 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
 
     // Display generation summary
     console.log('');
-    console.log(ui.colors.accent('◉ Step 3/3 · Generation Summary'));
+    console.log(ui.colors.accent('● Step 3/3 · Generation Summary'));
     console.log('');
 
     const dashboardLines = renderGenerationSummary(

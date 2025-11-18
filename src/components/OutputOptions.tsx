@@ -72,7 +72,7 @@ export const OutputOptions: React.FC<OutputOptionsProps> = ({
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text bold color="cyanBright">◉ Step 2/3 · Output</Text>
+        <Text bold color="cyanBright">● Step 2/3 · Output</Text>
       </Box>
 
       <Box marginBottom={1}>

@@ -612,7 +612,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text bold color="cyanBright">◉ Step 1/3 · File Selection</Text>
+        <Text bold color="cyanBright">● Step 1/3 · File Selection</Text>
       </Box>
 
       <Box marginBottom={1}>
