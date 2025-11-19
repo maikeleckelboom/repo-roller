@@ -12,7 +12,10 @@ import {
   saveUserSettings,
   DEFAULT_DISPLAY_SETTINGS,
   DEFAULT_INTERACTIVE_SETTINGS,
+  getTreeViewFilters,
+  setTreeViewFilters,
 } from '../core/userSettings.js';
+import { DEFAULT_FILTER_PRESETS, type FilterPresetId } from '../core/filterPresets.js';
 
 interface SettingsUIProps {
   onComplete: () => void;
@@ -21,7 +24,7 @@ interface SettingsUIProps {
 interface Setting {
   key: string;
   label: string;
-  category: 'display' | 'interactive';
+  category: 'display' | 'interactive' | 'filter';
   value: boolean;
 }
 
@@ -97,7 +100,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
 
   // Load settings on mount
   useEffect(() => {
-    loadUserSettings().then(userSettings => {
+    Promise.all([loadUserSettings(), getTreeViewFilters()]).then(([userSettings, activeFilterPresets]) => {
       const settings: Setting[] = [];
 
       // Display settings
@@ -140,6 +143,17 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         value: userSettings.showExcludedFiles ?? true,
       });
 
+      // Filter preset settings
+      const activePresetSet = new Set(activeFilterPresets);
+      for (const [id, preset] of Object.entries(DEFAULT_FILTER_PRESETS)) {
+        settings.push({
+          key: id,
+          label: `Hide ${preset.name}`,
+          category: 'filter',
+          value: activePresetSet.has(id as FilterPresetId),
+        });
+      }
+
       dispatch({ type: 'SET_SETTINGS', payload: settings });
     });
   }, []);
@@ -150,19 +164,25 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
 
     const displaySettings: Partial<DisplaySettings> = {};
     const interactiveSettings: Partial<UserSettings> = {};
+    const activeFilterPresets: FilterPresetId[] = [];
 
     for (const setting of state.settings) {
       if (setting.category === 'display') {
         displaySettings[setting.key as keyof DisplaySettings] = setting.value;
-      } else {
+      } else if (setting.category === 'interactive') {
         interactiveSettings[setting.key as keyof UserSettings] = setting.value as any;
+      } else if (setting.category === 'filter' && setting.value) {
+        activeFilterPresets.push(setting.key as FilterPresetId);
       }
     }
 
-    await saveUserSettings({
-      ...interactiveSettings,
-      displaySettings,
-    });
+    await Promise.all([
+      saveUserSettings({
+        ...interactiveSettings,
+        displaySettings,
+      }),
+      setTreeViewFilters(activeFilterPresets),
+    ]);
 
     dispatch({ type: 'SET_LOADING', payload: false });
     dispatch({ type: 'SET_SAVED', payload: true });
@@ -225,6 +245,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
   // Group settings by category
   const displaySettings = state.settings.filter(s => s.category === 'display');
   const interactiveSettings = state.settings.filter(s => s.category === 'interactive');
+  const filterPresetSettings = state.settings.filter(s => s.category === 'filter');
 
   return (
     <Box flexDirection="column">
@@ -263,6 +284,28 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
       <Box flexDirection="column" marginBottom={1}>
         <Text bold color="yellowBright">Interactive Mode Settings</Text>
         {interactiveSettings.map((setting, index) => {
+          const globalIndex = state.settings.indexOf(setting);
+          const isCursor = globalIndex === state.cursor;
+          const checkbox = setting.value ? '◉' : '○';
+          const cursorMark = isCursor ? '→' : ' ';
+
+          return (
+            <Box key={setting.key} flexDirection="row">
+              <Text color={isCursor ? 'cyanBright' : 'gray'}>{cursorMark} </Text>
+              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox}</Text>
+              <Text> </Text>
+              <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
+                {setting.label}
+              </Text>
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold color="yellowBright">Tree View Filter Presets</Text>
+        <Text color="dim" marginBottom={1}>Hide specific file types in the interactive tree view (Press F in tree view for quick access)</Text>
+        {filterPresetSettings.map((setting, index) => {
           const globalIndex = state.settings.indexOf(setting);
           const isCursor = globalIndex === state.cursor;
           const checkbox = setting.value ? '◉' : '○';

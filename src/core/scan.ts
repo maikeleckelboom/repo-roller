@@ -41,6 +41,8 @@ import { minimatch } from 'minimatch';
 import type { FileInfo, ResolvedOptions, ScanResult } from './types.js';
 import { normalizeExtension } from './helpers.js';
 import { getChangedFiles, getMostRecentFiles } from './git.js';
+import { getTreeViewFilters } from './userSettings.js';
+import { matchesPresetPatterns } from './filterPresets.js';
 
 // Type workaround for CommonJS default export
 const createIgnore = ignorePackage as unknown as () => {
@@ -261,6 +263,9 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
   // Load gitignore patterns
   const ig = await loadGitignore(root);
 
+  // Load active filter presets (only in interactive mode)
+  const activeFilterPresets = interactive ? await getTreeViewFilters() : [];
+
   // Get git-filtered files if applicable
   let gitFilteredFiles: Set<string> | undefined;
 
@@ -323,7 +328,8 @@ export async function scanFiles(options: ResolvedOptions): Promise<ScanResult> {
     const isExcluded = exclude.some(pattern => minimatch(relativePath, pattern));
     const isSizeExceeded = stats.size > maxFileSizeBytes;
     const isExtensionFiltered = !matchesExtension(relativePath, extensions);
-    const isDefaultIncluded = !isIgnored && !isExcluded && !isSizeExceeded && !isExtensionFiltered && !isBinary;
+    const isPresetFiltered = matchesPresetPatterns(relativePath, activeFilterPresets);
+    const isDefaultIncluded = !isIgnored && !isExcluded && !isSizeExceeded && !isExtensionFiltered && !isBinary && !isPresetFiltered;
 
     // In interactive mode, include all files; in non-interactive mode, only include default files
     if (!interactive && !isDefaultIncluded) {
