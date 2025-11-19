@@ -9,6 +9,11 @@ import * as userSettings from '../../src/core/userSettings.js';
 vi.mock('../../src/core/userSettings.js', () => ({
   getUserSetting: vi.fn().mockResolvedValue(undefined),
   setUserSetting: vi.fn().mockResolvedValue(undefined),
+  getTreeViewState: vi.fn().mockResolvedValue({}),
+  setTreeViewState: vi.fn().mockResolvedValue(undefined),
+  getTreeViewFilters: vi.fn().mockResolvedValue([]),
+  setTreeViewFilters: vi.fn().mockResolvedValue(undefined),
+  toggleTreeViewFilter: vi.fn().mockResolvedValue([]),
 }));
 
 describe('CustomTreeSelect', () => {
@@ -27,6 +32,11 @@ describe('CustomTreeSelect', () => {
     vi.clearAllMocks();
     vi.mocked(userSettings.getUserSetting).mockResolvedValue(undefined);
     vi.mocked(userSettings.setUserSetting).mockResolvedValue(undefined);
+    vi.mocked(userSettings.getTreeViewState).mockResolvedValue({});
+    vi.mocked(userSettings.setTreeViewState).mockResolvedValue(undefined);
+    vi.mocked(userSettings.getTreeViewFilters).mockResolvedValue([]);
+    vi.mocked(userSettings.setTreeViewFilters).mockResolvedValue(undefined);
+    vi.mocked(userSettings.toggleTreeViewFilter).mockResolvedValue([]);
   });
 
   afterEach(() => {
