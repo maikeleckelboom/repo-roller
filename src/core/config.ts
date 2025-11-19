@@ -42,8 +42,9 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { resolve, join, basename } from 'node:path';
+import { resolve, join, basename, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import type {
   CliOptions,
@@ -57,6 +58,43 @@ import { getBuiltInPreset, listBuiltInPresets } from './builtInPresets.js';
 import { normalizeExtension } from './helpers.js';
 
 /**
+ * Get a smart project name that includes nested directories (up to 5 levels deep)
+ * from the repository root if we're in a git repo
+ */
+function getSmartProjectName(root: string): string {
+  try {
+    // Try to get the git repository root
+    const repoRoot = execSync('git rev-parse --show-toplevel', {
+      cwd: root,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+
+    // Get the relative path from repo root to the current directory
+    const relativePath = relative(repoRoot, root);
+
+    if (!relativePath || relativePath === '.') {
+      // We're at the repo root, just use the repo name
+      return basename(repoRoot) || 'code';
+    }
+
+    // Split the path into parts and take up to 5 levels (including repo name)
+    const repoName = basename(repoRoot);
+    const pathParts = relativePath.split(sep);
+
+    // Limit to 4 nested levels (plus repo name = 5 total)
+    const maxNestedLevels = 4;
+    const selectedParts = pathParts.slice(0, maxNestedLevels);
+
+    // Combine repo name with nested path
+    return [repoName, ...selectedParts].join('-');
+  } catch {
+    // Not in a git repo or git command failed, fall back to basename
+    return basename(root) || 'code';
+  }
+}
+
+/**
  * Generate contextual output filename with smart naming
  */
 function generateSmartOutputFile(
@@ -68,8 +106,8 @@ function generateSmartOutputFile(
   // Use slice instead of split to avoid TypeScript type issues
   const timestamp = new Date().toISOString().slice(0, 10); // 2025-11-12
 
-  // Try to get project name from directory
-  const projectName = basename(root) || 'code';
+  // Get smart project name with nested directories
+  const projectName = getSmartProjectName(root);
 
   // Only add profile suffix if it's not the default
   const profileSuffix = profile !== 'llm-context' ? `-${profile}` : '';
