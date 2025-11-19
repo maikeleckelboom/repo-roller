@@ -513,7 +513,8 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Additional buffer for terminal overlays (e.g., Warp sticky header ~200px ≈ 10 lines)
   const RESERVED_LINES = 6;
   const TERMINAL_OVERLAY_BUFFER = 10;
-  const maxVisibleRows = Math.max(5, terminalHeight - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER);
+  const MAX_HEIGHT_PERCENTAGE = 0.65; // Limit interactive view to 65% of screen height
+  const maxVisibleRows = Math.max(5, Math.floor(terminalHeight * MAX_HEIGHT_PERCENTAGE) - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER);
 
   // Calculate viewport boundaries to keep cursor visible
   // We try to keep the cursor in the middle of the viewport for better context
