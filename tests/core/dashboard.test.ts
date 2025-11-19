@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { renderGenerationSummary, createRunDataRecord } from './dashboard.js';
-import type { ScanResult, ResolvedOptions } from './types.js';
-import { getModelPreset } from './modelPresets.js';
+import { renderGenerationSummary, createRunDataRecord } from '../../src/core/dashboard.js';
+import type { ScanResult, ResolvedOptions } from '../../src/core/types.js';
+import { getModelPreset } from '../../src/core/modelPresets.js';
 
 describe('Dashboard', () => {
   const createMockScan = (): ScanResult => ({

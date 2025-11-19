@@ -298,7 +298,7 @@ function renderColoredBar(name: string, percent: number, type: string, barWidth 
  * Render compact colored bars in grid layout
  */
 function compactColoredBarsGrid(
-  items: Array<{ name: string; percent: number; type: string }>,
+  items: { name: string; percent: number; type: string }[],
   barWidth = 8
 ): string[] {
   const lines: string[] = [];
@@ -307,7 +307,7 @@ function compactColoredBarsGrid(
 
   for (let i = 0; i < items.length; i += 2) {
     const item1 = items[i];
-    if (!item1) continue;
+    if (!item1) {continue;}
 
     // Sanitize names to prevent alignment issues
     const name1 = item1.name.replace(/[\r\n\t]/g, ' ').trim();
@@ -320,7 +320,7 @@ function compactColoredBarsGrid(
 
     if (i + 1 < items.length) {
       const item2 = items[i + 1];
-      if (!item2) continue;
+      if (!item2) {continue;}
 
       // Sanitize names to prevent alignment issues
       const name2 = item2.name.replace(/[\r\n\t]/g, ' ').trim();

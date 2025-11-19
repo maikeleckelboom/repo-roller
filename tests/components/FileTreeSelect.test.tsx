@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { FileInfo } from '../core/types.js';
+import type { FileInfo } from '../../src/core/types.js';
 
 // We can't easily test React components in a Node environment without a test renderer
 // So we'll just test the tree building logic by extracting it

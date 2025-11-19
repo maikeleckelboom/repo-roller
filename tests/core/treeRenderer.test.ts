@@ -13,8 +13,8 @@ import {
   DEFAULT_COLUMN_WIDTHS,
   type TreeNode,
   type RowState,
-} from './treeRenderer.js';
-import { defaultTheme } from './treeTheme.js';
+} from '../../src/core/treeRenderer.js';
+import { defaultTheme } from '../../src/core/treeTheme.js';
 
 describe('treeRenderer', () => {
   describe('padToWidth', () => {

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
-import { resolveOptions, loadRepoRollerYml, loadConfig } from './config.js';
-import type { CliOptions, OutputFormat } from './types.js';
+import { resolveOptions, loadRepoRollerYml, loadConfig } from '../../src/core/config.js';
+import type { CliOptions, OutputFormat } from '../../src/core/types.js';
 
 describe('config', () => {
   describe('loadRepoRollerYml', () => {

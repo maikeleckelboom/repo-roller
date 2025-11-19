@@ -325,7 +325,7 @@ export function renderTreeRow(
 export function formatSummaryBar(
   selectedCount: number,
   totalCount: number,
-  hiddenCount: number = 0
+  hiddenCount = 0
 ): string {
   const parts: string[] = [];
   parts.push(`✔ ${selectedCount} / ${totalCount} files selected`);
@@ -343,7 +343,7 @@ export function calculateMaxNameWidth(
   terminalWidth: number,
   depth: number,
   widths: TreeColumnWidths = DEFAULT_COLUMN_WIDTHS,
-  hintLength: number = 10 // Reserve space for hints like " · test"
+  hintLength = 10 // Reserve space for hints like " · test"
 ): number {
   const fixedWidth = getFixedWidth(depth, widths);
   const available = terminalWidth - fixedWidth - hintLength;

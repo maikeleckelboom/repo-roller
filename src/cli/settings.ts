@@ -61,7 +61,7 @@ export async function displaySettings(): Promise<void> {
  * Set a specific display setting
  */
 export async function setDisplaySettingCommand(key: string, value: string): Promise<void> {
-  const validKeys: Array<keyof DisplaySettings> = [
+  const validKeys: (keyof DisplaySettings)[] = [
     'showGenerationSummary',
     'showCodeComposition',
     'showContextFit',

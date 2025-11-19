@@ -494,7 +494,7 @@ export function languageBar(name: string, percent: number, barWidth = 14): strin
 /**
  * Format a compact inline percentage list
  */
-export function inlinePercentages(items: Array<{ name: string; percent: number }>): string {
+export function inlinePercentages(items: { name: string; percent: number }[]): string {
   return items
     .map(({ name, percent }) => `${name}(${percent.toFixed(0)}%)`)
     .join('  ');
@@ -503,7 +503,7 @@ export function inlinePercentages(items: Array<{ name: string; percent: number }
 /**
  * Format compact inline bars with percentages (multiple items per line)
  */
-export function inlineBars(items: Array<{ name: string; percent: number }>, barWidth = 8): string {
+export function inlineBars(items: { name: string; percent: number }[], barWidth = 8): string {
   return items
     .map(({ name, percent }) => {
       const filled = Math.round((percent / 100) * barWidth);
@@ -517,7 +517,7 @@ export function inlineBars(items: Array<{ name: string; percent: number }>, barW
 /**
  * Format compact bars in aligned two-column layout
  */
-export function compactBarsGrid(items: Array<{ name: string; percent: number }>, barWidth = 10): string[] {
+export function compactBarsGrid(items: { name: string; percent: number }[], barWidth = 10): string[] {
   const lines: string[] = [];
   const nameWidth = 12;
 

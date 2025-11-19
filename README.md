@@ -293,6 +293,141 @@ repo-roller . --tree         # Include directory tree in output
 - No incremental updates - rescans everything each time
 - Binary file detection samples first 8KB (may occasionally misclassify)
 
+## Development
+
+### Prerequisites
+
+- Node.js 18+ (tested on 18, 20, 22)
+- npm or pnpm
+
+### Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/maikeleckelboom/repo-roller.git
+cd repo-roller
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Lint the code
+npm run lint
+
+# Run the CLI in development mode (without building)
+npm run dev -- .
+
+# Type check
+npm run typecheck
+```
+
+### Project Structure
+
+```
+repo-roller/
+├── src/                  # Source code
+│   ├── core/            # Core business logic
+│   │   ├── config.ts    # Configuration loading
+│   │   ├── scan.ts      # File scanning
+│   │   ├── render.ts    # Output rendering
+│   │   ├── tokens.ts    # Token estimation
+│   │   └── ...          # Other core modules
+│   ├── cli/             # CLI command layer
+│   │   ├── commands.ts  # Command definitions
+│   │   ├── display.ts   # Output formatting
+│   │   └── ...          # Other CLI modules
+│   ├── components/      # React/Ink TUI components
+│   │   ├── FileTreeSelect.tsx
+│   │   └── ...
+│   ├── cli.ts           # CLI entry point
+│   ├── tui.ts           # Interactive TUI
+│   └── index.ts         # Library exports
+├── tests/               # Test files
+│   ├── core/           # Core module tests
+│   ├── cli/            # CLI tests
+│   └── components/     # Component tests
+├── docs/                # VitePress documentation
+├── dist/                # Build output (gitignored)
+└── package.json
+```
+
+### Architecture
+
+repo-roller follows a clean layered architecture:
+
+1. **Core Layer** (`src/core/`) - Pure business logic with no dependencies on CLI or UI
+   - File scanning and filtering
+   - Token estimation and cost calculation
+   - Output rendering (Markdown, JSON, YAML, TXT)
+   - Configuration loading and validation
+   - No upward dependencies
+
+2. **CLI Layer** (`src/cli/`) - Command-line interface
+   - Command definitions (Commander.js)
+   - User input handling
+   - Output formatting for terminal
+   - Imports only from core layer
+
+3. **Component Layer** (`src/components/`) - Interactive UI (React/Ink)
+   - File tree selector
+   - Interactive prompts
+   - Settings management
+   - Terminal UI components
+
+Each module has clear ownership documented in JSDoc comments with "OWNS" and "DOES NOT OWN" sections.
+
+### Testing
+
+- **Framework**: Vitest
+- **Coverage**: 51% of source files
+- **Location**: All tests are in the `tests/` directory, mirroring the `src/` structure
+- **Run tests**: `npm test`
+- **Watch mode**: `npm test -- --watch`
+- **Coverage report**: `npm run test:coverage`
+
+### Code Quality
+
+- **TypeScript**: Strict mode enabled with extra safety checks
+- **Linting**: ESLint with TypeScript-specific rules
+- **Formatting**: Consistent code style enforced
+- **Immutability**: Readonly by default, pure functions preferred
+- **Logging**: Structured logging available via `logger` module (exported from core)
+
+### Making Changes
+
+1. **Create a feature branch** from `main`
+2. **Make your changes** in the appropriate layer (core, cli, or components)
+3. **Add tests** for new functionality
+4. **Run the test suite**: `npm test`
+5. **Run the linter**: `npm run lint`
+6. **Build the project**: `npm run build`
+7. **Create a changeset** (for version management):
+   ```bash
+   npx changeset
+   ```
+8. **Submit a pull request**
+
+### Release Process
+
+This project uses [Changesets](https://github.com/changesets/changesets) for version management:
+
+1. Create a changeset when making changes: `npx changeset`
+2. Changesets are automatically collected and versioned
+3. CI/CD pipeline runs tests on Node 18, 20, and 22
+4. Releases are published to npm automatically
+
+### Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [DEVELOPING.md](DEVELOPING.md) for detailed contribution guidelines and development workflows.
+
 ## License
 
 MIT

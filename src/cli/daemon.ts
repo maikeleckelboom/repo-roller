@@ -67,7 +67,7 @@ export async function displayDaemonStatus(): Promise<void> {
 /**
  * Quick scan via daemon (uses warm cache)
  */
-export async function daemonScan(root: string, force: boolean = false): Promise<void> {
+export async function daemonScan(root: string, force = false): Promise<void> {
   const socketPath = getDefaultSocketPath();
 
   if (!(await isDaemonRunning(socketPath))) {
@@ -188,7 +188,7 @@ export async function daemonBundle(params: {
 /**
  * Quick token estimate via daemon (instant if cached)
  */
-export async function daemonTokenEstimate(root: string = '.'): Promise<void> {
+export async function daemonTokenEstimate(root = '.'): Promise<void> {
   const socketPath = getDefaultSocketPath();
 
   if (!(await isDaemonRunning(socketPath))) {
@@ -216,12 +216,12 @@ export async function daemonTokenEstimate(root: string = '.'): Promise<void> {
 
   const result = response.result as {
     tokens: number;
-    estimates: Array<{
+    estimates: {
       provider: string;
       tokens: number;
       cost: number;
       withinContext: boolean;
-    }>;
+    }[];
   };
 
   const duration = Date.now() - startTime;
@@ -260,12 +260,12 @@ export async function displayCacheStats(): Promise<void> {
 
   const result = response.result as {
     size: number;
-    entries: Array<{
+    entries: {
       path: string;
       files: number;
       bytes: number;
       age: number;
-    }>;
+    }[];
   };
 
   console.log(ui.header());

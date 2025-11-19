@@ -4,7 +4,7 @@ import {
   generateLlmToolDefinition,
   generateShellCompletions,
   generateOpenApiDocs,
-} from './schema.js';
+} from '../../src/core/schema.js';
 
 describe('schema introspection', () => {
   describe('generateCliSchema', () => {
@@ -343,7 +343,7 @@ describe('schema introspection', () => {
 
   describe('generateOpenApiDocs', () => {
     beforeEach(() => {
-      vi.mock('./config.js', () => ({
+      vi.mock('../../src/core/config.js', () => ({
         loadConfig: vi.fn().mockResolvedValue(null),
         loadRepoRollerYml: vi.fn().mockResolvedValue(null),
       }));

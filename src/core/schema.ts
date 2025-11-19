@@ -825,9 +825,9 @@ function generateFishCompletions(command: CliCommand): string {
   const lines = ['# repo-roller fish completions'];
 
   for (const opt of command.options) {
-    const flagMatch = opt.flags.match(/--([a-z-]+)/);
+    const flagMatch = /--([a-z-]+)/.exec(opt.flags);
     if (flagMatch?.[1]) {
-      const shortMatch = opt.flags.match(/-([a-zA-Z]),/);
+      const shortMatch = /-([a-zA-Z]),/.exec(opt.flags);
       let line = `complete -c repo-roller -l ${flagMatch[1]}`;
       if (shortMatch?.[1]) {
         line += ` -s ${shortMatch[1]}`;
@@ -846,7 +846,7 @@ function generateFishCompletions(command: CliCommand): string {
 /**
  * Generate OpenAPI-style documentation
  */
-export async function generateOpenApiDocs(root: string = '.'): Promise<Record<string, unknown>> {
+export async function generateOpenApiDocs(root = '.'): Promise<Record<string, unknown>> {
   const schema = generateCliSchema();
   const config = await loadConfig(root);
   const repoRollerConfig = await loadRepoRollerYml(root);

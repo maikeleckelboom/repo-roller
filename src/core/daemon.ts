@@ -1,4 +1,4 @@
-import { createServer, createConnection, Socket } from 'node:net';
+import { createServer, createConnection, type Socket } from 'node:net';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { mkdir, unlink, stat, readFile, writeFile } from 'node:fs/promises';
