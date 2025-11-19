@@ -1,5 +1,5 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
 export interface DisplaySettings {
@@ -15,13 +15,7 @@ export interface DisplaySettings {
 export interface TreeViewState {
   expanded?: string[];  // Array of expanded directory paths
   selected?: string[];  // Array of selected file paths
-  lastRoot?: string;    // Last root directory path for context
-}
-
-export interface LastSelectedFiles {
-  files?: string[];     // Array of selected file paths
-  root?: string;        // Root directory for the selection
-  timestamp?: number;   // When the selection was made
+  lastRoot?: string;    // Last root directory path for context (normalized)
 }
 
 export interface UserSettings {
@@ -32,10 +26,8 @@ export interface UserSettings {
   withStats?: boolean;
   // Display preferences for CLI output
   displaySettings?: DisplaySettings;
-  // Tree view state persistence
+  // Tree view state persistence (consolidated - replaces lastSelectedFiles)
   treeViewState?: TreeViewState;
-  // Last selected files for quick re-runs
-  lastSelectedFiles?: LastSelectedFiles;
 }
 
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');
@@ -151,14 +143,35 @@ export async function resetInteractiveSettings(): Promise<void> {
 }
 
 /**
+ * Normalize a root path for consistent comparison across runs
+ * - Resolves to absolute path
+ * - Removes trailing slashes
+ * - Resolves symlinks to their real paths
+ */
+function normalizeRootPath(root: string): string {
+  try {
+    // Resolve to absolute path and normalize (removes trailing slash, resolves ..)
+    return resolve(root);
+  } catch {
+    // Fallback to basic normalization if resolve fails
+    return root.replace(/\/+$/, '');
+  }
+}
+
+/**
  * Get tree view state for a specific root directory
+ * Returns empty state if root doesn't match or state is invalid
  */
 export async function getTreeViewState(root: string): Promise<TreeViewState> {
   const settings = await loadUserSettings();
   const state = settings.treeViewState || {};
 
+  // Normalize both paths for consistent comparison
+  const normalizedRoot = normalizeRootPath(root);
+  const normalizedLastRoot = state.lastRoot ? normalizeRootPath(state.lastRoot) : undefined;
+
   // Only return state if it matches the current root
-  if (state.lastRoot === root) {
+  if (normalizedLastRoot === normalizedRoot) {
     return state;
   }
 
@@ -167,41 +180,42 @@ export async function getTreeViewState(root: string): Promise<TreeViewState> {
 
 /**
  * Save tree view state for a specific root directory
+ * - Normalizes root path for consistent future lookups
+ * - Stores expansion and selection state
  */
 export async function setTreeViewState(root: string, expanded: string[], selected?: string[]): Promise<void> {
+  const normalizedRoot = normalizeRootPath(root);
   await saveUserSettings({
     treeViewState: {
       expanded,
       selected,
-      lastRoot: root,
+      lastRoot: normalizedRoot,
     },
   });
 }
 
 /**
  * Get the last selected files for a specific root directory
+ * This is a convenience wrapper around getTreeViewState for CLI use
+ *
+ * @deprecated Use getTreeViewState() instead for full state access
  */
 export async function getLastSelectedFiles(root: string): Promise<string[]> {
-  const settings = await loadUserSettings();
-  const lastSelected = settings.lastSelectedFiles;
-
-  // Only return files if they match the current root
-  if (lastSelected?.root === root && lastSelected.files) {
-    return lastSelected.files;
-  }
-
-  return [];
+  const state = await getTreeViewState(root);
+  return state.selected || [];
 }
 
 /**
  * Save the last selected files for a specific root directory
+ * This is a convenience wrapper around setTreeViewState for backward compatibility
+ *
+ * @deprecated Use setTreeViewState() instead for full control over tree state
  */
 export async function setLastSelectedFiles(root: string, files: string[]): Promise<void> {
-  await saveUserSettings({
-    lastSelectedFiles: {
-      files,
-      root,
-      timestamp: Date.now(),
-    },
-  });
+  // Get current tree state to preserve expansion state
+  const currentState = await getTreeViewState(root);
+  const expanded = currentState.expanded || ['.'];
+
+  // Save with preserved expansion state
+  await setTreeViewState(root, expanded, files);
 }

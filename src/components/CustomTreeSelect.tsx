@@ -399,17 +399,39 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   useEffect(() => {
     if (rootPath) {
       getTreeViewState(rootPath).then(state => {
+        // Validate expanded paths: only restore directories that exist in current tree
         if (state.expanded && state.expanded.length > 0) {
-          dispatch({ type: 'SET_EXPANDED', payload: new Set(state.expanded) });
+          // Build a set of all valid directory paths from current files
+          const validDirPaths = new Set<string>(['.']); // Root is always valid
+          files.forEach(file => {
+            const parts = file.relativePath.split('/');
+            let currentPath = '';
+            for (let i = 0; i < parts.length - 1; i++) {
+              currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+              validDirPaths.add(currentPath);
+            }
+          });
+
+          // Filter expanded paths to only include valid directories
+          const validExpanded = state.expanded.filter(path => validDirPaths.has(path));
+          if (validExpanded.length > 0) {
+            dispatch({ type: 'SET_EXPANDED', payload: new Set(validExpanded) });
+          }
         }
+
+        // Validate selected paths: only restore files that exist in current file list
         if (state.selected && state.selected.length > 0) {
-          dispatch({ type: 'SET_SELECTED', payload: new Set(state.selected) });
+          const validFilePaths = new Set(files.map(f => f.relativePath));
+          const validSelected = state.selected.filter(path => validFilePaths.has(path));
+          if (validSelected.length > 0) {
+            dispatch({ type: 'SET_SELECTED', payload: new Set(validSelected) });
+          }
         }
       }).catch(() => {
-        // Silently ignore errors
+        // Silently ignore errors loading persisted state
       });
     }
-  }, [rootPath]);
+  }, [rootPath, files]);
 
   // Save setting when it changes (after initial load)
   useEffect(() => {

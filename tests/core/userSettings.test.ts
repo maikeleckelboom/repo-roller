@@ -510,38 +510,38 @@ describe('userSettings', () => {
       expect(loaded).toEqual(secondSelection);
     });
 
-    it('should include timestamp when saving', async () => {
+    it('should persist selection in treeViewState (consolidated storage)', async () => {
       const root = '/home/user/my-project';
       const selectedFiles = ['src/index.ts'];
-      const beforeTimestamp = Date.now();
 
       await setLastSelectedFiles(root, selectedFiles);
 
       const settings = await loadUserSettings();
-      expect(settings.lastSelectedFiles).toBeDefined();
-      expect(settings.lastSelectedFiles?.timestamp).toBeDefined();
-      expect(settings.lastSelectedFiles?.timestamp).toBeGreaterThanOrEqual(beforeTimestamp);
+      // New implementation stores in treeViewState instead of lastSelectedFiles
+      expect(settings.treeViewState).toBeDefined();
+      expect(settings.treeViewState?.selected).toEqual(selectedFiles);
+      expect(settings.treeViewState?.lastRoot).toBeDefined();
     });
 
-    it('should persist lastSelectedFiles in settings file', async () => {
+    it('should persist treeViewState in settings file (new consolidated format)', async () => {
       await mkdir(configDir, { recursive: true });
 
-      const lastSelectedData = {
-        lastSelectedFiles: {
-          files: ['src/index.ts', 'src/utils.ts'],
-          root: '/home/user/my-project',
-          timestamp: Date.now(),
+      const treeStateData = {
+        treeViewState: {
+          selected: ['src/index.ts', 'src/utils.ts'],
+          expanded: ['.', 'src'],
+          lastRoot: '/home/user/my-project',
         },
       };
 
-      await writeFile(settingsFile, JSON.stringify(lastSelectedData), 'utf-8');
+      await writeFile(settingsFile, JSON.stringify(treeStateData), 'utf-8');
       const content = await fsReadFile(settingsFile, 'utf-8');
       const loaded = JSON.parse(content);
 
-      expect(loaded.lastSelectedFiles).toBeDefined();
-      expect(loaded.lastSelectedFiles.files).toEqual(['src/index.ts', 'src/utils.ts']);
-      expect(loaded.lastSelectedFiles.root).toBe('/home/user/my-project');
-      expect(loaded.lastSelectedFiles.timestamp).toBeDefined();
+      expect(loaded.treeViewState).toBeDefined();
+      expect(loaded.treeViewState.selected).toEqual(['src/index.ts', 'src/utils.ts']);
+      expect(loaded.treeViewState.expanded).toEqual(['.', 'src']);
+      expect(loaded.treeViewState.lastRoot).toBe('/home/user/my-project');
     });
 
     it('should handle empty file selection', async () => {
