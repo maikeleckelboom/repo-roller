@@ -33,7 +33,7 @@
 import React, { useReducer, useMemo, useEffect, useCallback, useState } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { FileInfo } from '../core/types.js';
-import { getUserSetting, setUserSetting, getTreeViewState, setTreeViewState } from '../core/userSettings.js';
+import { getUserSetting, setUserSetting, getTreeViewState, setTreeViewState, getTreeViewFilters, toggleTreeViewFilter } from '../core/userSettings.js';
 import { defaultTheme, type TreeTheme } from '../core/treeTheme.js';
 import {
   renderTreeRowParts,
@@ -45,6 +45,7 @@ import {
   type RowState,
 } from '../core/treeRenderer.js';
 import { getFileIconInfo, getFolderIconInfo } from '../core/fileIcons.js';
+import { getPresets, type FilterPresetId } from '../core/filterPresets.js';
 
 interface CustomTreeSelectProps {
   files: readonly FileInfo[];
@@ -60,6 +61,8 @@ interface TreeSelectState {
   showExcluded: boolean;
   settingsLoaded: boolean;
   viewportOffset: number;  // First visible row in the viewport
+  showFilterPresets: boolean;  // Toggle filter preset menu
+  filterPresetCursor: number;  // Cursor position in filter preset menu
 }
 
 // Action types for the reducer
@@ -82,7 +85,10 @@ type TreeSelectAction =
   | { type: 'TOGGLE_SHOW_EXCLUDED' }
   | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
   | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } }
-  | { type: 'SET_VIEWPORT_OFFSET'; payload: number };
+  | { type: 'SET_VIEWPORT_OFFSET'; payload: number }
+  | { type: 'TOGGLE_FILTER_PRESETS' }
+  | { type: 'MOVE_FILTER_PRESET_CURSOR_UP' }
+  | { type: 'MOVE_FILTER_PRESET_CURSOR_DOWN'; payload: { maxIndex: number } };
 
 // Reducer function to manage complex state
 function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): TreeSelectState {
@@ -174,6 +180,15 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
 
     case 'SET_VIEWPORT_OFFSET':
       return { ...state, viewportOffset: Math.max(0, action.payload) };
+
+    case 'TOGGLE_FILTER_PRESETS':
+      return { ...state, showFilterPresets: !state.showFilterPresets, filterPresetCursor: 0 };
+
+    case 'MOVE_FILTER_PRESET_CURSOR_UP':
+      return { ...state, filterPresetCursor: Math.max(0, state.filterPresetCursor - 1) };
+
+    case 'MOVE_FILTER_PRESET_CURSOR_DOWN':
+      return { ...state, filterPresetCursor: Math.min(action.payload.maxIndex, state.filterPresetCursor + 1) };
 
     default:
       return state;
@@ -379,9 +394,14 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     showExcluded: true,  // Show all files by default, user can filter
     settingsLoaded: false,  // Track if we've loaded persisted settings
     viewportOffset: 0,  // Start at the top of the tree
+    showFilterPresets: false,  // Filter preset menu toggle
+    filterPresetCursor: 0,  // Cursor position in filter preset menu
   });
 
-  const { expanded, selected, cursor, showExcluded, settingsLoaded, viewportOffset } = state;
+  const { expanded, selected, cursor, showExcluded, settingsLoaded, viewportOffset, showFilterPresets, filterPresetCursor } = state;
+
+  // Track active filter presets
+  const [activePresets, setActivePresets] = useState<FilterPresetId[]>([]);
 
   // Load persisted setting on mount
   useEffect(() => {
@@ -432,6 +452,15 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
       });
     }
   }, [rootPath, files]);
+
+  // Load active filter presets on mount
+  useEffect(() => {
+    getTreeViewFilters().then(presets => {
+      setActivePresets(presets);
+    }).catch(() => {
+      // Silently ignore errors
+    });
+  }, []);
 
   // Save setting when it changes (after initial load)
   useEffect(() => {
@@ -540,9 +569,50 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   }, [selected]);
 
   useInput((input, key) => {
+    // Handle filter preset menu mode
+    if (showFilterPresets) {
+      const presets = getPresets(activePresets);
+
+      if (input === 'F' || input === 'f' || key.escape) {
+        dispatch({ type: 'TOGGLE_FILTER_PRESETS' });
+        return;
+      }
+
+      if (key.upArrow) {
+        dispatch({ type: 'MOVE_FILTER_PRESET_CURSOR_UP' });
+        return;
+      }
+
+      if (key.downArrow) {
+        dispatch({ type: 'MOVE_FILTER_PRESET_CURSOR_DOWN', payload: { maxIndex: presets.length - 1 } });
+        return;
+      }
+
+      if (input === ' ' || key.return) {
+        const selectedPreset = presets[filterPresetCursor];
+        if (selectedPreset) {
+          toggleTreeViewFilter(selectedPreset.id).then(updated => {
+            setActivePresets(updated);
+          }).catch(() => {
+            // Silently ignore errors
+          });
+        }
+        return;
+      }
+
+      return; // Consume all input when in filter preset mode
+    }
+
+    // Normal tree view mode
     if (input === 'q' || input === 'Q') {
       onComplete([]);
       exit();
+      return;
+    }
+
+    // Toggle filter preset menu with F
+    if (input === 'F' || input === 'f') {
+      dispatch({ type: 'TOGGLE_FILTER_PRESETS' });
       return;
     }
 
@@ -729,33 +799,81 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Calculate hidden count
   const hiddenCount = showExcluded ? 0 : files.length - filteredFiles.length;
 
+  // Render filter preset menu
+  const renderFilterPresetMenu = () => {
+    const presets = getPresets(activePresets);
+
+    return (
+      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1} paddingY={1}>
+        <Box marginBottom={1}>
+          <Text bold color="cyanBright">Filter Presets</Text>
+        </Box>
+
+        <Box marginBottom={1}>
+          <Text color="gray">
+            <Text color="blueBright">↑↓</Text> navigate  <Text color="blueBright">Space/Enter</Text> toggle  <Text color="blueBright">F/Esc</Text> close
+          </Text>
+        </Box>
+
+        {presets.map((preset, index) => {
+          const isCursor = index === filterPresetCursor;
+          const cursorIndicator = isCursor && cursorVisible ? '❯ ' : '  ';
+          const checkbox = preset.enabled ? '☑' : '☐';
+
+          return (
+            <Box key={preset.id} flexDirection="row">
+              <Text color="cyanBright" bold>{cursorIndicator}</Text>
+              <Text color={preset.enabled ? 'green' : 'gray'}>{checkbox} </Text>
+              <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
+                {preset.name}
+              </Text>
+              <Text color="gray" dimColor> - {preset.description}</Text>
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  };
+
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
         <Text bold color="cyanBright">● Step 1/3 · File Selection</Text>
       </Box>
 
-      <Box marginBottom={1}>
-        <Text color="gray">
-          <Text color="blueBright">↑↓</Text> navigate  <Text color="blueBright">←→</Text> expand/collapse  <Text color="blueBright">Space</Text> select  <Text color="blueBright">A</Text> toggle all  <Text color="blueBright">E</Text> expand all  <Text color="blueBright">C</Text> collapse all  <Text color="blueBright">H</Text> filter  <Text color="blueBright">Enter</Text> continue  <Text color="blueBright">Q</Text> quit
-        </Text>
-      </Box>
+      {showFilterPresets ? (
+        renderFilterPresetMenu()
+      ) : (
+        <>
+          <Box marginBottom={1}>
+            <Text color="gray">
+              <Text color="blueBright">↑↓</Text> navigate  <Text color="blueBright">←→</Text> expand/collapse  <Text color="blueBright">Space</Text> select  <Text color="blueBright">A</Text> toggle all  <Text color="blueBright">E</Text> expand all  <Text color="blueBright">C</Text> collapse all  <Text color="blueBright">H</Text> filter  <Text color="blueBright">F</Text> presets  <Text color="blueBright">Enter</Text> continue  <Text color="blueBright">Q</Text> quit
+            </Text>
+          </Box>
 
-      <Box flexDirection="column" paddingBottom={1}>
-        {renderTreeView()}
-      </Box>
+          <Box flexDirection="column" paddingBottom={1}>
+            {renderTreeView()}
+          </Box>
 
-      <Box marginTop={1} borderStyle="round" borderColor="gray" paddingX={1}>
-        <Text color="greenBright" bold>{selected.size}</Text>
-        <Text color="gray"> / </Text>
-        <Text color="blueBright">{files.length}</Text>
-        <Text color="gray"> files selected</Text>
-        {hiddenCount > 0 && (
-          <Text color="yellowBright"> · {hiddenCount} hidden</Text>
-        )}
-        <Text color="gray"> · </Text>
-        <Text color="cyanBright">{showExcluded ? 'showing all' : 'filtered'}</Text>
-      </Box>
+          <Box marginTop={1} borderStyle="round" borderColor="gray" paddingX={1}>
+            <Text color="greenBright" bold>{selected.size}</Text>
+            <Text color="gray"> / </Text>
+            <Text color="blueBright">{files.length}</Text>
+            <Text color="gray"> files selected</Text>
+            {hiddenCount > 0 && (
+              <Text color="yellowBright"> · {hiddenCount} hidden</Text>
+            )}
+            <Text color="gray"> · </Text>
+            <Text color="cyanBright">{showExcluded ? 'showing all' : 'filtered'}</Text>
+            {activePresets.length > 0 && (
+              <>
+                <Text color="gray"> · </Text>
+                <Text color="magentaBright">{activePresets.length} preset{activePresets.length !== 1 ? 's' : ''} active</Text>
+              </>
+            )}
+          </Box>
+        </>
+      )}
     </Box>
   );
 };

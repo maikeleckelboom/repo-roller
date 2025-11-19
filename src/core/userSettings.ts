@@ -1,6 +1,7 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import type { FilterPresetId } from './filterPresets.js';
 
 export interface DisplaySettings {
   showGenerationSummary?: boolean;
@@ -28,6 +29,8 @@ export interface UserSettings {
   displaySettings?: DisplaySettings;
   // Tree view state persistence (consolidated - replaces lastSelectedFiles)
   treeViewState?: TreeViewState;
+  // Tree view filter presets (which file types to hide)
+  treeViewFilters?: FilterPresetId[];
 }
 
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');
@@ -218,4 +221,34 @@ export async function setLastSelectedFiles(root: string, files: string[]): Promi
 
   // Save with preserved expansion state
   await setTreeViewState(root, expanded, files);
+}
+
+/**
+ * Get active tree view filter presets
+ * Returns empty array if no filters are configured
+ */
+export async function getTreeViewFilters(): Promise<FilterPresetId[]> {
+  const settings = await loadUserSettings();
+  return settings.treeViewFilters || [];
+}
+
+/**
+ * Set active tree view filter presets
+ */
+export async function setTreeViewFilters(presets: FilterPresetId[]): Promise<void> {
+  await saveUserSettings({ treeViewFilters: presets });
+}
+
+/**
+ * Toggle a specific filter preset on or off
+ * Returns the updated list of active presets
+ */
+export async function toggleTreeViewFilter(presetId: FilterPresetId): Promise<FilterPresetId[]> {
+  const current = await getTreeViewFilters();
+  const updated = current.includes(presetId)
+    ? current.filter(id => id !== presetId)
+    : [...current, presetId];
+
+  await setTreeViewFilters(updated);
+  return updated;
 }
