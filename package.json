@@ -93,6 +93,7 @@
     "@types/react": "^19.2.2",
     "chalk": "^5.6.2",
     "commander": "^12.1.0",
+    "dotenv": "^17.2.3",
     "fast-glob": "^3.3.3",
     "ignore": "^6.0.2",
     "ink": "^6.4.0",

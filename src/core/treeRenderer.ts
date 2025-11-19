@@ -33,6 +33,7 @@
 import type { TreeTheme } from './treeTheme.js';
 import { getIconString, getCategoryColor, getLanguageColor } from './treeTheme.js';
 import { getFileIconInfo, getFolderIconInfo, type FileIconInfo } from './fileIcons.js';
+import { env } from './env.js';
 
 /** Tree node representation */
 export interface TreeNode {
@@ -61,12 +62,12 @@ export interface TreeColumnWidths {
   indent: number;
 }
 
-/** Default column widths for modern theme */
+/** Default column widths for modern theme (loaded from environment configuration) */
 export const DEFAULT_COLUMN_WIDTHS: TreeColumnWidths = {
-  selection: 2, // "◉ " or "○ " (modern circular markers)
-  expandMarker: 2, // "⌄ " or "› " or "  "
-  icon: 0, // No badges - rely on color and suffixes
-  indent: 2, // Two spaces per depth level
+  selection: env.treeTheme.columnWidths.selection,
+  expandMarker: env.treeTheme.columnWidths.expand,
+  icon: env.treeTheme.columnWidths.icon,
+  indent: 2, // Two spaces per depth level (fixed for consistent indentation)
 };
 
 /** Rendered row parts for composition */

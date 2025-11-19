@@ -37,37 +37,39 @@
  * - Meta (LLaMA 3.1)
  */
 
+import { env } from './env.js';
+
 /**
- * Constants for token estimation heuristics
+ * Constants for token estimation heuristics (loaded from environment configuration)
  */
 export const TOKEN_ESTIMATION = {
   /** Base characters per token ratio (BPE tokenizer average) */
-  CHARS_PER_TOKEN: 4.0,
+  CHARS_PER_TOKEN: env.tokenEstimation.charsPerToken,
   /** Large content threshold (bytes) for simplified estimation */
-  LARGE_CONTENT_THRESHOLD: 100000,
+  LARGE_CONTENT_THRESHOLD: env.tokenEstimation.largeContentThreshold,
   /** Whitespace density thresholds */
   WHITESPACE: {
-    HIGH: 0.30,
-    MEDIUM: 0.25,
-    LOW: 0.20,
+    HIGH: env.tokenEstimation.whitespace.high,
+    MEDIUM: env.tokenEstimation.whitespace.medium,
+    LOW: env.tokenEstimation.whitespace.low,
   },
   /** Symbol density thresholds */
   SYMBOLS: {
-    VERY_HIGH: 0.35,
-    HIGH: 0.25,
-    MEDIUM: 0.20,
+    VERY_HIGH: env.tokenEstimation.symbols.veryHigh,
+    HIGH: env.tokenEstimation.symbols.high,
+    MEDIUM: env.tokenEstimation.symbols.medium,
   },
   /** Correction factors for whitespace density */
   WHITESPACE_CORRECTION: {
-    HIGH: 0.85,
-    MEDIUM: 0.90,
-    LOW: 0.95,
+    HIGH: env.tokenEstimation.whitespaceCorrection.high,
+    MEDIUM: env.tokenEstimation.whitespaceCorrection.medium,
+    LOW: env.tokenEstimation.whitespaceCorrection.low,
   },
   /** Correction factors for symbol density */
   SYMBOL_CORRECTION: {
-    VERY_HIGH: 1.25,
-    HIGH: 1.15,
-    MEDIUM: 1.05,
+    VERY_HIGH: env.tokenEstimation.symbolCorrection.veryHigh,
+    HIGH: env.tokenEstimation.symbolCorrection.high,
+    MEDIUM: env.tokenEstimation.symbolCorrection.medium,
   },
 } as const;
 
@@ -80,55 +82,13 @@ export interface LLMProvider {
 }
 
 export const LLM_PROVIDERS: Record<string, LLMProvider> = {
-  'claude-sonnet': {
-    name: 'claude-sonnet',
-    displayName: 'Claude 3.5 Sonnet',
-    contextWindow: 200000,
-    inputCostPerMillion: 3.0,
-    outputCostPerMillion: 15.0,
-  },
-  'claude-opus': {
-    name: 'claude-opus',
-    displayName: 'Claude 3 Opus',
-    contextWindow: 200000,
-    inputCostPerMillion: 15.0,
-    outputCostPerMillion: 75.0,
-  },
-  'claude-haiku': {
-    name: 'claude-haiku',
-    displayName: 'Claude 3.5 Haiku',
-    contextWindow: 200000,
-    inputCostPerMillion: 0.80,
-    outputCostPerMillion: 4.0,
-  },
-  'gpt-4o': {
-    name: 'gpt-4o',
-    displayName: 'GPT-4o',
-    contextWindow: 128000,
-    inputCostPerMillion: 2.50,
-    outputCostPerMillion: 10.0,
-  },
-  'gpt-4-turbo': {
-    name: 'gpt-4-turbo',
-    displayName: 'GPT-4 Turbo',
-    contextWindow: 128000,
-    inputCostPerMillion: 10.0,
-    outputCostPerMillion: 30.0,
-  },
-  'o1': {
-    name: 'o1',
-    displayName: 'OpenAI o1',
-    contextWindow: 200000,
-    inputCostPerMillion: 15.0,
-    outputCostPerMillion: 60.0,
-  },
-  gemini: {
-    name: 'gemini',
-    displayName: 'Gemini 1.5 Pro',
-    contextWindow: 2000000,
-    inputCostPerMillion: 1.25,
-    outputCostPerMillion: 5.0,
-  },
+  [env.llmProviders.claudeSonnet.name]: env.llmProviders.claudeSonnet,
+  [env.llmProviders.claudeOpus.name]: env.llmProviders.claudeOpus,
+  [env.llmProviders.claudeHaiku.name]: env.llmProviders.claudeHaiku,
+  [env.llmProviders.gpt4o.name]: env.llmProviders.gpt4o,
+  [env.llmProviders.gpt4Turbo.name]: env.llmProviders.gpt4Turbo,
+  [env.llmProviders.o1.name]: env.llmProviders.o1,
+  [env.llmProviders.gemini.name]: env.llmProviders.gemini,
 } as const;
 
 /**
