@@ -74,7 +74,9 @@ export const OutputOptions: React.FC<OutputOptionsProps> = ({
 
     if (input === ' ' || key.leftArrow || key.rightArrow) {
       const option = options[cursor];
-      option.setter(!option.value);
+      if (option) {
+        option.setter(!option.value);
+      }
       return;
     }
 

@@ -266,7 +266,10 @@ export function getPresetsByFamily(): Record<string, ModelPreset[]> {
     if (!grouped[preset.family]) {
       grouped[preset.family] = [];
     }
-    grouped[preset.family].push(preset);
+    const group = grouped[preset.family];
+    if (group) {
+      group.push(preset);
+    }
   }
 
   return grouped;

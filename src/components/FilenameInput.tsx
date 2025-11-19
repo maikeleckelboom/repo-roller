@@ -68,13 +68,15 @@ export const FilenameInput: React.FC<FilenameInputProps> = ({
     }
 
     // Handle Home (move to start)
-    if (key.home || (key.ctrl && input === 'a')) {
+    // Note: key.home might not be defined in all Ink versions, use ctrl+a as fallback
+    if ((key as { home?: boolean }).home || (key.ctrl && input === 'a')) {
       setCursorPosition(0);
       return;
     }
 
     // Handle End (move to end)
-    if (key.end || (key.ctrl && input === 'e')) {
+    // Note: key.end might not be defined in all Ink versions, use ctrl+e as fallback
+    if ((key as { end?: boolean }).end || (key.ctrl && input === 'e')) {
       setCursorPosition(value.length);
       return;
     }

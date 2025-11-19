@@ -6,7 +6,7 @@
 
 import React, { useReducer, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import type { DisplaySettings, UserSettings } from '../core/types.js';
+import type { DisplaySettings, UserSettings } from '../core/userSettings.js';
 import {
   loadUserSettings,
   saveUserSettings,
@@ -47,7 +47,10 @@ function settingsReducer(state: SettingsUIState, action: SettingsAction): Settin
 
     case 'TOGGLE_SETTING': {
       const newSettings = [...state.settings];
-      newSettings[action.payload].value = !newSettings[action.payload].value;
+      const setting = newSettings[action.payload];
+      if (setting) {
+        setting.value = !setting.value;
+      }
       return { ...state, settings: newSettings };
     }
 
@@ -101,41 +104,42 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
       const settings: Setting[] = [];
 
       // Display settings
-      const displaySettings = { ...DEFAULT_DISPLAY_SETTINGS, ...(userSettings.displaySettings || {}) };
+      const displaySettings = { ...DEFAULT_DISPLAY_SETTINGS, ...(userSettings.displaySettings ?? {}) };
       for (const [key, label] of Object.entries(DISPLAY_SETTINGS_LABELS)) {
+        const displayKey = key as keyof DisplaySettings;
         settings.push({
-          key,
-          label,
+          key: displayKey,
+          label: label ?? displayKey,
           category: 'display',
-          value: displaySettings[key as keyof DisplaySettings] ?? true,
+          value: displaySettings[displayKey] ?? true,
         });
       }
 
       // Interactive settings
       settings.push({
         key: 'stripComments',
-        label: INTERACTIVE_SETTINGS_LABELS.stripComments,
+        label: INTERACTIVE_SETTINGS_LABELS.stripComments ?? 'Strip Comments',
         category: 'interactive',
         value: userSettings.stripComments ?? DEFAULT_INTERACTIVE_SETTINGS.stripComments,
       });
 
       settings.push({
         key: 'withTree',
-        label: INTERACTIVE_SETTINGS_LABELS.withTree,
+        label: INTERACTIVE_SETTINGS_LABELS.withTree ?? 'With Tree',
         category: 'interactive',
         value: userSettings.withTree ?? DEFAULT_INTERACTIVE_SETTINGS.withTree,
       });
 
       settings.push({
         key: 'withStats',
-        label: INTERACTIVE_SETTINGS_LABELS.withStats,
+        label: INTERACTIVE_SETTINGS_LABELS.withStats ?? 'With Stats',
         category: 'interactive',
         value: userSettings.withStats ?? DEFAULT_INTERACTIVE_SETTINGS.withStats,
       });
 
       settings.push({
         key: 'showExcludedFiles',
-        label: INTERACTIVE_SETTINGS_LABELS.showExcludedFiles,
+        label: INTERACTIVE_SETTINGS_LABELS.showExcludedFiles ?? 'Show Excluded Files',
         category: 'interactive',
         value: userSettings.showExcludedFiles ?? true,
       });

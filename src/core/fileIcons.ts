@@ -214,7 +214,8 @@ export function getFileIconInfo(filename: string): FileIconInfo {
 
   // Get extension
   const parts = filename.split('.');
-  const ext = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+  const lastPart = parts[parts.length - 1];
+  const ext = parts.length > 1 && lastPart ? lastPart.toLowerCase() : '';
 
   // Check if it's a test file
   if (isTestFile(filename)) {

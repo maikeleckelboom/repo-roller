@@ -133,5 +133,8 @@ export type {
 export { logger, Logger } from "./core/logger.js";
 export type { LogLevel } from "./core/logger.js";
 
+// User settings (re-export from userSettings.ts for convenience)
+export type { DisplaySettings, UserSettings } from './core/userSettings.js';
+
 // Version
 export const VERSION = "1.0.0";

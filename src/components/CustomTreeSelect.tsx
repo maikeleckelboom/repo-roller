@@ -261,11 +261,14 @@ function flattenTree(node: TreeNode, expanded: Set<string>): FlatNode[] {
   const result: FlatNode[] = [];
 
   const traverse = (n: TreeNode, parentIsLast: boolean[]) => {
-    const isLast = false; // Will be updated below
     const children = n.children;
 
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
+      if (!child) {
+        continue;
+      }
+
       const childIsLast = i === children.length - 1;
       result.push({
         node: child,

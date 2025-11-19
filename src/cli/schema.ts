@@ -4,6 +4,7 @@ import {
   generateLlmToolDefinition,
   generateShellCompletions,
   generateOpenApiDocs,
+  type CliOption,
 } from '../core/schema.js';
 
 /**
@@ -103,13 +104,16 @@ export function displayOptionsByCategory(): void {
   console.log(ui.header());
   console.log(ui.section('Options by Category'));
 
-  const categories = new Map<string, typeof mainCommand.options>();
+  const categories = new Map<string, CliOption[]>();
 
   for (const opt of mainCommand.options) {
     if (!categories.has(opt.category)) {
       categories.set(opt.category, []);
     }
-    categories.get(opt.category)!.push(opt);
+    const categoryOpts = categories.get(opt.category);
+    if (categoryOpts) {
+      categoryOpts.push(opt);
+    }
   }
 
   const categoryOrder = ['output', 'filter', 'processing', 'mode', 'config', 'budget', 'format', 'ux', 'info'];

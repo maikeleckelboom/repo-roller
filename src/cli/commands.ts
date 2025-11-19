@@ -1,4 +1,4 @@
-import type { CliOptions, SortMode, OutputFormat, CommanderOptions, RollerConfig, RepoRollerYmlConfig, ResolvedOptions } from '../core/types.js';
+import type { CliOptions, SortMode, OutputFormat, CommanderOptions, RollerConfig, RepoRollerYmlConfig } from '../core/types.js';
 import { displayPresets, displayPresetDetails, displayProfiles, displayProfileDetails, displayExamples } from './presets.js';
 import { validateCliOptions } from '../core/validation.js';
 import { resolveOptions } from '../core/config.js';
@@ -10,8 +10,8 @@ import { getDisplaySettings, loadUserSettings, getLastSelectedFiles } from '../c
 
 export interface CommandContext {
   root: string;
-  config: RollerConfig | null | undefined;
-  repoRollerConfig: RepoRollerYmlConfig | null | undefined;
+  config: RollerConfig | undefined;
+  repoRollerConfig: RepoRollerYmlConfig | undefined;
   options: CommanderOptions;
 }
 
@@ -232,7 +232,7 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
     (!cliOptions.include || cliOptions.include.length === 0);
 
   let lastSelectedFiles: string[] = [];
-  if (shouldUseLastSelected) {
+  if (shouldUseLastSelected && cliOptions.root) {
     lastSelectedFiles = await getLastSelectedFiles(cliOptions.root);
     if (lastSelectedFiles.length > 0) {
       console.log(ui.colors.dim(`Using ${lastSelectedFiles.length} previously selected files`));
@@ -319,11 +319,14 @@ function displayModelPresets(): void {
   console.log(ui.colors.dim('  Use --model <name> to select a model preset\n'));
 
   const presets = listModelPresets();
-  const grouped: Record<string, typeof presets> = {};
+  const grouped: Record<string, (typeof presets)[number][]> = {};
 
   for (const preset of presets) {
     grouped[preset.family] ??= [];
-    grouped[preset.family].push(preset);
+    const group = grouped[preset.family];
+    if (group) {
+      group.push(preset);
+    }
   }
 
   const familyOrder = ['openai', 'anthropic', 'google', 'other'];

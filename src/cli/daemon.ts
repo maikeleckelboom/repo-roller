@@ -5,7 +5,6 @@ import {
   getDaemonPid,
   getDefaultSocketPath,
   generateRequestId,
-  type DaemonResponse,
 } from '../core/daemon.js';
 
 /**

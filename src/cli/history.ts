@@ -6,7 +6,6 @@ import {
   exportHistory,
   getHistoryStats,
   entryToCliArgs,
-  type HistoryEntry,
   type HistoryDiff,
 } from '../core/history.js';
 
