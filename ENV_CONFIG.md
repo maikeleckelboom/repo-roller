@@ -32,7 +32,7 @@ Control the behavior and appearance of the interactive terminal UI:
 
 ```bash
 # Maximum height of interactive view as percentage (0.0 to 1.0)
-INTERACTIVE_MAX_HEIGHT_PERCENTAGE=0.65
+INTERACTIVE_MAX_HEIGHT_PERCENTAGE=0.90
 
 # Cursor blink interval in milliseconds
 CURSOR_BLINK_INTERVAL=500
@@ -236,8 +236,8 @@ The `env.ts` module provides helper functions for parsing:
 If the interactive mode takes up too much screen space:
 
 ```bash
-# Reduce from 65% to 50%
-INTERACTIVE_MAX_HEIGHT_PERCENTAGE=0.50
+# Reduce from 90% to 70%
+INTERACTIVE_MAX_HEIGHT_PERCENTAGE=0.70
 ```
 
 ### Customize Tree Appearance

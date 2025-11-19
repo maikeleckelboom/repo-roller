@@ -78,7 +78,7 @@ export interface InteractiveConfig {
 }
 
 const interactive: InteractiveConfig = {
-  maxHeightPercentage: getEnvNumber('INTERACTIVE_MAX_HEIGHT_PERCENTAGE', 0.65),
+  maxHeightPercentage: getEnvNumber('INTERACTIVE_MAX_HEIGHT_PERCENTAGE', 0.90),
   cursorBlinkInterval: getEnvNumber('CURSOR_BLINK_INTERVAL', 500),
   reservedLines: getEnvNumber('INTERACTIVE_RESERVED_LINES', 6),
   terminalOverlayBuffer: getEnvNumber('INTERACTIVE_TERMINAL_OVERLAY_BUFFER', 10),
