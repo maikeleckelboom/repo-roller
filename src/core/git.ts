@@ -133,3 +133,16 @@ export async function getHeadCommit(root: string): Promise<string | undefined> {
     return undefined;
   }
 }
+
+/**
+ * Get the git repository root directory
+ */
+export async function getRepositoryRoot(root: string): Promise<string | undefined> {
+  const git: SimpleGit = simpleGit(root);
+  try {
+    const repoRoot = await git.revparse(['--show-toplevel']);
+    return repoRoot.trim();
+  } catch {
+    return undefined;
+  }
+}

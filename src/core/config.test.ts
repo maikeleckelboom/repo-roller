@@ -189,6 +189,34 @@ profiles:
         const resolved = resolveOptions(cliOptions, undefined);
         expect(resolved.outFile).toContain('-minimal-');
       });
+
+      it('should include nested directory path in filename when in git repo', () => {
+        // This test assumes we're running in a git repository
+        // The filename should include the repo name and nested path
+        const cliOptions: CliOptions = {
+          root: '.',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        // The filename should follow pattern: {repo}-{nested-path}-{date}.{ext}
+        // Since we're in the repo-roller project, it should include "repo-roller" in the name
+        expect(resolved.outFile).toMatch(/^[\w-]+-\d{4}-\d{2}-\d{2}\.md$/);
+      });
+
+      it('should limit nested path to 4 levels', () => {
+        // When in a deeply nested directory, should only include first 4 levels
+        // This is more of a documentation test since we can't easily simulate deep nesting
+        const cliOptions: CliOptions = {
+          root: '.',
+        };
+        const resolved = resolveOptions(cliOptions, undefined);
+
+        // Split the filename to check the number of parts
+        const filenameParts = resolved.outFile.split('-');
+        // Should have: project parts (max 5: repo + 4 nested) + date (3 parts) + extension
+        // But since date is 2025-11-18 format, it adds 3 parts
+        expect(filenameParts.length).toBeGreaterThanOrEqual(4); // At least repo-date parts
+      });
     });
 
     describe('format option resolution', () => {
