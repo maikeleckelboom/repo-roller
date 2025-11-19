@@ -96,9 +96,9 @@ export interface TreeColumnWidths {
 }
 
 const treeColumnWidths: TreeColumnWidths = {
-  selection: getEnvNumber('TREE_COLUMN_SELECTION', 3),
+  selection: getEnvNumber('TREE_COLUMN_SELECTION', 2),
   expand: getEnvNumber('TREE_COLUMN_EXPAND', 2),
-  icon: getEnvNumber('TREE_COLUMN_ICON', 3),
+  icon: getEnvNumber('TREE_COLUMN_ICON', 0),
   hint: getEnvNumber('TREE_COLUMN_HINT', 8),
 };
 
