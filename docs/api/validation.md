@@ -764,5 +764,5 @@ try {
 ## See Also
 
 - [Configuration Guide](/guide/configuration)
-- [Error Handling](/guide/error-handling)
+- [Validation Errors](/cli/validation)
 - [CI/CD Integration](/guide/ci-cd)

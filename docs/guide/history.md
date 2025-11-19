@@ -18,13 +18,10 @@ Every bundle generation creates a history entry containing:
 History is stored in:
 
 ```
-~/.config/repo-roller/history.jsonl
+~/.config/repo-roller/history.json
 ```
 
-This is a JSON Lines file (one JSON object per line), making it:
-- Easy to parse
-- Append-only for performance
-- Compatible with standard tools
+This is a standard formatted JSON file containing an array of history entries.
 
 ## Viewing History
 

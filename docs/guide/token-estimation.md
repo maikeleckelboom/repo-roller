@@ -35,15 +35,15 @@ LLM providers charge based on token count:
 
 | Provider | Model | Input Cost | Output Cost |
 |----------|-------|------------|-------------|
-| Anthropic | Claude 3.5 Sonnet | $15 / 1M tokens | $75 / 1M tokens |
+| Anthropic | Claude 3.5 Sonnet | $3 / 1M tokens | $15 / 1M tokens |
 | OpenAI | GPT-4 Turbo | $10 / 1M tokens | $30 / 1M tokens |
 | Google | Gemini 1.5 Pro | $3.50 / 1M tokens | $10.50 / 1M tokens |
 
 **Example cost calculation:**
 - 50,000 token input to Claude 3.5 Sonnet
-- Input cost: $0.75
-- Output cost (assuming 1:1 ratio): $3.75
-- **Total: $4.50**
+- Input cost: $0.15 (50,000 tokens × $3 / 1M)
+- Output cost (assuming 1:1 ratio): $0.75 (50,000 tokens × $15 / 1M)
+- **Total: $0.90**
 
 ### 3. Response Quality
 
@@ -62,14 +62,18 @@ repo-roller helps you optimize this trade-off.
 
 ### Estimation Method
 
-repo-roller uses provider-specific tokenizers for accurate estimation:
+repo-roller uses a **fast, heuristic-based estimation** method optimized for performance:
 
-1. **OpenAI (GPT)**: Uses GPT tokenizer (tiktoken equivalent)
-2. **Anthropic (Claude)**: Uses Claude tokenizer
-3. **Google (Gemini)**: Uses Gemini tokenizer
-4. **Others**: Uses appropriate model tokenizer
+1. **Character-to-token ratio**: Base estimation of ~4 characters per token
+2. **Content type adjustments**:
+   - Whitespace density correction for heavily indented code
+   - Symbol density adjustment for code with many operators
+   - Markdown content uses lower token density (~4.5 chars/token)
+3. **Performance optimization**: Very large files (>100KB) use simplified estimation
 
-**Accuracy:** Estimates are typically within 1-2% of actual token counts.
+**Accuracy:** Estimates are typically within ~5% of actual token counts for most code.
+
+**Why heuristics?** Actual tokenizers would require large dependencies and slow down processing. The heuristic approach provides good-enough estimates instantly, which is perfect for quick checks and CLI workflows.
 
 ### What's Counted
 
