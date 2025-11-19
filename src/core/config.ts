@@ -56,6 +56,7 @@ import type {
 } from './types.js';
 import { getBuiltInPreset, listBuiltInPresets } from './builtInPresets.js';
 import { normalizeExtension } from './helpers.js';
+import { env } from './env.js';
 
 /**
  * Get a smart project name that includes nested directories (up to 5 levels deep)
@@ -82,8 +83,8 @@ function getSmartProjectName(root: string): string {
     const repoName = basename(repoRoot);
     const pathParts = relativePath.split(sep);
 
-    // Limit to 4 nested levels (plus repo name = 5 total)
-    const maxNestedLevels = 4;
+    // Limit to configurable nested levels (plus repo name = total)
+    const maxNestedLevels = env.defaults.maxNestedFolders;
     const selectedParts = pathParts.slice(0, maxNestedLevels);
 
     // Combine repo name with nested path
@@ -125,38 +126,38 @@ function generateSmartOutputFile(
 }
 
 /**
- * Default options used as base
+ * Default options used as base (loaded from environment configuration)
  */
 const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRollerConfig'> = {
-  outFile: 'source_code.md',
+  outFile: env.defaults.outputFile,
   include: [],
   exclude: [],
   extensions: [],
-  maxFileSizeBytes: 1024 * 1024, // 1MB
-  stripComments: false,
-  withTree: true,
-  withStats: true,
+  maxFileSizeBytes: env.defaults.maxFileSizeBytes,
+  stripComments: env.defaults.stripComments,
+  withTree: env.defaults.withTree,
+  withStats: env.defaults.withStats,
   sort: 'path',
   interactive: false,
   verbose: false,
-  profile: 'llm-context',
-  format: 'md' as OutputFormat,
+  profile: env.defaults.profile,
+  format: env.defaults.outputFormat as OutputFormat,
   // New DX options
   dryRun: false,
   statsOnly: false,
   // Format-specific options
   compact: false,
-  indent: 2,
+  indent: env.defaults.indent,
   toc: false,
   frontMatter: false,
   // Token counting options
-  tokenCount: true, // Enable by default
+  tokenCount: env.defaults.tokenCount,
   targetProvider: undefined,
   warnTokens: undefined,
   // DX improvements: Skip prompts
   yes: false,
   // LLM report display options (default to minimal)
-  showLLMReport: false,
+  showLLMReport: env.defaults.showLLMReport,
   // Enhanced preset fields (default to none)
   presetHeader: undefined,
   presetFooter: undefined,
@@ -171,18 +172,10 @@ const DEFAULT_OPTIONS: Omit<ResolvedOptions, 'root' | 'presetName' | 'repoRoller
   // Git-aware filtering
   gitDiff: undefined,
   gitMostRecent: undefined,
-  // Display settings
-  displaySettings: {
-    showGenerationSummary: true,
-    showCodeComposition: true,
-    showContextFit: true,
-    showHealthHints: true,
-    showTokenWarnings: true,
-    showCostEstimates: true,
-    showRecommendations: true,
-  },
+  // Display settings (loaded from environment)
+  displaySettings: env.defaults.displaySettings,
   // Smart filename generation
-  maxNestedFolders: 4,
+  maxNestedFolders: env.defaults.maxNestedFolders,
 } as const;
 
 /**

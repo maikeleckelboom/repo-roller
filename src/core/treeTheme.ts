@@ -4,6 +4,7 @@
  */
 
 import type { FileIconId, FileCategory } from './fileIcons.js';
+import { env } from './env.js';
 
 /** Color palette for the tree */
 export interface TreeColors {
@@ -64,48 +65,21 @@ export interface TreeTheme {
 
 /**
  * Modern color palette (ANSI color names for Ink/Chalk)
- * Updated for a cleaner, more sophisticated look
+ * Loaded from environment configuration with fallback defaults
  */
-const defaultColors: TreeColors = {
-  folder: 'blueBright',
-  typescript: 'blue',
-  javascript: 'yellow',
-  test: 'magentaBright',
-  doc: 'cyanBright',
-  config: 'gray',
-  lockfile: 'gray',
-  default: 'white',
-  selected: 'greenBright',
-  partial: 'yellowBright',
-  unselected: 'gray',
-  cursor: 'cyanBright',
-  dim: 'gray',
-};
+const defaultColors: TreeColors = env.treeTheme.colors;
 
 /**
  * Modern selection and expansion markers
- * Using contemporary Unicode symbols for a cleaner, more polished look
+ * Loaded from environment configuration with fallback defaults
  */
-const defaultMarkers: TreeMarkers = {
-  selected: '◉',
-  unselected: '○',
-  partial: '◐',
-  expanded: '⌄',
-  collapsed: '›',
-  leaf: ' ',
-};
+const defaultMarkers: TreeMarkers = env.treeTheme.markers;
 
 /**
  * Modern tree branch characters (Unicode box drawing)
- * Clean, minimal structure for visual hierarchy
+ * Loaded from environment configuration with fallback defaults
  */
-const defaultBranches: TreeBranches = {
-  vertical: '│',
-  tee: '├',
-  corner: '└',
-  horizontal: '─',
-  space: ' ',
-};
+const defaultBranches: TreeBranches = env.treeTheme.branches;
 
 /**
  * Nerd Font glyphs for file-icons

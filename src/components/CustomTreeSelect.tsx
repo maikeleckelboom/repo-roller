@@ -46,6 +46,7 @@ import {
 } from '../core/treeRenderer.js';
 import { getFileIconInfo, getFolderIconInfo } from '../core/fileIcons.js';
 import { getPresets, type FilterPresetId } from '../core/filterPresets.js';
+import { env } from '../core/env.js';
 
 interface CustomTreeSelectProps {
   files: readonly FileInfo[];
@@ -354,7 +355,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   useEffect(() => {
     const interval = setInterval(() => {
       setCursorVisible(prev => !prev);
-    }, 500); // Blink every 500ms
+    }, env.interactive.cursorBlinkInterval);
 
     return () => clearInterval(interval);
   }, []);
@@ -508,13 +509,13 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     }
   }, [boundedCursor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Calculate viewport dimensions
+  // Calculate viewport dimensions (using environment configuration)
   // Reserve space for: header (2 lines), help text (2 lines), footer (2 lines)
   // Additional buffer for terminal overlays (e.g., Warp sticky header ~200px ≈ 10 lines)
-  const RESERVED_LINES = 6;
-  const TERMINAL_OVERLAY_BUFFER = 10;
-  const MAX_HEIGHT_PERCENTAGE = 0.65; // Limit interactive view to 65% of screen height
-  const maxVisibleRows = Math.max(5, Math.floor(terminalHeight * MAX_HEIGHT_PERCENTAGE) - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER);
+  const RESERVED_LINES = env.interactive.reservedLines;
+  const TERMINAL_OVERLAY_BUFFER = env.interactive.terminalOverlayBuffer;
+  const MAX_HEIGHT_PERCENTAGE = env.interactive.maxHeightPercentage;
+  const maxVisibleRows = Math.max(env.interactive.minVisibleRows, Math.floor(terminalHeight * MAX_HEIGHT_PERCENTAGE) - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER);
 
   // Calculate viewport boundaries to keep cursor visible
   // We try to keep the cursor in the middle of the viewport for better context
