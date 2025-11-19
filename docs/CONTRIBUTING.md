@@ -263,7 +263,7 @@ This will prompt you to:
 
 ## Architecture
 
-For detailed architecture information, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+For detailed architecture information, see [docs/ARCHITECTURE.md](ARCHITECTURE.md).
 
 Key concepts:
 - **CLI Layer**: User interaction, argument parsing, display

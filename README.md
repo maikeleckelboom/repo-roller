@@ -426,7 +426,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [DEVELOPING.md](DEVELOPING.md) for detailed contribution guidelines and development workflows.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) and [DEVELOPING.md](docs/DEVELOPING.md) for detailed contribution guidelines and development workflows.
 
 ## License
 
