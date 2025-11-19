@@ -35,13 +35,13 @@ Daemon mode is a long-running background process that:
 
 ```bash
 # Start daemon in background
-repo-roller daemon start
+repo-roller daemon --start
 
 # Start with custom socket path
-repo-roller daemon start --socket /tmp/repo-roller.sock
+repo-roller daemon --start --socket /tmp/repo-roller.sock
 
 # Start with custom cache settings
-repo-roller daemon start --cache-ttl 600000 --max-cache-size 20
+repo-roller daemon --start --cache-ttl 600000 --max-cache-size 20
 ```
 
 **Output:**
@@ -57,7 +57,7 @@ The daemon runs in the background until explicitly stopped.
 
 ```bash
 # Check if daemon is running
-repo-roller daemon status
+repo-roller daemon --status
 ```
 
 **Output when running:**
@@ -93,7 +93,7 @@ Daemon is not running
 
 ```bash
 # Gracefully stop daemon
-repo-roller daemon stop
+repo-roller daemon --stop
 
 # Force stop (if graceful fails)
 kill $(cat ~/.cache/repo-roller/daemon.pid)
@@ -123,13 +123,13 @@ How long scan results are cached before expiring.
 
 ```bash
 # Default: 5 minutes (300000 ms)
-repo-roller daemon start --cache-ttl 300000
+repo-roller daemon --start --cache-ttl 300000
 
 # 10 minutes
-repo-roller daemon start --cache-ttl 600000
+repo-roller daemon --start --cache-ttl 600000
 
 # 1 hour
-repo-roller daemon start --cache-ttl 3600000
+repo-roller daemon --start --cache-ttl 3600000
 ```
 
 **Max Cache Size:**
@@ -138,10 +138,10 @@ Maximum number of project scans to keep in memory.
 
 ```bash
 # Default: 10 projects
-repo-roller daemon start --max-cache-size 10
+repo-roller daemon --start --max-cache-size 10
 
 # Larger cache for many projects
-repo-roller daemon start --max-cache-size 50
+repo-roller daemon --start --max-cache-size 50
 ```
 
 ### PID File
@@ -843,10 +843,10 @@ After 5 minutes, cached results expire and the project is re-scanned on the next
 
 ```bash
 # 10 minute cache
-repo-roller daemon start --cache-ttl 600000
+repo-roller daemon --start --cache-ttl 600000
 
 # 1 hour cache (for stable projects)
-repo-roller daemon start --cache-ttl 3600000
+repo-roller daemon --start --cache-ttl 3600000
 ```
 
 ### Cache Size
@@ -859,7 +859,7 @@ The daemon keeps the 10 most recently scanned projects in memory.
 
 ```bash
 # Cache 50 projects (for multi-project workflows)
-repo-roller daemon start --max-cache-size 50
+repo-roller daemon --start --max-cache-size 50
 ```
 
 ## IDE Integration Use Cases
@@ -945,7 +945,7 @@ class GenerateBundleAction : AnAction() {
 
 ### Daemon Won't Start
 
-**Problem:** `repo-roller daemon start` fails
+**Problem:** `repo-roller daemon --start` fails
 
 **Solution:**
 
@@ -968,7 +968,7 @@ repo-roller daemon start
 
 ```bash
 # Check daemon status
-repo-roller daemon status
+repo-roller daemon --status
 
 # Check socket path
 ls -la ~/.cache/repo-roller/daemon.sock
@@ -989,7 +989,7 @@ ps aux | grep $(cat ~/.cache/repo-roller/daemon.pid)
 # (via RPC or CLI once implemented)
 
 # Or restart daemon
-repo-roller daemon stop
+repo-roller daemon --stop
 repo-roller daemon start
 ```
 
@@ -1001,11 +1001,11 @@ repo-roller daemon start
 
 ```bash
 # Reduce cache size
-repo-roller daemon stop
-repo-roller daemon start --max-cache-size 5
+repo-roller daemon --stop
+repo-roller daemon --start --max-cache-size 5
 
 # Reduce TTL to expire cache faster
-repo-roller daemon start --cache-ttl 60000  # 1 minute
+repo-roller daemon --start --cache-ttl 60000  # 1 minute
 ```
 
 ## Best Practices
@@ -1017,7 +1017,7 @@ Start daemon when you begin work:
 ```bash
 # In your .bashrc or .zshrc
 alias work-start='repo-roller daemon start'
-alias work-stop='repo-roller daemon stop'
+alias work-stop='repo-roller daemon --stop'
 ```
 
 ### 2. Tune Cache Settings for Your Workflow
@@ -1025,13 +1025,13 @@ alias work-stop='repo-roller daemon stop'
 **Frequent changes:**
 ```bash
 # Short TTL for active development
-repo-roller daemon start --cache-ttl 60000  # 1 minute
+repo-roller daemon --start --cache-ttl 60000  # 1 minute
 ```
 
 **Stable codebase:**
 ```bash
 # Long TTL for stable projects
-repo-roller daemon start --cache-ttl 3600000  # 1 hour
+repo-roller daemon --start --cache-ttl 3600000  # 1 hour
 ```
 
 ### 3. Monitor Daemon Health
@@ -1039,7 +1039,7 @@ repo-roller daemon start --cache-ttl 3600000  # 1 hour
 Check status periodically:
 
 ```bash
-repo-roller daemon status
+repo-roller daemon --status
 ```
 
 ### 4. Graceful Shutdown
@@ -1047,7 +1047,7 @@ repo-roller daemon status
 Always stop daemon gracefully:
 
 ```bash
-repo-roller daemon stop
+repo-roller daemon --stop
 ```
 
 Don't kill the process unless necessary.
@@ -1075,6 +1075,6 @@ After major file changes, force refresh:
 ## Next Steps
 
 - **Start the daemon** - `repo-roller daemon start`
-- **Check status** - `repo-roller daemon status`
+- **Check status** - `repo-roller daemon --status`
 - **Build an integration** - Use JSON-RPC API
 - **Explore examples** - See IDE integration patterns

@@ -251,13 +251,13 @@ repo-roller --most-recent 5
 
 ```bash
 # Start daemon
-repo-roller daemon start
+repo-roller daemon --start
 
 # Check status
-repo-roller daemon status
+repo-roller daemon --status
 
 # Stop daemon
-repo-roller daemon stop
+repo-roller daemon --stop
 ```
 
 ### History Management

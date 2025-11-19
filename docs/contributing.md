@@ -263,7 +263,7 @@ This will prompt you to:
 
 ## Architecture
 
-For detailed architecture information, see [Architecture Documentation](/docs/ARCHITECTURE).
+For detailed architecture information, see the [ARCHITECTURE.md](https://github.com/maikeleckelboom/repo-roller/blob/main/ARCHITECTURE.md) file in the repository root.
 
 Key concepts:
 - **CLI Layer**: User interaction, argument parsing, display
@@ -283,6 +283,6 @@ By contributing to repo-roller, you agree that your contributions will be licens
 ---
 
 **Related Documentation:**
-- [Development Guide](/DEVELOPING)
-- [Architecture Overview](/docs/ARCHITECTURE)
+- [Development Guide](https://github.com/maikeleckelboom/repo-roller/blob/main/DEVELOPING.md)
+- [Architecture Overview](https://github.com/maikeleckelboom/repo-roller/blob/main/ARCHITECTURE.md)
 - [API Reference](/api/)
