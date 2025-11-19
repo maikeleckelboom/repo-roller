@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFileIconInfo, getFolderIconInfo } from './fileIcons.js';
+import { getFileIconInfo, getFolderIconInfo } from '../../src/core/fileIcons.js';
 
 describe('fileIcons', () => {
   describe('getFileIconInfo', () => {

@@ -7,8 +7,8 @@ import {
   formatBudgetUsage,
   estimateFileTokens,
   selectFilesWithinBudget,
-} from './budget.js';
-import type { FileInfo } from './types.js';
+} from '../../src/core/budget.js';
+import type { FileInfo } from '../../src/core/types.js';
 
 describe('Budget Module', () => {
   describe('EUR/USD conversion', () => {

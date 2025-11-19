@@ -32,7 +32,7 @@
  */
 
 export function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {return '0 B';}
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -164,7 +164,7 @@ export function calculateLanguageBreakdown(
     totalBytes += file.sizeBytes;
   }
 
-  if (totalBytes === 0) return [];
+  if (totalBytes === 0) {return [];}
 
   const breakdown = Object.entries(langBytes)
     .map(([name, bytes]) => ({
@@ -256,7 +256,7 @@ export function calculateTopDirectories(
     totalBytes += file.sizeBytes;
   }
 
-  if (totalBytes === 0) return [];
+  if (totalBytes === 0) {return [];}
 
   return Object.entries(dirBytes)
     .map(([path, bytes]) => ({
@@ -348,8 +348,8 @@ export function resolveOutputPath(opts: {
  */
 export function analyzeSelectedFolders(
   selectedPaths: readonly string[],
-  maxFolders: number = 3,
-  maxNestedDepth: number = 4
+  maxFolders = 3,
+  maxNestedDepth = 4
 ): string {
   if (selectedPaths.length === 0) {
     return '';
@@ -486,8 +486,8 @@ export function analyzeSelectedFolders(
  * ```
  */
 function findCommonParent(paths: string[]): string {
-  if (paths.length === 0) return '';
-  if (paths.length === 1) return paths[0] ?? '';
+  if (paths.length === 0) {return '';}
+  if (paths.length === 1) {return paths[0] ?? '';}
 
   // Split each path by '-' to get segments
   const segments = paths.map(p => p.split('-'));

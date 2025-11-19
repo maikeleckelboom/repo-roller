@@ -6,7 +6,7 @@ import globals from 'globals';
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.config.js', '*.config.ts'],
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'tests/**', '*.config.js', '*.config.ts'],
   },
 
   // Base ESLint recommended rules

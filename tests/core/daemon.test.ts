@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 // Import the functions we want to test
-import { getDefaultSocketPath, generateRequestId } from './daemon.js';
+import { getDefaultSocketPath, generateRequestId } from '../../src/core/daemon.js';
 
 describe('daemon', () => {
   describe('getDefaultSocketPath', () => {

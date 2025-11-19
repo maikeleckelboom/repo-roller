@@ -7,7 +7,7 @@ import {
   getModelWarnings,
   listModelPresets,
   getPresetsByFamily,
-} from './modelPresets.js';
+} from '../../src/core/modelPresets.js';
 
 describe('Model Presets', () => {
   describe('MODEL_PRESETS', () => {

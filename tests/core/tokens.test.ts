@@ -8,7 +8,7 @@ import {
   analyzeTokenUsage,
   LLM_PROVIDERS,
   formatNumber,
-} from './tokens.js';
+} from '../../src/core/tokens.js';
 
 describe('Token Estimation', () => {
   describe('estimateTokens', () => {

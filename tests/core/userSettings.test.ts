@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, readFile as fsReadFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
-import { loadUserSettings, saveUserSettings, getUserSetting, setUserSetting, getLastSelectedFiles, setLastSelectedFiles } from './userSettings.js';
+import { loadUserSettings, saveUserSettings, getUserSetting, setUserSetting, getLastSelectedFiles, setLastSelectedFiles } from '../../src/core/userSettings.js';
 
 // Test the user settings logic by directly manipulating the expected paths
 describe('userSettings', () => {

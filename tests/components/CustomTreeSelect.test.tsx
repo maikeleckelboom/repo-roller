@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { CustomTreeSelect } from './CustomTreeSelect.js';
-import type { FileInfo } from '../core/types.js';
-import * as userSettings from '../core/userSettings.js';
+import { CustomTreeSelect } from '../../src/components/CustomTreeSelect.js';
+import type { FileInfo } from '../../src/core/types.js';
+import * as userSettings from '../../src/core/userSettings.js';
 
 // Mock userSettings
-vi.mock('../core/userSettings.js', () => ({
+vi.mock('../../src/core/userSettings.js', () => ({
   getUserSetting: vi.fn().mockResolvedValue(undefined),
   setUserSetting: vi.fn().mockResolvedValue(undefined),
 }));

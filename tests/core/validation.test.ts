@@ -4,8 +4,8 @@ import {
   validateRepoRollerYml,
   validateCliOptions,
   formatValidationErrors,
-} from './validation.js';
-import type { RollerConfig, RepoRollerYmlConfig } from './types.js';
+} from '../../src/core/validation.js';
+import type { RollerConfig, RepoRollerYmlConfig } from '../../src/core/types.js';
 
 describe('Configuration Validation', () => {
   describe('validateRollerConfig', () => {

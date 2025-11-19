@@ -1,30 +1,30 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runInteractive } from './tui.js';
-import type { ResolvedOptions, ScanResult, FileInfo } from './core/types.js';
-import * as scanModule from './core/scan.js';
-import * as renderModule from './core/render.js';
-import * as userSettingsModule from './core/userSettings.js';
-import * as historyModule from './core/history.js';
+import { runInteractive } from '../src/tui.js';
+import type { ResolvedOptions, ScanResult, FileInfo } from '../src/core/types.js';
+import * as scanModule from '../src/core/scan.js';
+import * as renderModule from '../src/core/render.js';
+import * as userSettingsModule from '../src/core/userSettings.js';
+import * as historyModule from '../src/core/history.js';
 import * as inkModule from 'ink';
 import * as fsModule from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
 // Mock all dependencies
-vi.mock('./core/scan.js', () => ({
+vi.mock('../src/core/scan.js', () => ({
   scanFiles: vi.fn(),
 }));
 
-vi.mock('./core/render.js', () => ({
+vi.mock('../src/core/render.js', () => ({
   render: vi.fn(),
 }));
 
-vi.mock('./core/userSettings.js', () => ({
+vi.mock('../src/core/userSettings.js', () => ({
   loadUserSettings: vi.fn(),
   saveUserSettings: vi.fn(),
   setLastSelectedFiles: vi.fn(),
 }));
 
-vi.mock('./core/history.js', () => ({
+vi.mock('../src/core/history.js', () => ({
   recordHistoryEntry: vi.fn(),
 }));
 

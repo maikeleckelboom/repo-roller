@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { scanFiles } from './scan.js';
-import type { ResolvedOptions } from './types.js';
+import { scanFiles } from '../../src/core/scan.js';
+import type { ResolvedOptions } from '../../src/core/types.js';
 
 describe('scanFiles - gitignore handling', () => {
   let testDir: string;

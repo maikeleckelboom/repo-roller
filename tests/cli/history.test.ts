@@ -8,9 +8,9 @@ import {
   displayHistoryDiff,
   displayHistoryStats,
   displayHistoryExport,
-} from './history.js';
-import { recordHistoryEntry, clearHistory, tagHistoryEntry, annotateHistoryEntry, loadHistory } from '../core/history.js';
-import type { ResolvedOptions, FileInfo } from '../core/types.js';
+} from '../../src/cli/history.js';
+import { recordHistoryEntry, clearHistory, tagHistoryEntry, annotateHistoryEntry, loadHistory } from '../../src/core/history.js';
+import type { ResolvedOptions, FileInfo } from '../../src/core/types.js';
 
 // Mock the config paths - use a separate directory from core tests
 vi.mock('node:os', async () => {

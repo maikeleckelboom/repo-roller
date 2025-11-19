@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { Confirm } from './Confirm.js';
+import { Confirm } from '../../src/components/Confirm.js';
 
 describe('Confirm', () => {
   const mockOnSubmit = vi.fn();

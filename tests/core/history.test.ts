@@ -16,8 +16,8 @@ import {
   exportHistory,
   getHistoryStats,
   type HistoryEntry,
-} from './history.js';
-import type { ResolvedOptions, FileInfo } from './types.js';
+} from '../../src/core/history.js';
+import type { ResolvedOptions, FileInfo } from '../../src/core/types.js';
 
 const TEST_CONFIG_DIR = join(homedir(), '.config', 'repo-roller-test');
 const TEST_HISTORY_FILE = join(TEST_CONFIG_DIR, 'history.json');

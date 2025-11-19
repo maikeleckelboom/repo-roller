@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { TextInput } from './TextInput.js';
+import { TextInput } from '../../src/components/TextInput.js';
 
 describe('TextInput', () => {
   const mockOnSubmit = vi.fn();

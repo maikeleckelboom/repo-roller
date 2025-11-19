@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { render, renderMarkdown, renderJson, renderYaml, renderTxt, getLanguage } from './render.js';
-import type { ScanResult, ResolvedOptions, RenderOptions, FileInfo } from './types.js';
+import { render, renderMarkdown, renderJson, renderYaml, renderTxt, getLanguage } from '../../src/core/render.js';
+import type { ScanResult, ResolvedOptions, RenderOptions, FileInfo } from '../../src/core/types.js';
 
 describe('render module', () => {
   let testDir: string;

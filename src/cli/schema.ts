@@ -33,7 +33,7 @@ export function displayShellCompletions(shell: 'bash' | 'zsh' | 'fish'): void {
 /**
  * Display OpenAPI-style documentation
  */
-export async function displayOpenApiDocs(root: string = '.'): Promise<void> {
+export async function displayOpenApiDocs(root = '.'): Promise<void> {
   const docs = await generateOpenApiDocs(root);
   console.log(JSON.stringify(docs, null, 2));
 }

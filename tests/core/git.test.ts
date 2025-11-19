@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-import { getChangedFiles, getMostRecentFiles, isGitRepository, getCurrentBranch, getHeadCommit } from './git.js';
+import { getChangedFiles, getMostRecentFiles, isGitRepository, getCurrentBranch, getHeadCommit } from '../../src/core/git.js';
 
 describe('git utilities', () => {
   const testDir = join(process.cwd(), '.test-git-repo');

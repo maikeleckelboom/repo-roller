@@ -15,7 +15,7 @@ interface OutputFormatSelectProps {
   onCancel: () => void;
 }
 
-const FORMATS: Array<{ value: OutputFormat; label: string }> = [
+const FORMATS: { value: OutputFormat; label: string }[] = [
   { value: 'md', label: 'Markdown' },
   { value: 'json', label: 'JSON' },
   { value: 'yaml', label: 'YAML' },

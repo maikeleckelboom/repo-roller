@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generatePromptSuggestion, getPromptSummary } from './promptHelper.js';
-import type { ScanResult } from './types.js';
+import { generatePromptSuggestion, getPromptSummary } from '../../src/core/promptHelper.js';
+import type { ScanResult } from '../../src/core/types.js';
 
 describe('Prompt Helper', () => {
   const createScanResult = (

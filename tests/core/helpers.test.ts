@@ -10,7 +10,7 @@ import {
   estimateLinesOfCode,
   resolveOutputPath,
   analyzeSelectedFolders,
-} from './helpers.js';
+} from '../../src/core/helpers.js';
 
 describe('helpers', () => {
   describe('formatBytes', () => {

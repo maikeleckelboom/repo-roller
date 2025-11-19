@@ -1,4 +1,17 @@
-// Core types
+/**
+ * repo-roller - Source code aggregation for LLMs
+ *
+ * Public API Stability:
+ * - ✓ STABLE: Core functions (scan, render, tokens) - Safe to use in production
+ * - ✓ STABLE: Core types (FileInfo, ResolvedOptions, etc.)
+ * - ⚠️ BETA: Daemon API - May change in minor versions
+ * - ⚠️ BETA: Schema/introspection API - May change in minor versions
+ * - 🔬 EXPERIMENTAL: Logger API - Interface may evolve
+ *
+ * Breaking changes follow semantic versioning (major version bumps).
+ */
+
+// Core types (STABLE)
 export type {
   SortMode,
   OutputFormat,
@@ -16,7 +29,7 @@ export type {
   ResolvedOptions,
 } from "./core/types.js";
 
-// Core functions
+// Core functions (STABLE)
 export { scanFiles } from "./core/scan.js";
 export {
   renderMarkdown,
@@ -60,7 +73,7 @@ export {
   validateCliOptions,
 } from "./core/validation.js";
 
-// History
+// History (STABLE)
 export {
   loadHistory,
   recordHistoryEntry,
@@ -83,7 +96,7 @@ export type {
   HistoryExportFormat,
 } from "./core/history.js";
 
-// Schema introspection
+// Schema introspection (BETA - May change in minor versions)
 export {
   generateCliSchema,
   generateLlmToolDefinition,
@@ -100,7 +113,7 @@ export type {
   LlmToolDefinition,
 } from "./core/schema.js";
 
-// Daemon
+// Daemon (BETA - May change in minor versions)
 export {
   startDaemon,
   sendRequest,
@@ -115,6 +128,10 @@ export type {
   DaemonResponse,
   DaemonConfig,
 } from "./core/daemon.js";
+
+// Logging (EXPERIMENTAL - Interface may evolve)
+export { logger, Logger } from "./core/logger.js";
+export type { LogLevel } from "./core/logger.js";
 
 // Version
 export const VERSION = "1.0.0";
