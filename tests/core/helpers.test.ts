@@ -310,7 +310,8 @@ describe('helpers', () => {
         'src/utils/format.ts',
         'lib/external/api.ts',
       ]);
-      expect(result).toBe('lib-external-src-core-src-utils');
+      // Maintains selection order
+      expect(result).toBe('src-core-src-utils-lib-external');
     });
 
     it('should deduplicate same nested paths', () => {
@@ -328,16 +329,18 @@ describe('helpers', () => {
         'lib/helpers.ts',
         'test/app.test.ts',
       ]);
-      expect(result).toBe('lib-src-test');
+      // Maintains selection order
+      expect(result).toBe('src-lib-test');
     });
 
-    it('should sort folder paths alphabetically for consistency', () => {
+    it('should maintain natural order of paths (not alphabetically sorted)', () => {
       const result = analyzeSelectedFolders([
         'test/unit/app.test.ts',
         'src/core/app.ts',
         'lib/helpers.ts',
       ]);
-      expect(result).toBe('lib-src-core-test-unit');
+      // Maintains selection order for more predictable output
+      expect(result).toBe('test-unit-src-core-lib');
     });
 
     it('should use common parent when exceeding max unique paths with shared root', () => {
@@ -357,7 +360,8 @@ describe('helpers', () => {
         'test/app.test.ts',
         'docs/readme.md',
       ]);
-      expect(result).toBe('docs-lib-src');
+      // Takes first 3 in selection order (not alphabetically)
+      expect(result).toBe('src-lib-test');
     });
 
     it('should respect custom maxFolders parameter', () => {
@@ -365,17 +369,19 @@ describe('helpers', () => {
         ['src/app.ts', 'lib/helpers.ts', 'test/app.test.ts'],
         2
       );
-      expect(result).toBe('lib-src');
+      // Takes first 2 in selection order
+      expect(result).toBe('src-lib');
     });
 
     it('should truncate deeply nested paths (> maxNestedDepth)', () => {
-      // Default maxNestedDepth is 4, so 5+ levels should be truncated
+      // Default maxNestedDepth is 4, so 5+ levels should be truncated to show deepest folders
       const result = analyzeSelectedFolders(
         ['src/components/features/auth/login/form.ts'],
         3,
         4
       );
-      expect(result).toBe('src-...-login');
+      // Keeps deepest 3 folders (maxNestedDepth - 1) from 5-folder path
+      expect(result).toBe('...-features-auth-login');
     });
 
     it('should handle multiple deep paths with truncation', () => {
@@ -387,7 +393,9 @@ describe('helpers', () => {
         3,
         4
       );
-      expect(result).toBe('lib-...-w-src-...-e');
+      // Both paths are truncated to show deepest 3 folders
+      // Maintains selection order (not alphabetically sorted)
+      expect(result).toBe('...-c-d-e-...-y-z-w');
     });
 
     it('should respect custom maxNestedDepth parameter', () => {
@@ -396,7 +404,8 @@ describe('helpers', () => {
         3,
         2
       );
-      expect(result).toBe('src-...-utils');
+      // 3 folders with maxNestedDepth=2, keeps deepest 1 folder (2-1)
+      expect(result).toBe('...-utils');
     });
 
     it('should not truncate when exactly at maxNestedDepth', () => {
@@ -413,7 +422,8 @@ describe('helpers', () => {
         'my@folder/sub/file.ts',
         'another_folder/test.ts',
       ]);
-      expect(result).toBe('another-folder-my-folder-sub');
+      // Maintains selection order
+      expect(result).toBe('my-folder-sub-another-folder');
     });
 
     it('should handle Windows-style paths', () => {
@@ -421,7 +431,8 @@ describe('helpers', () => {
         'src\\core\\app.ts',
         'lib\\helpers.ts',
       ]);
-      expect(result).toBe('lib-src-core');
+      // Maintains selection order
+      expect(result).toBe('src-core-lib');
     });
 
     it('should handle mixed path separators', () => {
@@ -429,7 +440,8 @@ describe('helpers', () => {
         'src/core/app.ts',
         'lib\\helpers.ts',
       ]);
-      expect(result).toBe('lib-src-core');
+      // Maintains selection order
+      expect(result).toBe('src-core-lib');
     });
 
     it('should deduplicate nested folders from multiple files', () => {
@@ -439,7 +451,8 @@ describe('helpers', () => {
         'src/core/utils.ts',
         'lib/external.ts',
       ]);
-      expect(result).toBe('lib-src-core');
+      // Maintains selection order
+      expect(result).toBe('src-core-lib');
     });
 
     it('should handle edge case with exactly max unique paths', () => {
@@ -448,7 +461,8 @@ describe('helpers', () => {
         'lib/helpers.ts',
         'test/app.test.ts',
       ], 3);
-      expect(result).toBe('lib-src-core-test');
+      // Maintains selection order
+      expect(result).toBe('src-core-lib-test');
     });
 
     it('should strip common parent when multiple nested paths share the same root', () => {
@@ -505,7 +519,8 @@ describe('helpers', () => {
         'my-folder/sub-dir/app.ts',
         'another-one/test.ts',
       ]);
-      expect(result).toBe('another-one-my-folder-sub-dir');
+      // Maintains selection order
+      expect(result).toBe('my-folder-sub-dir-another-one');
     });
 
     it('should remove consecutive hyphens from sanitized names', () => {
@@ -521,7 +536,8 @@ describe('helpers', () => {
         'src/core/app.ts',
         'lib/helpers.ts',
       ]);
-      expect(result).toBe('lib-src-core');
+      // Maintains selection order (root files are skipped)
+      expect(result).toBe('src-core-lib');
     });
 
     it('should preserve ellipsis separator in deep paths', () => {
@@ -530,7 +546,8 @@ describe('helpers', () => {
         3,
         4
       );
-      expect(result).toBe('very-...-structure');
+      // Keeps deepest 3 folders from 5-folder path
+      expect(result).toBe('...-nested-folder-structure');
     });
   });
 });

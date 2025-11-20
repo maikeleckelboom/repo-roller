@@ -384,12 +384,12 @@ export function analyzeSelectedFolders(
       continue;
     }
 
-    // If the folder path exceeds maxNestedDepth, take first and last folders
+    // If the folder path exceeds maxNestedDepth, take the deepest (most specific) folders
     if (folders.length > effectiveMaxNestedDepth && showTruncation) {
-      // Take first folder and last folder with a separator
-      const firstFolder = folders[0];
-      const lastFolder = folders[folders.length - 1];
-      folderPaths.add(`${firstFolder}${effectiveSeparator}${effectiveTruncation}${effectiveSeparator}${lastFolder}`);
+      // Take the last N folders (most specific) with truncation indicator at the start
+      const depthToKeep = Math.min(effectiveMaxNestedDepth - 1, folders.length - 1);
+      const deepFolders = folders.slice(-depthToKeep);
+      folderPaths.add(`${effectiveTruncation}${effectiveSeparator}${deepFolders.join(effectiveSeparator)}`);
     } else {
       // Use the full nested path (limited to maxNestedDepth)
       const limitedFolders = folders.slice(0, effectiveMaxNestedDepth);
@@ -466,8 +466,20 @@ export function analyzeSelectedFolders(
     }
   }
 
-  // Sort folder paths alphabetically for consistency
-  const sortedPaths = pathsArray.sort();
+  // Sort folder paths: put non-truncated paths first, then truncated ones
+  // This ensures common parent detection works better and output is more intuitive
+  const sortedPaths = pathsArray.sort((a, b) => {
+    const aHasTruncation = a.includes(effectiveTruncation);
+    const bHasTruncation = b.includes(effectiveTruncation);
+
+    // Non-truncated paths come first
+    if (!aHasTruncation && bHasTruncation) {return -1;}
+    if (aHasTruncation && !bHasTruncation) {return 1;}
+
+    // For paths of the same type, maintain natural order (don't alphabetically sort)
+    // This makes the output more predictable based on file selection order
+    return 0;
+  });
 
   // Sanitize folder paths (remove special chars, keep alphanumeric, dashes, and dots for separator)
   const sanitized = sortedPaths.map(folderPath =>
