@@ -11,6 +11,7 @@ import type { OutputFormat } from '../core/types.js';
 
 interface OutputFormatSelectProps {
   defaultFormat: OutputFormat;
+  tokensByFormat: Record<OutputFormat, number>;
   onSubmit: (format: OutputFormat) => void;
   onCancel: () => void;
 }
@@ -24,11 +25,17 @@ const FORMATS: { value: OutputFormat; label: string }[] = [
 
 export const OutputFormatSelect: React.FC<OutputFormatSelectProps> = ({
   defaultFormat,
+  tokensByFormat,
   onSubmit,
   onCancel,
 }) => {
   const [format, setFormat] = useState<OutputFormat>(defaultFormat);
   const { exit } = useApp();
+
+  // Calculate token difference from default format
+  const currentTokens = tokensByFormat[format] || 0;
+  const defaultTokens = tokensByFormat[defaultFormat] || 0;
+  const tokenDiff = currentTokens - defaultTokens;
 
   useInput((input, key) => {
     if (input === 'q' || input === 'Q' || key.escape) {
@@ -59,6 +66,32 @@ export const OutputFormatSelect: React.FC<OutputFormatSelectProps> = ({
     }
   });
 
+  // Format token count with proper commas
+  const formatTokenCount = (tokens: number) => {
+    return tokens.toLocaleString();
+  };
+
+  // Get arrow and color based on token difference
+  const getTokenDiffDisplay = () => {
+    if (tokenDiff === 0) {
+      return <Text color="gray">= {formatTokenCount(currentTokens)} tokens</Text>;
+    } else if (tokenDiff > 0) {
+      return (
+        <Text>
+          <Text color="red">↑</Text> {formatTokenCount(currentTokens)} tokens{' '}
+          <Text color="red">(+{formatTokenCount(tokenDiff)})</Text>
+        </Text>
+      );
+    } else {
+      return (
+        <Text>
+          <Text color="green">↓</Text> {formatTokenCount(currentTokens)} tokens{' '}
+          <Text color="green">({formatTokenCount(tokenDiff)})</Text>
+        </Text>
+      );
+    }
+  };
+
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
@@ -78,6 +111,10 @@ export const OutputFormatSelect: React.FC<OutputFormatSelectProps> = ({
             )}
           </Box>
         ))}
+      </Box>
+
+      <Box marginLeft={2} marginBottom={1}>
+        {getTokenDiffDisplay()}
       </Box>
 
       <Box marginTop={1}>

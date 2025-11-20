@@ -255,12 +255,29 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     if (!options.yes) {
       console.log('');
 
+      // Pre-calculate token counts for all formats to show in format selection
+      const tokensByFormat: Record<OutputFormat, number> = {} as Record<OutputFormat, number>;
+
+      const baseOptions = {
+        ...options,
+        stripComments,
+        withTree,
+        withStats,
+      };
+
+      for (const format of ['md', 'json', 'yaml', 'txt'] as OutputFormat[]) {
+        const formatOptions = { ...baseOptions, format };
+        const output = await renderOutput(scan, formatOptions);
+        tokensByFormat[format] = estimateTokens(output);
+      }
+
       // Step 3: Format selection
       let inkExitPromise: Promise<void> | undefined;
       const formatResult = await new Promise<OutputFormat | 'cancel'>((resolve) => {
         const { waitUntilExit } = render(
           React.createElement(OutputFormatSelect, {
             defaultFormat: options.format,
+            tokensByFormat,
             onSubmit: (format: OutputFormat) => {
               resolve(format);
             },
