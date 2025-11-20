@@ -7,6 +7,7 @@ import type {
   DateFormat,
   FilenameStrategy,
   TruncationPattern,
+  PathSeparatorStyle,
 } from './env.js';
 
 export interface DisplaySettings {
@@ -29,11 +30,20 @@ export interface FilenameGenerationSettings {
   maxNestedFolders?: number;
   maxFolderPaths?: number;
   folderSeparator?: string;
+  pathSeparator?: PathSeparatorStyle;
   truncationPattern?: TruncationPattern;
   showTruncationEllipsis?: boolean;
   includeProjectName?: boolean;
   includeProfile?: boolean;
   customTemplate?: string;
+  // Advanced features
+  includeGitContext?: boolean;
+  includeTokenCount?: boolean;
+  customLabel?: string;
+  // Safety features
+  enableWindowsSafeMode?: boolean;
+  maxFilenameLength?: number;
+  preventCollisions?: boolean;
 }
 
 export interface TreeViewState {
@@ -160,11 +170,20 @@ export const DEFAULT_FILENAME_SETTINGS: Required<FilenameGenerationSettings> = {
   maxNestedFolders: 4,
   maxFolderPaths: 3,
   folderSeparator: '-',
+  pathSeparator: 'dash',
   truncationPattern: '...',
   showTruncationEllipsis: true,
   includeProjectName: true,
   includeProfile: true,
   customTemplate: '',
+  // Advanced features
+  includeGitContext: true,
+  includeTokenCount: false,
+  customLabel: '',
+  // Safety features
+  enableWindowsSafeMode: true,
+  maxFilenameLength: 250,
+  preventCollisions: true,
 };
 
 export async function getFilenameSettings(): Promise<Required<FilenameGenerationSettings>> {

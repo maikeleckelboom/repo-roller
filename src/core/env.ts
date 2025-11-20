@@ -401,6 +401,7 @@ export type DatePosition = 'prefix' | 'suffix' | 'none';
 export type DateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'YYYY-MM' | 'YYYYMM';
 export type FilenameStrategy = 'smart' | 'simple' | 'detailed' | 'custom';
 export type TruncationPattern = '...' | '---' | '–' | '••';
+export type PathSeparatorStyle = 'dash' | 'dot' | 'plus' | 'underscore';
 
 export interface FilenameGenerationConfig {
   readonly strategy: FilenameStrategy;
@@ -412,11 +413,20 @@ export interface FilenameGenerationConfig {
   readonly maxNestedFolders: number;
   readonly maxFolderPaths: number;
   readonly folderSeparator: string;
+  readonly pathSeparator: PathSeparatorStyle;
   readonly truncationPattern: TruncationPattern;
   readonly showTruncationEllipsis: boolean;
   readonly includeProjectName: boolean;
   readonly includeProfile: boolean;
   readonly customTemplate?: string;
+  // Advanced features
+  readonly includeGitContext: boolean;
+  readonly includeTokenCount: boolean;
+  readonly customLabel?: string;
+  // Safety features
+  readonly enableWindowsSafeMode: boolean;
+  readonly maxFilenameLength: number;
+  readonly preventCollisions: boolean;
 }
 
 /**
@@ -477,11 +487,20 @@ const defaults: DefaultConfig = {
     maxNestedFolders: getEnvNumber('FILENAME_MAX_NESTED_FOLDERS', 4),
     maxFolderPaths: getEnvNumber('FILENAME_MAX_FOLDER_PATHS', 3),
     folderSeparator: getEnv('FILENAME_FOLDER_SEPARATOR', '-'),
+    pathSeparator: getEnv('FILENAME_PATH_SEPARATOR', 'dash') as PathSeparatorStyle,
     truncationPattern: getEnv('FILENAME_TRUNCATION_PATTERN', '...') as TruncationPattern,
     showTruncationEllipsis: getEnvBoolean('FILENAME_SHOW_TRUNCATION_ELLIPSIS', true),
     includeProjectName: getEnvBoolean('FILENAME_INCLUDE_PROJECT_NAME', true),
     includeProfile: getEnvBoolean('FILENAME_INCLUDE_PROFILE', true),
     customTemplate: getEnv('FILENAME_CUSTOM_TEMPLATE', ''),
+    // Advanced features
+    includeGitContext: getEnvBoolean('FILENAME_INCLUDE_GIT_CONTEXT', true),
+    includeTokenCount: getEnvBoolean('FILENAME_INCLUDE_TOKEN_COUNT', false),
+    customLabel: getEnv('FILENAME_CUSTOM_LABEL', ''),
+    // Safety features
+    enableWindowsSafeMode: getEnvBoolean('FILENAME_ENABLE_WINDOWS_SAFE_MODE', true),
+    maxFilenameLength: getEnvNumber('FILENAME_MAX_LENGTH', 250),
+    preventCollisions: getEnvBoolean('FILENAME_PREVENT_COLLISIONS', true),
   },
 };
 
