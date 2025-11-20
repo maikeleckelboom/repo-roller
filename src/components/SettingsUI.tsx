@@ -12,9 +12,11 @@ import {
   saveUserSettings,
   DEFAULT_DISPLAY_SETTINGS,
   DEFAULT_INTERACTIVE_SETTINGS,
+  DEFAULT_FILENAME_SETTINGS,
   getTreeViewFilters,
   setTreeViewFilters,
 } from '../core/userSettings.js';
+import type { FilenameGenerationSettings } from '../core/userSettings.js';
 import { DEFAULT_FILTER_PRESETS, type FilterPresetId } from '../core/filterPresets.js';
 
 interface SettingsUIProps {
@@ -24,7 +26,7 @@ interface SettingsUIProps {
 interface Setting {
   key: string;
   label: string;
-  category: 'display' | 'interactive' | 'filter';
+  category: 'display' | 'interactive' | 'filter' | 'filename';
   value: boolean;
 }
 
@@ -88,6 +90,15 @@ const INTERACTIVE_SETTINGS_LABELS: Record<string, string> = {
   showExcludedFiles: 'Show Excluded Files in Tree',
 };
 
+const FILENAME_SETTINGS_LABELS: Record<string, string> = {
+  includeDate: 'Include Date in Filename',
+  includeTime: 'Include Time in Filename',
+  includeProjectName: 'Include Project Name',
+  includeProfile: 'Include Profile Name',
+  includeGitContext: 'Include Git Branch/Context',
+  includeTokenCount: 'Include Token Count',
+};
+
 export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
   const [state, dispatch] = useReducer(settingsReducer, {
     settings: [],
@@ -143,6 +154,17 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         value: userSettings.showExcludedFiles ?? true,
       });
 
+      // Filename generation settings
+      const filenameSettings = { ...DEFAULT_FILENAME_SETTINGS, ...(userSettings.filenameSettings || {}) };
+      for (const [key, label] of Object.entries(FILENAME_SETTINGS_LABELS)) {
+        settings.push({
+          key,
+          label,
+          category: 'filename',
+          value: filenameSettings[key as keyof FilenameGenerationSettings] as boolean ?? true,
+        });
+      }
+
       // Filter preset settings
       const activePresetSet = new Set(activeFilterPresets);
       for (const [id, preset] of Object.entries(DEFAULT_FILTER_PRESETS)) {
@@ -164,6 +186,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
 
     const displaySettings: Partial<DisplaySettings> = {};
     const interactiveSettings: Partial<UserSettings> = {};
+    const filenameSettings: Partial<FilenameGenerationSettings> = {};
     const activeFilterPresets: FilterPresetId[] = [];
 
     for (const setting of state.settings) {
@@ -171,6 +194,8 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
         displaySettings[setting.key as keyof DisplaySettings] = setting.value;
       } else if (setting.category === 'interactive') {
         interactiveSettings[setting.key as keyof UserSettings] = setting.value as any;
+      } else if (setting.category === 'filename') {
+        filenameSettings[setting.key as keyof FilenameGenerationSettings] = setting.value as any;
       } else if (setting.category === 'filter' && setting.value) {
         activeFilterPresets.push(setting.key as FilterPresetId);
       }
@@ -180,6 +205,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
       saveUserSettings({
         ...interactiveSettings,
         displaySettings,
+        filenameSettings,
       }),
       setTreeViewFilters(activeFilterPresets),
     ]);
@@ -245,6 +271,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
   // Group settings by category
   const displaySettings = state.settings.filter(s => s.category === 'display');
   const interactiveSettings = state.settings.filter(s => s.category === 'interactive');
+  const filenameSettings = state.settings.filter(s => s.category === 'filename');
   const filterPresetSettings = state.settings.filter(s => s.category === 'filter');
 
   return (
@@ -284,6 +311,28 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
       <Box flexDirection="column" marginBottom={1}>
         <Text bold color="yellowBright">Interactive Mode Settings</Text>
         {interactiveSettings.map((setting, index) => {
+          const globalIndex = state.settings.indexOf(setting);
+          const isCursor = globalIndex === state.cursor;
+          const checkbox = setting.value ? '◉' : '○';
+          const cursorMark = isCursor ? '→' : ' ';
+
+          return (
+            <Box key={setting.key} flexDirection="row">
+              <Text color={isCursor ? 'cyanBright' : 'gray'}>{cursorMark} </Text>
+              <Text color={setting.value ? 'greenBright' : 'gray'}>{checkbox}</Text>
+              <Text> </Text>
+              <Text color={isCursor ? 'white' : 'gray'} bold={isCursor}>
+                {setting.label}
+              </Text>
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold color="yellowBright">📝 Filename Generation Settings</Text>
+        <Text color="dim" marginBottom={1}>Customize how output filenames are generated (affects both interactive and CLI modes)</Text>
+        {filenameSettings.map((setting, index) => {
           const globalIndex = state.settings.indexOf(setting);
           const isCursor = globalIndex === state.cursor;
           const checkbox = setting.value ? '◉' : '○';

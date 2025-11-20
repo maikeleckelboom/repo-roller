@@ -60,8 +60,11 @@ A visual file tree with checkbox selection.
 | `←` | Collapse folder |
 | `Enter` | Confirm selection and continue |
 | `Esc` | Cancel and exit |
-| `a` | Select all files |
-| `n` | Deselect all files |
+| `a` or `A` | Toggle select/deselect all files |
+| `E` | Expand all folders |
+| `C` | Collapse all folders |
+| `H` | Toggle show/hide excluded files |
+| `F` or `f` | Open filter presets menu |
 
 **Features:**
 
@@ -70,6 +73,10 @@ A visual file tree with checkbox selection.
 - **Real-time estimates** - Token count updates as you select
 - **Folder toggling** - Select/deselect entire directories
 - **Smart defaults** - Common patterns (tests, node_modules) excluded
+- **Filter presets** - Quick toggle common file type filters with `F` key
+  - Hide tests, docs, config files, build output, assets, or dependencies
+  - Visual preset menu with instant toggle on/off
+  - Presets are saved in your user settings
 
 ### Step 2: Output Options
 
@@ -112,26 +119,28 @@ These options default to your [user settings](/guide/user-settings) and are save
 
 ### Step 3: Format Selection
 
-Choose the output format.
+Choose the output format with real-time token count comparison.
 
 ```
 ┌─ Select Output Format ──────────────────────────────────┐
 │                                                          │
-│  ● Markdown (.md)                                        │
+│  ● Markdown (.md)                     ~12,500 tokens     │
 │    Best for LLMs, human-readable, syntax highlighting    │
 │                                                          │
-│  ○ JSON (.json)                                          │
+│  ○ JSON (.json)                       ~13,200 tokens     │
 │    Structured data, programmatic access                  │
 │                                                          │
-│  ○ YAML (.yaml)                                          │
+│  ○ YAML (.yaml)                       ~12,800 tokens     │
 │    Human-readable config format                          │
 │                                                          │
-│  ○ Text (.txt)                                           │
+│  ○ Text (.txt)                        ~11,900 tokens     │
 │    Plain text, minimal formatting                        │
 │                                                          │
 │  [↑/↓] Navigate  [Enter] Select  [Esc] Cancel            │
 └──────────────────────────────────────────────────────────┘
 ```
+
+The format selection now displays estimated token counts for each format, helping you choose the most efficient format for your use case. Token counts vary by format due to different metadata and formatting overhead.
 
 **Keyboard shortcuts:**
 
@@ -179,7 +188,7 @@ Specify the output filename.
 
 **Auto-generated filename:**
 
-The default filename is intelligently generated:
+The default filename is intelligently generated based on your [filename generation settings](/guide/user-settings#filename-generation-settings):
 
 ```
 {repo-name}-{folders}-{date}.{ext}
@@ -188,16 +197,33 @@ The default filename is intelligently generated:
 Examples:
 - `my-project-core-2024-01-15.md`
 - `api-server-auth-users-2024-01-15.json`
-- `webapp-components-2024-01-15.md`
+- `webapp-components-feature-login-2024-01-15.md` (with git branch)
+- `webapp-main-12500tk-2024-01-15.md` (with token count)
 
-**Filename components:**
+**Filename components (customizable):**
 
-- **repo-name** - Repository directory name
+- **repo-name** - Repository directory name (toggle: `includeProjectName`)
 - **folders** - Up to 3 unique folder paths from selection
-- **date** - Current date (YYYY-MM-DD)
+- **git-context** - Git branch or tag name (toggle: `includeGitContext`)
+- **token-count** - Estimated token count (toggle: `includeTokenCount`)
+- **date** - Current date in YYYY-MM-DD format (toggle: `includeDate`)
+- **time** - Current time if enabled (toggle: `includeTime`)
+- **profile** - Profile name if used (toggle: `includeProfile`)
 - **ext** - Format-appropriate extension
 
 You can edit the filename or keep the default by pressing Enter.
+
+**Customize filename format:**
+
+Configure which components are included via the settings UI:
+
+```bash
+repo-roller settings
+# Navigate to "Filename Generation Settings"
+# Toggle components on/off
+```
+
+Or edit `~/.config/repo-roller/settings.json` directly for advanced options like date format, separator style, and custom templates.
 
 ## Tree State Persistence
 

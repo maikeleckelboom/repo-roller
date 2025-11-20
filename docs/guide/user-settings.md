@@ -66,6 +66,60 @@ Default values for interactive TUI mode options.
 
 These settings are used as defaults in interactive mode, but can be changed per-generation through the TUI prompts.
 
+### Filename Generation Settings
+
+Customize how output filenames are automatically generated.
+
+```json
+{
+  "filenameSettings": {
+    "includeDate": true,
+    "includeTime": false,
+    "includeProjectName": true,
+    "includeProfile": true,
+    "includeGitContext": true,
+    "includeTokenCount": false
+  }
+}
+```
+
+**Filename generation settings:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `includeDate` | `true` | Include date in filename (YYYY-MM-DD) |
+| `includeTime` | `false` | Include time in filename |
+| `includeProjectName` | `true` | Include project/repo name |
+| `includeProfile` | `true` | Include profile name if used |
+| `includeGitContext` | `true` | Include git branch/context |
+| `includeTokenCount` | `false` | Include token count in filename |
+
+These settings control the auto-generated filename format in both interactive and CLI modes. You can configure them through the interactive settings UI (`repo-roller settings`) or by editing the settings file directly.
+
+**Advanced filename settings:**
+
+For more control over filename generation, you can configure additional settings in the JSON file:
+
+```json
+{
+  "filenameSettings": {
+    "strategy": "smart",
+    "datePosition": "suffix",
+    "dateFormat": "YYYY-MM-DD",
+    "timeFormat": "24h",
+    "maxNestedFolders": 4,
+    "maxFolderPaths": 3,
+    "folderSeparator": "-",
+    "pathSeparator": "dash",
+    "customTemplate": "",
+    "maxFilenameLength": 250,
+    "preventCollisions": true
+  }
+}
+```
+
+See the [Filename Generation](#filename-generation) section for more details.
+
 ### Tree View State
 
 Stores the expanded/collapsed state of directories in the file tree selector.
@@ -81,6 +135,38 @@ Stores the expanded/collapsed state of directories in the file tree selector.
 ```
 
 The tree state is automatically saved and restored when you return to the same project.
+
+### Tree View Filter Presets
+
+Control which file types are hidden in the interactive tree view.
+
+```json
+{
+  "treeViewFilters": ["docs", "config", "build-output"]
+}
+```
+
+**Available filter presets:**
+
+| Preset ID | Description | Files Hidden |
+|-----------|-------------|--------------|
+| `tests` | Hide test files | `*.test.*`, `*.spec.*`, `__tests__/` |
+| `docs` | Hide documentation | `*.md`, `docs/` |
+| `config` | Hide config files | Config files, dotfiles |
+| `build-output` | Hide build artifacts | `dist/`, `build/`, `.next/` |
+| `assets` | Hide static assets | Images, fonts, media files |
+| `dependencies` | Hide dependency files | `node_modules/`, `vendor/` |
+
+**Quick access in tree view:**
+
+Press `F` while in the interactive tree view to open the filter presets menu, where you can quickly toggle presets on/off.
+
+**Keyboard shortcuts in filter menu:**
+- `↑/↓` - Navigate presets
+- `Space/Enter` - Toggle preset on/off
+- `F/Esc` - Close filter menu
+
+Filter presets help you focus on relevant files by temporarily hiding common file types you don't need to include in your bundle.
 
 ### Last Selected Files
 
