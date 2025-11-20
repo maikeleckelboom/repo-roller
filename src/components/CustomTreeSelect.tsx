@@ -30,7 +30,7 @@
  * - Keep rendering logic separate from state logic
  */
 
-import React, { useReducer, useMemo, useEffect, useCallback, useState } from 'react';
+import React, { useReducer, useMemo, useEffect, useCallback, useState, useRef } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { FileInfo } from '../core/types.js';
 import { getUserSetting, setUserSetting, getTreeViewState, setTreeViewState, getTreeViewFilters, toggleTreeViewFilter } from '../core/userSettings.js';
@@ -352,6 +352,11 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   // Blinking cursor state for better visibility
   const [cursorVisible, setCursorVisible] = useState(true);
 
+  // Debounce state to prevent double-trigger on key events
+  // Some terminals/SSH sessions may send duplicate key events (keydown + keyup)
+  const lastActionRef = useRef<{ key: string; timestamp: number }>({ key: '', timestamp: 0 });
+  const DEBOUNCE_MS = 50; // Ignore duplicate actions within 50ms
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCursorVisible(prev => !prev);
@@ -571,6 +576,22 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
   }, [selected]);
 
   useInput((input, key) => {
+    // Debounce mechanism to prevent double-trigger from keydown/keyup events
+    // Create a unique key identifier for this action
+    const actionKey = JSON.stringify({ input, key });
+    const now = Date.now();
+
+    if (
+      lastActionRef.current.key === actionKey &&
+      now - lastActionRef.current.timestamp < DEBOUNCE_MS
+    ) {
+      // Duplicate action detected within debounce window - ignore it
+      return;
+    }
+
+    // Update last action tracking
+    lastActionRef.current = { key: actionKey, timestamp: now };
+
     // Handle filter preset menu mode
     if (showFilterPresets) {
       const presets = getPresets(activePresets);
