@@ -571,11 +571,11 @@ const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
  * 3. CLI overrides
  * 4. RepoRoller YAML config
  */
-export function resolveOptions(
+export async function resolveOptions(
   cli: CliOptions,
   config: RollerConfig | undefined,
   repoRollerConfig?: RepoRollerYmlConfig
-): ResolvedOptions {
+): Promise<ResolvedOptions> {
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
 
@@ -630,8 +630,15 @@ export function resolveOptions(
     // User explicitly specified output file
     outFile = cli.out;
   } else {
+    // Load user filename settings
+    const { getFilenameSettings } = await import('./userSettings.js');
+    const userFilenameSettings = await getFilenameSettings();
+
     // Build filename generation config overrides from CLI options
-    const filenameConfigOverride: any = {};
+    // Merge: user settings < CLI overrides
+    const filenameConfigOverride: any = {
+      ...userFilenameSettings,
+    };
 
     if (cli.nameTemplate) {
       filenameConfigOverride.customTemplate = cli.nameTemplate;

@@ -343,6 +343,61 @@ function areSomeChildrenSelected(node: TreeNode, selected: Set<string>): boolean
   return selectedCount > 0 && selectedCount < allFiles.length;
 }
 
+/**
+ * Smart initial expansion: recursively expand folders to fill terminal height
+ * Strategy:
+ * 1. First expand all level 1 folders
+ * 2. Then expand level 2 folders
+ * 3. Continue deeper until we run out of space or folders
+ * This provides optimal UX by showing maximum useful context
+ */
+function calculateSmartExpansion(
+  tree: TreeNode,
+  availableRows: number
+): Set<string> {
+  const expanded = new Set<string>(['.']); // Root always expanded
+
+  // Collect all folders by depth level
+  const foldersByDepth = new Map<number, string[]>();
+
+  const collectFolders = (node: TreeNode) => {
+    if (!node.isFile && node.fullPath !== '.') {
+      const depth = node.fullPath.split('/').length;
+      if (!foldersByDepth.has(depth)) {
+        foldersByDepth.set(depth, []);
+      }
+      foldersByDepth.get(depth)!.push(node.fullPath);
+    }
+    node.children.forEach(collectFolders);
+  };
+  collectFolders(tree);
+
+  // Try expanding level by level
+  const maxDepth = Math.max(...Array.from(foldersByDepth.keys()), 0);
+
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const foldersAtDepth = foldersByDepth.get(depth) || [];
+
+    for (const folderPath of foldersAtDepth) {
+      // Try expanding this folder
+      const testExpanded = new Set([...expanded, folderPath]);
+
+      // Calculate how many visible rows this would create
+      const visibleCount = flattenTree(tree, testExpanded).length;
+
+      if (visibleCount <= availableRows) {
+        // Still room, expand it!
+        expanded.add(folderPath);
+      } else {
+        // No more room, stop expanding
+        return expanded;
+      }
+    }
+  }
+
+  return expanded;
+}
+
 export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onComplete, rootPath }) => {
   // Build tree structure once from flat file list
   // This is memoized because tree building is O(n*m) where m is path depth
@@ -421,10 +476,12 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     });
   }, []);
 
-  // Load persisted tree view state on mount
+  // Load persisted tree view state on mount, or apply smart expansion if no state exists
   useEffect(() => {
     if (rootPath) {
       getTreeViewState(rootPath).then(state => {
+        let hasRestoredState = false;
+
         // Validate expanded paths: only restore directories that exist in current tree
         if (state.expanded && state.expanded.length > 0) {
           // Build a set of all valid directory paths from current files
@@ -442,7 +499,24 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
           const validExpanded = state.expanded.filter(path => validDirPaths.has(path));
           if (validExpanded.length > 0) {
             dispatch({ type: 'SET_EXPANDED', payload: new Set(validExpanded) });
+            hasRestoredState = true;
           }
+        }
+
+        // If no persisted expansion state, apply smart expansion
+        if (!hasRestoredState) {
+          // Calculate available rows for the tree view
+          const RESERVED_LINES = env.interactive.reservedLines;
+          const TERMINAL_OVERLAY_BUFFER = env.interactive.terminalOverlayBuffer;
+          const MAX_HEIGHT_PERCENTAGE = env.interactive.maxHeightPercentage;
+          const availableRows = Math.max(
+            env.interactive.minVisibleRows,
+            Math.floor(terminalHeight * MAX_HEIGHT_PERCENTAGE) - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER
+          );
+
+          // Apply smart expansion to fill the available space
+          const smartExpanded = calculateSmartExpansion(tree, availableRows);
+          dispatch({ type: 'SET_EXPANDED', payload: smartExpanded });
         }
 
         // Validate selected paths: only restore files that exist in current file list
@@ -454,10 +528,32 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
           }
         }
       }).catch(() => {
-        // Silently ignore errors loading persisted state
+        // If error loading state, still apply smart expansion
+        const RESERVED_LINES = env.interactive.reservedLines;
+        const TERMINAL_OVERLAY_BUFFER = env.interactive.terminalOverlayBuffer;
+        const MAX_HEIGHT_PERCENTAGE = env.interactive.maxHeightPercentage;
+        const availableRows = Math.max(
+          env.interactive.minVisibleRows,
+          Math.floor(terminalHeight * MAX_HEIGHT_PERCENTAGE) - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER
+        );
+
+        const smartExpanded = calculateSmartExpansion(tree, availableRows);
+        dispatch({ type: 'SET_EXPANDED', payload: smartExpanded });
       });
+    } else {
+      // No rootPath, apply smart expansion directly
+      const RESERVED_LINES = env.interactive.reservedLines;
+      const TERMINAL_OVERLAY_BUFFER = env.interactive.terminalOverlayBuffer;
+      const MAX_HEIGHT_PERCENTAGE = env.interactive.maxHeightPercentage;
+      const availableRows = Math.max(
+        env.interactive.minVisibleRows,
+        Math.floor(terminalHeight * MAX_HEIGHT_PERCENTAGE) - RESERVED_LINES - TERMINAL_OVERLAY_BUFFER
+      );
+
+      const smartExpanded = calculateSmartExpansion(tree, availableRows);
+      dispatch({ type: 'SET_EXPANDED', payload: smartExpanded });
     }
-  }, [rootPath, files]);
+  }, [rootPath, files, tree, terminalHeight]);
 
   // Load active filter presets on mount
   useEffect(() => {

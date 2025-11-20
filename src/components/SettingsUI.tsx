@@ -330,7 +330,7 @@ export const SettingsUI: React.FC<SettingsUIProps> = ({ onComplete }) => {
       </Box>
 
       <Box flexDirection="column" marginBottom={1}>
-        <Text bold color="yellowBright">📝 Filename Generation Settings</Text>
+        <Text bold color="yellowBright">Filename Generation Settings</Text>
         <Text color="dim" marginBottom={1}>Customize how output filenames are generated (affects both interactive and CLI modes)</Text>
         {filenameSettings.map((setting, index) => {
           const globalIndex = state.settings.indexOf(setting);
