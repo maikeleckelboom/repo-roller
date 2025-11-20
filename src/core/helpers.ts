@@ -366,6 +366,7 @@ export function analyzeSelectedFolders(
 
   // Extract unique nested folder paths (up to maxNestedDepth)
   const folderPaths = new Set<string>();
+  const allFolderSegments: string[][] = [];
 
   for (const path of selectedPaths) {
     // Normalize path separators
@@ -384,6 +385,8 @@ export function analyzeSelectedFolders(
       continue;
     }
 
+    allFolderSegments.push(folders);
+
     // If the folder path exceeds maxNestedDepth, take the deepest (most specific) folders
     if (folders.length > effectiveMaxNestedDepth && showTruncation) {
       // Take the last N folders (most specific) with truncation indicator at the start
@@ -400,6 +403,42 @@ export function analyzeSelectedFolders(
   // If no folders found (all files in root), return empty string
   if (folderPaths.size === 0) {
     return '';
+  }
+
+  // Special handling for deeply nested paths with common patterns
+  // If we have many deeply nested paths (indicated by truncation), find their common parent
+  // and show only the unique leaf folders to avoid repetition
+  if (allFolderSegments.length > 1 && allFolderSegments.some(f => f.length > effectiveMaxNestedDepth)) {
+    const minLength = Math.min(...allFolderSegments.map(s => s.length));
+    const commonPrefixLength = findCommonPrefixLength(allFolderSegments);
+
+    // If there's a common prefix and paths are deep, use a smarter approach
+    if (commonPrefixLength > 0 && minLength > effectiveMaxNestedDepth) {
+      // Get unique leaf folders (the most specific parts)
+      const uniqueLeaves = new Set<string>();
+      for (const segments of allFolderSegments) {
+        // Take the last folder (most specific)
+        const leaf = segments[segments.length - 1];
+        if (leaf) {
+          uniqueLeaves.add(leaf);
+        }
+      }
+
+      // If we have a reasonable number of unique leaves, use them
+      if (uniqueLeaves.size > 0 && uniqueLeaves.size <= effectiveMaxFolders) {
+        const sortedLeaves = Array.from(uniqueLeaves).sort();
+        return sortedLeaves.join(effectiveSeparator);
+      }
+
+      // Otherwise, show common parent + unique leaves
+      if (uniqueLeaves.size > effectiveMaxFolders && commonPrefixLength > 0) {
+        const commonPrefix = allFolderSegments[0]?.slice(0, commonPrefixLength) ?? [];
+        const parentName = commonPrefix[commonPrefix.length - 1];
+        if (parentName) {
+          return parentName;
+        }
+      }
+    }
   }
 
   const pathsArray = Array.from(folderPaths);
@@ -491,6 +530,31 @@ export function analyzeSelectedFolders(
 
   // Join multiple paths with the configured separator
   return sanitized.join(effectiveSeparator);
+}
+
+/**
+ * Find the length of the common prefix among folder segment arrays.
+ *
+ * @param segmentArrays - Array of folder segment arrays (e.g., [['src', 'cli'], ['src', 'core']])
+ * @returns Number of common prefix segments
+ */
+function findCommonPrefixLength(segmentArrays: string[][]): number {
+  if (segmentArrays.length === 0) {return 0;}
+  if (segmentArrays.length === 1) {return segmentArrays[0]?.length ?? 0;}
+
+  const minLength = Math.min(...segmentArrays.map(s => s.length));
+  let commonLength = 0;
+
+  for (let i = 0; i < minLength; i++) {
+    const firstSegment = segmentArrays[0]?.[i];
+    if (firstSegment !== undefined && segmentArrays.every(s => s[i] === firstSegment)) {
+      commonLength++;
+    } else {
+      break;
+    }
+  }
+
+  return commonLength;
 }
 
 /**
