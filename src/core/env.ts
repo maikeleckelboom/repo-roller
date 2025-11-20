@@ -395,6 +395,31 @@ const modelPresets = {
 } as const;
 
 /**
+ * Filename generation strategy configuration
+ */
+export type DatePosition = 'prefix' | 'suffix' | 'none';
+export type DateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'YYYY-MM' | 'YYYYMM';
+export type FilenameStrategy = 'smart' | 'simple' | 'detailed' | 'custom';
+export type TruncationPattern = '...' | '---' | '–' | '••';
+
+export interface FilenameGenerationConfig {
+  readonly strategy: FilenameStrategy;
+  readonly includeDate: boolean;
+  readonly datePosition: DatePosition;
+  readonly dateFormat: DateFormat;
+  readonly includeTime: boolean;
+  readonly timeFormat: '24h' | '12h' | 'timestamp';
+  readonly maxNestedFolders: number;
+  readonly maxFolderPaths: number;
+  readonly folderSeparator: string;
+  readonly truncationPattern: TruncationPattern;
+  readonly showTruncationEllipsis: boolean;
+  readonly includeProjectName: boolean;
+  readonly includeProfile: boolean;
+  readonly customTemplate?: string;
+}
+
+/**
  * Default configuration options
  */
 export interface DefaultConfig {
@@ -418,6 +443,7 @@ export interface DefaultConfig {
     readonly showCostEstimates: boolean;
     readonly showRecommendations: boolean;
   };
+  readonly filenameGeneration: FilenameGenerationConfig;
 }
 
 const defaults: DefaultConfig = {
@@ -440,6 +466,22 @@ const defaults: DefaultConfig = {
     showTokenWarnings: getEnvBoolean('DEFAULT_SHOW_TOKEN_WARNINGS', true),
     showCostEstimates: getEnvBoolean('DEFAULT_SHOW_COST_ESTIMATES', true),
     showRecommendations: getEnvBoolean('DEFAULT_SHOW_RECOMMENDATIONS', true),
+  },
+  filenameGeneration: {
+    strategy: getEnv('FILENAME_STRATEGY', 'smart') as FilenameStrategy,
+    includeDate: getEnvBoolean('FILENAME_INCLUDE_DATE', true),
+    datePosition: getEnv('FILENAME_DATE_POSITION', 'suffix') as DatePosition,
+    dateFormat: getEnv('FILENAME_DATE_FORMAT', 'YYYY-MM-DD') as DateFormat,
+    includeTime: getEnvBoolean('FILENAME_INCLUDE_TIME', false),
+    timeFormat: getEnv('FILENAME_TIME_FORMAT', '24h') as '24h' | '12h' | 'timestamp',
+    maxNestedFolders: getEnvNumber('FILENAME_MAX_NESTED_FOLDERS', 4),
+    maxFolderPaths: getEnvNumber('FILENAME_MAX_FOLDER_PATHS', 3),
+    folderSeparator: getEnv('FILENAME_FOLDER_SEPARATOR', '-'),
+    truncationPattern: getEnv('FILENAME_TRUNCATION_PATTERN', '...') as TruncationPattern,
+    showTruncationEllipsis: getEnvBoolean('FILENAME_SHOW_TRUNCATION_ELLIPSIS', true),
+    includeProjectName: getEnvBoolean('FILENAME_INCLUDE_PROJECT_NAME', true),
+    includeProfile: getEnvBoolean('FILENAME_INCLUDE_PROFILE', true),
+    customTemplate: getEnv('FILENAME_CUSTOM_TEMPLATE', ''),
   },
 };
 

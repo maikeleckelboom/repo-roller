@@ -349,8 +349,17 @@ export function resolveOutputPath(opts: {
 export function analyzeSelectedFolders(
   selectedPaths: readonly string[],
   maxFolders = 3,
-  maxNestedDepth = 4
+  maxNestedDepth = 4,
+  folderSeparator = '-',
+  truncationPattern = '...'
 ): string {
+  // Use provided values (defaults already set in parameters for backward compatibility)
+  const effectiveMaxFolders = maxFolders;
+  const effectiveMaxNestedDepth = maxNestedDepth;
+  const effectiveSeparator = folderSeparator;
+  const effectiveTruncation = truncationPattern;
+  const showTruncation = true; // Always show truncation when it's needed
+
   if (selectedPaths.length === 0) {
     return '';
   }
@@ -376,14 +385,15 @@ export function analyzeSelectedFolders(
     }
 
     // If the folder path exceeds maxNestedDepth, take first and last folders
-    if (folders.length > maxNestedDepth) {
+    if (folders.length > effectiveMaxNestedDepth && showTruncation) {
       // Take first folder and last folder with a separator
       const firstFolder = folders[0];
       const lastFolder = folders[folders.length - 1];
-      folderPaths.add(`${firstFolder}-...-${lastFolder}`);
+      folderPaths.add(`${firstFolder}${effectiveSeparator}${effectiveTruncation}${effectiveSeparator}${lastFolder}`);
     } else {
-      // Use the full nested path
-      folderPaths.add(folders.join('-'));
+      // Use the full nested path (limited to maxNestedDepth)
+      const limitedFolders = folders.slice(0, effectiveMaxNestedDepth);
+      folderPaths.add(limitedFolders.join(effectiveSeparator));
     }
   }
 
@@ -395,28 +405,28 @@ export function analyzeSelectedFolders(
   const pathsArray = Array.from(folderPaths);
 
   // If too many unique folder paths, find common parent or take first N
-  if (pathsArray.length > maxFolders) {
+  if (pathsArray.length > effectiveMaxFolders) {
     // Try to find common parent directory
-    const commonParent = findCommonParent(pathsArray);
+    const commonParent = findCommonParent(pathsArray, effectiveSeparator);
 
     if (commonParent) {
       // If all paths share a common parent, use that
-      return commonParent.replace(/[^a-zA-Z0-9-.]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      return commonParent.replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator).replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator).replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '');
     }
 
     // Otherwise, take the first maxFolders paths
-    const sortedPaths = pathsArray.sort().slice(0, maxFolders);
+    const sortedPaths = pathsArray.sort().slice(0, effectiveMaxFolders);
     const sanitized = sortedPaths.map(folderPath =>
       folderPath
-        .replace(/[^a-zA-Z0-9-.]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
+        .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
+        .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
+        .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
     );
-    return sanitized.join('-');
+    return sanitized.join(effectiveSeparator);
   }
 
   // Even when not exceeding maxFolders, check for common parent to avoid repetition
-  const commonParent = findCommonParent(pathsArray);
+  const commonParent = findCommonParent(pathsArray, effectiveSeparator);
 
   // If all paths share a common parent and there are unique suffixes, use only the unique parts
   if (commonParent && pathsArray.length > 1) {
@@ -428,7 +438,7 @@ export function analyzeSelectedFolders(
           return '';
         }
         // Remove common parent prefix (e.g., 'src-cli' -> 'cli' when commonParent is 'src')
-        const prefix = commonParent + '-';
+        const prefix = commonParent + effectiveSeparator;
         return path.startsWith(prefix) ? path.slice(prefix.length) : path;
       })
       .filter(suffix => suffix.length > 0); // Filter out empty strings
@@ -439,20 +449,20 @@ export function analyzeSelectedFolders(
       const sortedSuffixes = uniqueSuffixes.sort();
       const sanitized = sortedSuffixes.map(suffix =>
         suffix
-          .replace(/[^a-zA-Z0-9-.]/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
+          .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
+          .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
+          .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
       );
-      return sanitized.join('-');
+      return sanitized.join(effectiveSeparator);
     }
 
     // If some paths were the common parent itself (produced empty suffixes),
     // just return the common parent to show the full breadcrumb context
     if (uniqueSuffixes.length < pathsArray.length) {
       return commonParent
-        .replace(/[^a-zA-Z0-9-.]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
+        .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
+        .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
+        .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '');
     }
   }
 
@@ -462,13 +472,13 @@ export function analyzeSelectedFolders(
   // Sanitize folder paths (remove special chars, keep alphanumeric, dashes, and dots for separator)
   const sanitized = sortedPaths.map(folderPath =>
     folderPath
-      .replace(/[^a-zA-Z0-9-.]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
+      .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
+      .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
+      .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
   );
 
-  // Join multiple paths with kebab-case
-  return sanitized.join('-');
+  // Join multiple paths with the configured separator
+  return sanitized.join(effectiveSeparator);
 }
 
 /**
@@ -476,21 +486,22 @@ export function analyzeSelectedFolders(
  * Returns the longest common prefix that represents a complete directory.
  *
  * @param paths - Array of folder paths (e.g., ['src-cli', 'src-core', 'src-components'])
+ * @param separator - Separator used in paths (default: '-')
  * @returns Common parent path or empty string if none
  *
  * @example
  * ```typescript
- * findCommonParent(['src-cli', 'src-core', 'src-components']) // 'src'
- * findCommonParent(['a-b', 'a-c', 'a-d']) // 'a'
- * findCommonParent(['foo', 'bar']) // ''
+ * findCommonParent(['src-cli', 'src-core', 'src-components'], '-') // 'src'
+ * findCommonParent(['a-b', 'a-c', 'a-d'], '-') // 'a'
+ * findCommonParent(['foo', 'bar'], '-') // ''
  * ```
  */
-function findCommonParent(paths: string[]): string {
+function findCommonParent(paths: string[], separator = '-'): string {
   if (paths.length === 0) {return '';}
   if (paths.length === 1) {return paths[0] ?? '';}
 
-  // Split each path by '-' to get segments
-  const segments = paths.map(p => p.split('-'));
+  // Split each path by the separator to get segments
+  const segments = paths.map(p => p.split(separator));
 
   // Find the minimum segment length
   const minLength = Math.min(...segments.map(s => s.length));
@@ -506,5 +517,5 @@ function findCommonParent(paths: string[]): string {
     }
   }
 
-  return commonSegments.join('-');
+  return commonSegments.join(separator);
 }
