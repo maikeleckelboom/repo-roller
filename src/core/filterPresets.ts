@@ -2,6 +2,8 @@
  * Filter presets for controlling file visibility in tree view
  */
 
+import { minimatch } from 'minimatch';
+
 export type FilterPresetId =
   | 'config'
   | 'tests'
@@ -207,9 +209,6 @@ export function matchesPresetPatterns(
   if (patterns.length === 0) {
     return false;
   }
-
-  // Import minimatch for pattern matching
-  const minimatch = require('minimatch');
 
   return patterns.some(pattern => {
     return minimatch(filePath, pattern, {
