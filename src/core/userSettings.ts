@@ -71,6 +71,9 @@ export interface UserSettings {
 const CONFIG_DIR = join(homedir(), '.config', 'repo-roller');
 const SETTINGS_FILE = join(CONFIG_DIR, 'settings.json');
 
+// Lock to prevent concurrent writes that could corrupt the settings file
+let saveInProgress: Promise<void> | null = null;
+
 async function ensureConfigDir(): Promise<void> {
   try {
     await mkdir(CONFIG_DIR, { recursive: true });
@@ -85,14 +88,27 @@ export async function loadUserSettings(): Promise<UserSettings> {
     try {
       return JSON.parse(content) as UserSettings;
     } catch (parseError) {
-      // JSON is corrupted - warn user and return defaults
-      console.warn(
-        `WARNING: Settings file corrupted at ${SETTINGS_FILE}. Using defaults.`
-      );
-      console.warn(
-        `Error: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
-      );
-      console.warn('');
+      // JSON is corrupted - warn user ONCE and backup the file
+      const backupFile = `${SETTINGS_FILE}.backup-${Date.now()}`;
+      try {
+        await writeFile(backupFile, content, 'utf-8');
+        console.warn(
+          `WARNING: Settings file corrupted at ${SETTINGS_FILE}`
+        );
+        console.warn(
+          `Corrupted file backed up to: ${backupFile}`
+        );
+        console.warn(
+          `Error: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+        );
+        console.warn('Resetting to defaults...\n');
+
+        // Delete the corrupted file so it doesn't keep causing errors
+        const { unlink } = await import('node:fs/promises');
+        await unlink(SETTINGS_FILE);
+      } catch {
+        // Ignore backup/delete errors
+      }
       return {};
     }
   } catch {
@@ -102,10 +118,68 @@ export async function loadUserSettings(): Promise<UserSettings> {
 }
 
 export async function saveUserSettings(settings: UserSettings): Promise<void> {
-  await ensureConfigDir();
-  const current = await loadUserSettings();
-  const merged = { ...current, ...settings };
-  await writeFile(SETTINGS_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+  // Wait for any in-progress save to complete to prevent concurrent writes
+  if (saveInProgress) {
+    await saveInProgress;
+  }
+
+  // Create a new save operation and store it
+  const saveOperation = (async () => {
+    await ensureConfigDir();
+    const current = await loadUserSettings();
+
+    // Deep merge for nested objects (displaySettings, filenameSettings, etc.)
+    const merged: UserSettings = { ...current };
+
+    for (const [key, value] of Object.entries(settings)) {
+      if (value === undefined) {
+        continue;
+      }
+
+      // Handle nested objects specially to preserve existing properties
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        key in merged &&
+        typeof merged[key as keyof UserSettings] === 'object'
+      ) {
+        merged[key as keyof UserSettings] = {
+          ...(merged[key as keyof UserSettings] as any),
+          ...value,
+        } as any;
+      } else {
+        merged[key as keyof UserSettings] = value as any;
+      }
+    }
+
+    // Validate that merged settings can be serialized to valid JSON
+    try {
+      const json = JSON.stringify(merged, null, 2);
+      // Additional validation: ensure the JSON can be parsed back
+      JSON.parse(json);
+      await writeFile(SETTINGS_FILE, json, 'utf-8');
+    } catch (error) {
+      console.error('ERROR: Failed to serialize settings to JSON:', error);
+      console.error('Settings to save:', settings);
+      console.error('Current settings:', current);
+      console.error('Merged result:', merged);
+      throw new Error(
+        `Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  })();
+
+  saveInProgress = saveOperation;
+
+  try {
+    await saveOperation;
+  } finally {
+    // Clear the lock once this operation completes
+    if (saveInProgress === saveOperation) {
+      saveInProgress = null;
+    }
+  }
 }
 
 export async function getUserSetting<K extends keyof UserSettings>(
