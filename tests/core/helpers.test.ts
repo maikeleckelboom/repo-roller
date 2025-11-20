@@ -549,5 +549,24 @@ describe('helpers', () => {
       // Keeps deepest 3 folders from 5-folder path
       expect(result).toBe('...-nested-folder-structure');
     });
+
+    it('should not repeat folder names when mixing full and truncated paths', () => {
+      // This tests the specific issue: packages-core-src-errors-...-src-errors-codes
+      // Should result in unique leaf folders only, without repetition
+      const result = analyzeSelectedFolders(
+        [
+          'packages/core/src/errors/index.ts',
+          'packages/core/src/errors/codes/http.ts',
+          'packages/core/src/errors/codes/validation.ts',
+        ],
+        3,
+        4
+      );
+      // With maxNestedDepth=4 and paths of length 4 and 5:
+      // - 'packages/core/src/errors' (4 levels) -> 'packages-core-src-errors'
+      // - 'packages/core/src/errors/codes' (5 levels, exceeds 4) -> '...-src-errors-codes'
+      // These have overlapping segments 'src-errors', so should use unique leaves only
+      expect(result).toBe('codes-errors');
+    });
   });
 });

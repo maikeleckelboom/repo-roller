@@ -453,9 +453,9 @@ export function analyzeSelectedFolders(
       return commonParent.replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator).replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator).replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '');
     }
 
-    // Otherwise, take the first maxFolders paths
-    const sortedPaths = pathsArray.sort().slice(0, effectiveMaxFolders);
-    const sanitized = sortedPaths.map(folderPath =>
+    // Otherwise, take the first maxFolders paths in selection order (not alphabetically)
+    const firstNPaths = pathsArray.slice(0, effectiveMaxFolders);
+    const sanitized = firstNPaths.map(folderPath =>
       folderPath
         .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
         .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
@@ -468,7 +468,8 @@ export function analyzeSelectedFolders(
   const commonParent = findCommonParent(pathsArray, effectiveSeparator);
 
   // If all paths share a common parent and there are unique suffixes, use only the unique parts
-  if (commonParent && pathsArray.length > 1) {
+  // BUT: Don't strip the truncation marker - it's meaningful and should be preserved
+  if (commonParent && commonParent !== effectiveTruncation && pathsArray.length > 1) {
     // Extract unique suffixes by removing the common parent prefix
     const uniqueSuffixes = pathsArray
       .map(path => {
@@ -502,6 +503,72 @@ export function analyzeSelectedFolders(
         .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
         .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
         .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '');
+    }
+  }
+
+  // Check for repeating folder names (like "src-errors-...-src-errors-codes")
+  // This happens when we have both full paths and truncated paths with overlapping segments
+  const truncatedPaths = pathsArray.filter(p => p.includes(effectiveTruncation));
+  const fullPaths = pathsArray.filter(p => !p.includes(effectiveTruncation));
+
+  if (truncatedPaths.length > 0 && fullPaths.length > 0) {
+    // Extract segments from truncated paths (without the truncation marker)
+    const truncatedSegments = truncatedPaths.map(p => {
+      const withoutTruncation = p.replace(effectiveTruncation + effectiveSeparator, '');
+      return withoutTruncation.split(effectiveSeparator);
+    });
+
+    // Extract segments from full paths
+    const fullPathSegments = fullPaths.map(p => p.split(effectiveSeparator));
+
+    // Check for CONTIGUOUS overlapping segments (e.g., "src-errors" appears in both)
+    // We look for sequences of 2+ matching segments to avoid false positives
+    let hasSignificantOverlap = false;
+    for (const truncSegs of truncatedSegments) {
+      for (const fullSegs of fullPathSegments) {
+        // Check if we have at least 2 contiguous matching segments
+        for (let i = 0; i < truncSegs.length - 1; i++) {
+          const seg1 = truncSegs[i];
+          const seg2 = truncSegs[i + 1];
+          if (seg1 && seg2) {
+            // Look for this pair in the full path
+            for (let j = 0; j < fullSegs.length - 1; j++) {
+              if (fullSegs[j] === seg1 && fullSegs[j + 1] === seg2) {
+                hasSignificantOverlap = true;
+                break;
+              }
+            }
+          }
+          if (hasSignificantOverlap) {break;}
+        }
+        if (hasSignificantOverlap) {break;}
+      }
+      if (hasSignificantOverlap) {break;}
+    }
+
+    // If significant overlap detected, use only unique leaf folders to avoid repetition
+    if (hasSignificantOverlap) {
+      const uniqueLeaves = new Set<string>();
+
+      // Get leaf folders from all paths
+      for (const segments of [...fullPathSegments, ...truncatedSegments]) {
+        const leaf = segments[segments.length - 1];
+        if (leaf && leaf.length > 0 && leaf !== effectiveTruncation) {
+          uniqueLeaves.add(leaf);
+        }
+      }
+
+      // If we got unique leaves, use them instead
+      if (uniqueLeaves.size > 0) {
+        const sortedLeaves = Array.from(uniqueLeaves).sort();
+        const sanitized = sortedLeaves.map(leaf =>
+          leaf
+            .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
+            .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
+            .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
+        );
+        return sanitized.join(effectiveSeparator);
+      }
     }
   }
 
