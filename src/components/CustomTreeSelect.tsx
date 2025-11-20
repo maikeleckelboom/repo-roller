@@ -61,6 +61,7 @@ interface TreeSelectState {
   cursor: number;
   showExcluded: boolean;
   settingsLoaded: boolean;
+  treeInitialized: boolean;  // Track if tree expansion state has been initialized
   viewportOffset: number;  // First visible row in the viewport
   showFilterPresets: boolean;  // Toggle filter preset menu
   filterPresetCursor: number;  // Cursor position in filter preset menu
@@ -85,6 +86,7 @@ type TreeSelectAction =
   | { type: 'SET_SHOW_EXCLUDED'; payload: boolean }
   | { type: 'TOGGLE_SHOW_EXCLUDED' }
   | { type: 'SET_SETTINGS_LOADED'; payload: boolean }
+  | { type: 'SET_TREE_INITIALIZED'; payload: boolean }
   | { type: 'BOUND_CURSOR'; payload: { maxIndex: number } }
   | { type: 'SET_VIEWPORT_OFFSET'; payload: number }
   | { type: 'TOGGLE_FILTER_PRESETS' }
@@ -170,6 +172,9 @@ function treeSelectReducer(state: TreeSelectState, action: TreeSelectAction): Tr
 
     case 'SET_SETTINGS_LOADED':
       return { ...state, settingsLoaded: action.payload };
+
+    case 'SET_TREE_INITIALIZED':
+      return { ...state, treeInitialized: action.payload };
 
     case 'BOUND_CURSOR': {
       if (action.payload.maxIndex < 0) {
@@ -454,12 +459,13 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
     cursor: 0,
     showExcluded: true,  // Show all files by default, user can filter
     settingsLoaded: false,  // Track if we've loaded persisted settings
+    treeInitialized: false,  // Track if tree expansion has been initialized
     viewportOffset: 0,  // Start at the top of the tree
     showFilterPresets: false,  // Filter preset menu toggle
     filterPresetCursor: 0,  // Cursor position in filter preset menu
   });
 
-  const { expanded, selected, cursor, showExcluded, settingsLoaded, viewportOffset, showFilterPresets, filterPresetCursor } = state;
+  const { expanded, selected, cursor, showExcluded, settingsLoaded, treeInitialized, viewportOffset, showFilterPresets, filterPresetCursor } = state;
 
   // Track active filter presets
   const [activePresets, setActivePresets] = useState<FilterPresetId[]>([]);
@@ -527,6 +533,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
             dispatch({ type: 'SET_SELECTED', payload: new Set(validSelected) });
           }
         }
+
+        // Mark tree as initialized
+        dispatch({ type: 'SET_TREE_INITIALIZED', payload: true });
       }).catch(() => {
         // If error loading state, still apply smart expansion
         const RESERVED_LINES = env.interactive.reservedLines;
@@ -539,6 +548,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
         const smartExpanded = calculateSmartExpansion(tree, availableRows);
         dispatch({ type: 'SET_EXPANDED', payload: smartExpanded });
+
+        // Mark tree as initialized
+        dispatch({ type: 'SET_TREE_INITIALIZED', payload: true });
       });
     } else {
       // No rootPath, apply smart expansion directly
@@ -552,6 +564,9 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
 
       const smartExpanded = calculateSmartExpansion(tree, availableRows);
       dispatch({ type: 'SET_EXPANDED', payload: smartExpanded });
+
+      // Mark tree as initialized
+      dispatch({ type: 'SET_TREE_INITIALIZED', payload: true });
     }
   }, [rootPath, files, tree, terminalHeight]);
 
@@ -971,7 +986,7 @@ export const CustomTreeSelect: React.FC<CustomTreeSelectProps> = ({ files, onCom
           </Box>
 
           <Box flexDirection="column" paddingBottom={1}>
-            {renderTreeView()}
+            {treeInitialized ? renderTreeView() : null}
           </Box>
 
           <Box marginTop={1} borderStyle="round" borderColor="gray" paddingX={1}>
