@@ -42,9 +42,11 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve, join, basename, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import yaml from 'js-yaml';
 import type {
   CliOptions,
@@ -57,6 +59,7 @@ import type {
 import { getBuiltInPreset, listBuiltInPresets } from './builtInPresets.js';
 import { normalizeExtension } from './helpers.js';
 import { env } from './env.js';
+import { getGitContext, formatGitContextForFilename } from './gitContext.js';
 
 /**
  * Format date according to the specified format
@@ -104,6 +107,53 @@ function formatTime(date: Date, format: '24h' | '12h' | 'timestamp'): string {
 }
 
 /**
+ * Convert path separator style to actual separator character
+ */
+function getPathSeparatorChar(style: string): string {
+  switch (style) {
+    case 'dot':
+      return '.';
+    case 'plus':
+      return '+';
+    case 'underscore':
+      return '_';
+    case 'dash':
+    default:
+      return '-';
+  }
+}
+
+/**
+ * Hash a string to a short identifier (first 8 chars of MD5)
+ */
+function hashString(str: string): string {
+  return createHash('md5').update(str).digest('hex').substring(0, 8);
+}
+
+/**
+ * Generate a unique filename by appending a number if collision detected
+ * Uses synchronous fs operations to maintain backwards compatibility
+ */
+function avoidCollision(filepath: string): string {
+  if (!existsSync(filepath)) {
+    return filepath;
+  }
+
+  const ext = filepath.substring(filepath.lastIndexOf('.'));
+  const base = filepath.substring(0, filepath.lastIndexOf('.'));
+
+  let counter = 1;
+  let newPath = `${base}-${counter}${ext}`;
+
+  while (existsSync(newPath)) {
+    counter++;
+    newPath = `${base}-${counter}${ext}`;
+  }
+
+  return newPath;
+}
+
+/**
  * Get a smart project name that includes nested directories
  * from the repository root if we're in a git repo
  */
@@ -131,17 +181,20 @@ function getSmartProjectName(root: string, config = env.defaults.filenameGenerat
     // Limit to configurable nested levels
     const maxNestedLevels = config.maxNestedFolders;
 
+    // Get the appropriate separator based on pathSeparator setting
+    const separator = getPathSeparatorChar(config.pathSeparator);
+
     if (pathParts.length > maxNestedLevels && config.showTruncationEllipsis) {
       // Show first and last with truncation pattern in between
       const firstPart = pathParts[0];
       const lastPart = pathParts[pathParts.length - 1];
-      return [repoName, firstPart, config.truncationPattern, lastPart].join(config.folderSeparator);
+      return [repoName, firstPart, config.truncationPattern, lastPart].join(separator);
     }
 
     const selectedParts = pathParts.slice(0, maxNestedLevels);
 
     // Combine repo name with nested path
-    return [repoName, ...selectedParts].join(config.folderSeparator);
+    return [repoName, ...selectedParts].join(separator);
   } catch {
     // Not in a git repo or git command failed, fall back to basename
     return basename(root) || 'code';
@@ -152,38 +205,60 @@ function getSmartProjectName(root: string, config = env.defaults.filenameGenerat
  * Generate contextual output filename with smart naming
  * Supports multiple strategies: smart, simple, detailed, custom
  */
-async function generateSmartOutputFile(
+function generateSmartOutputFile(
   root: string,
   format: OutputFormat,
   profile: string,
   template?: string,
-  configOverride?: Partial<typeof env.defaults.filenameGeneration>
-): Promise<string> {
-  // Load user filename settings and merge with defaults
-  const { getFilenameSettings } = await import('./userSettings.js');
-  const userSettings = await getFilenameSettings();
-
-  // Merge: env defaults < user settings < config override
+  configOverride?: Partial<typeof env.defaults.filenameGeneration>,
+  tokenCount?: number
+): string {
+  // Use env defaults as base (user settings can be passed via configOverride)
   const config = {
     ...env.defaults.filenameGeneration,
-    ...userSettings,
     ...(configOverride || {}),
   };
   const now = new Date();
 
+  // Get git context if enabled
+  const gitContext = config.includeGitContext ? getGitContext(root) : null;
+
+  // Build template variables object
+  const projectName = getSmartProjectName(root, config);
+  const repoName = basename(root);
+  const relativePath = relative(root, root) || '.';
+
+  const variables: Record<string, string> = {
+    '{project}': projectName,
+    '{repo}': repoName,
+    '{path}': relativePath.split(sep).join(getPathSeparatorChar(config.pathSeparator)),
+    '{profile}': profile,
+    '{date}': formatDate(now, config.dateFormat),
+    '{time}': formatTime(now, config.timeFormat),
+    '{timestamp}': String(now.getTime()),
+    '{ext}': format,
+    '{format}': format,
+    '{branch}': gitContext?.branch || '',
+    '{hash}': gitContext?.shortHash || '',
+    '{tag}': gitContext?.tag || '',
+    '{label}': config.customLabel || '',
+    '{tokens}': tokenCount && config.includeTokenCount ? `${Math.round(tokenCount / 1000)}k` : '',
+  };
+
   // Handle custom template strategy
   if (template || (config.strategy === 'custom' && config.customTemplate)) {
     const effectiveTemplate = template || config.customTemplate || '';
-    const projectName = getSmartProjectName(root, config);
 
-    return effectiveTemplate
-      .replace('{project}', projectName)
-      .replace('{profile}', profile)
-      .replace('{date}', formatDate(now, config.dateFormat))
-      .replace('{time}', formatTime(now, config.timeFormat))
-      .replace('{timestamp}', String(now.getTime()))
-      .replace('{ext}', format)
-      .replace('{format}', format);
+    // Replace all variables in template
+    let filename = effectiveTemplate;
+    for (const [key, value] of Object.entries(variables)) {
+      filename = filename.replace(new RegExp(key, 'g'), value);
+    }
+
+    // Clean up any empty segments (multiple dashes/separators in a row)
+    filename = filename.replace(/[-_.+]{2,}/g, '-').replace(/^[-_.+]+|[-_.+]+$/g, '');
+
+    return filename;
   }
 
   const parts: string[] = [];
@@ -200,8 +275,20 @@ async function generateSmartOutputFile(
 
   // Project name (if enabled)
   if (config.includeProjectName) {
-    const projectName = getSmartProjectName(root, config);
     parts.push(projectName);
+  }
+
+  // Git context (if enabled and available)
+  if (config.includeGitContext && gitContext?.isRepo) {
+    const gitPart = formatGitContextForFilename(gitContext, false);
+    if (gitPart) {
+      parts.push(gitPart);
+    }
+  }
+
+  // Custom label (if provided)
+  if (config.customLabel) {
+    parts.push(config.customLabel);
   }
 
   // Profile name (if enabled and not default)
@@ -217,6 +304,12 @@ async function generateSmartOutputFile(
     } else {
       parts.push(datePart);
     }
+  }
+
+  // Token count suffix (if enabled and available)
+  if (config.includeTokenCount && tokenCount) {
+    const tokenSuffix = `${Math.round(tokenCount / 1000)}k-tokens`;
+    parts.push(tokenSuffix);
   }
 
   // Apply strategy-specific formatting
@@ -239,7 +332,37 @@ async function generateSmartOutputFile(
       break;
   }
 
-  return `${filename}.${format}`;
+  // Construct full filename with extension
+  let fullFilename = `${filename}.${format}`;
+
+  // Apply Windows safe mode if enabled and filename is too long
+  if (config.enableWindowsSafeMode && fullFilename.length > config.maxFilenameLength) {
+    // Keep date and essential parts, hash the project name
+    const essentialParts: string[] = [];
+
+    if (config.includeDate) {
+      const datePart = formatDate(now, config.dateFormat);
+      essentialParts.push(datePart);
+    }
+
+    // Hash the project name to keep it short
+    const projectHash = hashString(projectName);
+    essentialParts.push(repoName);
+    essentialParts.push(projectHash);
+
+    if (config.customLabel) {
+      essentialParts.push(config.customLabel);
+    }
+
+    fullFilename = `${essentialParts.join('-')}.${format}`;
+  }
+
+  // Handle collision prevention
+  if (config.preventCollisions) {
+    fullFilename = avoidCollision(fullFilename);
+  }
+
+  return fullFilename;
 }
 
 /**
@@ -448,11 +571,11 @@ const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
  * 3. CLI overrides
  * 4. RepoRoller YAML config
  */
-export async function resolveOptions(
+export function resolveOptions(
   cli: CliOptions,
   config: RollerConfig | undefined,
   repoRollerConfig?: RepoRollerYmlConfig
-): Promise<ResolvedOptions> {
+): ResolvedOptions {
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
 
@@ -507,8 +630,53 @@ export async function resolveOptions(
     // User explicitly specified output file
     outFile = cli.out;
   } else {
+    // Build filename generation config overrides from CLI options
+    const filenameConfigOverride: any = {};
+
+    if (cli.nameTemplate) {
+      filenameConfigOverride.customTemplate = cli.nameTemplate;
+      filenameConfigOverride.strategy = 'custom';
+    }
+
+    if (cli.pathSeparator) {
+      const validSeparators = ['dash', 'dot', 'plus', 'underscore'];
+      if (validSeparators.includes(cli.pathSeparator)) {
+        filenameConfigOverride.pathSeparator = cli.pathSeparator;
+      }
+    }
+
+    if (cli.label) {
+      filenameConfigOverride.customLabel = cli.label;
+    }
+
+    if (cli.noDate !== undefined) {
+      filenameConfigOverride.includeDate = !cli.noDate;
+    }
+
+    if (cli.useTime) {
+      filenameConfigOverride.includeTime = true;
+    }
+
+    if (cli.prefixDate) {
+      filenameConfigOverride.datePosition = 'prefix';
+    }
+
+    if (cli.showTokens) {
+      filenameConfigOverride.includeTokenCount = true;
+    }
+
+    if (cli.force !== undefined) {
+      filenameConfigOverride.preventCollisions = !cli.force;
+    }
+
     // Default to smart naming (project-date.ext)
-    outFile = await generateSmartOutputFile(root, format, profile, cli.outTemplate);
+    outFile = generateSmartOutputFile(
+      root,
+      format,
+      profile,
+      cli.outTemplate || cli.nameTemplate,
+      filenameConfigOverride
+    );
   }
 
   // Handle language shortcuts

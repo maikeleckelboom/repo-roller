@@ -238,6 +238,15 @@ export interface CliOptions {
   readonly showProfile?: string;
   readonly examples?: boolean;
   readonly outTemplate?: string;
+  // Filename generation options
+  readonly nameTemplate?: string;
+  readonly pathSeparator?: string;
+  readonly label?: string;
+  readonly noDate?: boolean;
+  readonly useTime?: boolean;
+  readonly prefixDate?: boolean;
+  readonly showTokens?: boolean;
+  readonly force?: boolean;
   // Format-specific options
   readonly compact?: boolean;
   readonly indent?: number;
