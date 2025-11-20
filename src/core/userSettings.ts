@@ -2,6 +2,12 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import type { FilterPresetId } from './filterPresets.js';
+import type {
+  DatePosition,
+  DateFormat,
+  FilenameStrategy,
+  TruncationPattern,
+} from './env.js';
 
 export interface DisplaySettings {
   showGenerationSummary?: boolean;
@@ -11,6 +17,23 @@ export interface DisplaySettings {
   showTokenWarnings?: boolean;
   showCostEstimates?: boolean;
   showRecommendations?: boolean;
+}
+
+export interface FilenameGenerationSettings {
+  strategy?: FilenameStrategy;
+  includeDate?: boolean;
+  datePosition?: DatePosition;
+  dateFormat?: DateFormat;
+  includeTime?: boolean;
+  timeFormat?: '24h' | '12h' | 'timestamp';
+  maxNestedFolders?: number;
+  maxFolderPaths?: number;
+  folderSeparator?: string;
+  truncationPattern?: TruncationPattern;
+  showTruncationEllipsis?: boolean;
+  includeProjectName?: boolean;
+  includeProfile?: boolean;
+  customTemplate?: string;
 }
 
 export interface TreeViewState {
@@ -27,6 +50,8 @@ export interface UserSettings {
   withStats?: boolean;
   // Display preferences for CLI output
   displaySettings?: DisplaySettings;
+  // Filename generation preferences
+  filenameSettings?: FilenameGenerationSettings;
   // Tree view state persistence (consolidated - replaces lastSelectedFiles)
   treeViewState?: TreeViewState;
   // Tree view filter presets (which file types to hide)
@@ -121,6 +146,51 @@ export async function resetDisplaySettings(): Promise<void> {
   const current = await loadUserSettings();
   // Remove displaySettings entirely to use defaults
   const { displaySettings: _, ...rest } = current;
+  await ensureConfigDir();
+  await writeFile(SETTINGS_FILE, JSON.stringify(rest, null, 2), 'utf-8');
+}
+
+export const DEFAULT_FILENAME_SETTINGS: Required<FilenameGenerationSettings> = {
+  strategy: 'smart',
+  includeDate: true,
+  datePosition: 'suffix',
+  dateFormat: 'YYYY-MM-DD',
+  includeTime: false,
+  timeFormat: '24h',
+  maxNestedFolders: 4,
+  maxFolderPaths: 3,
+  folderSeparator: '-',
+  truncationPattern: '...',
+  showTruncationEllipsis: true,
+  includeProjectName: true,
+  includeProfile: true,
+  customTemplate: '',
+};
+
+export async function getFilenameSettings(): Promise<Required<FilenameGenerationSettings>> {
+  const settings = await loadUserSettings();
+  return {
+    ...DEFAULT_FILENAME_SETTINGS,
+    ...(settings.filenameSettings || {}),
+  };
+}
+
+export async function setFilenameSetting<K extends keyof FilenameGenerationSettings>(
+  key: K,
+  value: FilenameGenerationSettings[K]
+): Promise<void> {
+  const current = await loadUserSettings();
+  const updatedFilenameSettings = {
+    ...(current.filenameSettings || {}),
+    [key]: value,
+  };
+  await saveUserSettings({ filenameSettings: updatedFilenameSettings });
+}
+
+export async function resetFilenameSettings(): Promise<void> {
+  const current = await loadUserSettings();
+  // Remove filenameSettings entirely to use defaults
+  const { filenameSettings: _, ...rest } = current;
   await ensureConfigDir();
   await writeFile(SETTINGS_FILE, JSON.stringify(rest, null, 2), 'utf-8');
 }

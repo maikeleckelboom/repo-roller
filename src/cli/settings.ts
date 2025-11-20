@@ -7,7 +7,12 @@ import {
   resetAllSettings,
   DEFAULT_DISPLAY_SETTINGS,
   DEFAULT_INTERACTIVE_SETTINGS,
+  DEFAULT_FILENAME_SETTINGS,
+  getFilenameSettings,
+  setFilenameSetting,
+  resetFilenameSettings,
   type DisplaySettings,
+  type FilenameGenerationSettings,
 } from '../core/userSettings.js';
 import * as ui from '../core/ui.js';
 import { render } from 'ink';
@@ -143,6 +148,182 @@ export async function resetAllSettingsCommand(): Promise<void> {
   for (const [key, value] of Object.entries(DEFAULT_DISPLAY_SETTINGS)) {
     const icon = value ? ui.colors.success(ui.symbols.check) : ui.colors.error(ui.symbols.cross);
     console.log(`  ${icon} ${key}: ${value}`);
+  }
+  console.log('');
+}
+
+/**
+ * Display filename generation settings
+ */
+export async function displayFilenameSettings(): Promise<void> {
+  console.log(ui.header());
+  console.log(ui.section('Filename Generation Settings'));
+
+  const filenameSettings = await getFilenameSettings();
+
+  console.log(ui.colors.dim('  Current settings (stored in ~/.config/repo-roller/settings.json)'));
+  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(60)));
+  console.log('');
+
+  const settingLabels: Record<keyof FilenameGenerationSettings, string> = {
+    strategy: 'Strategy',
+    includeDate: 'Include Date',
+    datePosition: 'Date Position',
+    dateFormat: 'Date Format',
+    includeTime: 'Include Time',
+    timeFormat: 'Time Format',
+    maxNestedFolders: 'Max Nested Folders',
+    maxFolderPaths: 'Max Folder Paths',
+    folderSeparator: 'Folder Separator',
+    truncationPattern: 'Truncation Pattern',
+    showTruncationEllipsis: 'Show Truncation',
+    includeProjectName: 'Include Project Name',
+    includeProfile: 'Include Profile',
+    customTemplate: 'Custom Template',
+  };
+
+  for (const [key, label] of Object.entries(settingLabels)) {
+    const value = filenameSettings[key as keyof FilenameGenerationSettings];
+    const displayValue =
+      typeof value === 'boolean'
+        ? (value ? ui.colors.success('yes') : ui.colors.warning('no'))
+        : ui.colors.primary(String(value));
+    console.log(`  ${ui.colors.muted(ui.symbols.bullet)} ${label.padEnd(22)} ${displayValue}`);
+  }
+
+  console.log('');
+  console.log(ui.colors.dim('  Examples'));
+  console.log(ui.colors.muted('  ' + ui.symbols.line.repeat(60)));
+  console.log(ui.bullet(ui.colors.muted('repo-roller settings --set filename.includeDate=false')));
+  console.log(ui.bullet(ui.colors.muted('repo-roller settings --set filename.datePosition=prefix')));
+  console.log(ui.bullet(ui.colors.muted('repo-roller settings --set filename.strategy=simple')));
+  console.log(ui.bullet(ui.colors.muted('repo-roller settings --set filename.maxNestedFolders=6')));
+  console.log(ui.bullet(ui.colors.muted('repo-roller settings --reset-filename')));
+  console.log('');
+}
+
+/**
+ * Set a filename generation setting
+ */
+export async function setFilenameSettingCommand(key: string, value: string): Promise<void> {
+  const validKeys: (keyof FilenameGenerationSettings)[] = [
+    'strategy',
+    'includeDate',
+    'datePosition',
+    'dateFormat',
+    'includeTime',
+    'timeFormat',
+    'maxNestedFolders',
+    'maxFolderPaths',
+    'folderSeparator',
+    'truncationPattern',
+    'showTruncationEllipsis',
+    'includeProjectName',
+    'includeProfile',
+    'customTemplate',
+  ];
+
+  // Allow friendly aliases
+  const keyMap: Record<string, keyof FilenameGenerationSettings> = {
+    'date': 'includeDate',
+    'date-position': 'datePosition',
+    'date-format': 'dateFormat',
+    'time': 'includeTime',
+    'time-format': 'timeFormat',
+    'nested': 'maxNestedFolders',
+    'folders': 'maxFolderPaths',
+    'separator': 'folderSeparator',
+    'truncation': 'truncationPattern',
+    'project': 'includeProjectName',
+    'profile': 'includeProfile',
+    'template': 'customTemplate',
+  };
+
+  const normalizedKey = keyMap[key.toLowerCase()] || key;
+
+  if (!validKeys.includes(normalizedKey as keyof FilenameGenerationSettings)) {
+    console.error(ui.error(`Invalid setting key: ${key}`));
+    console.error('');
+    console.error(ui.colors.dim('  Valid keys:'));
+    for (const k of validKeys) {
+      console.error(ui.bullet(ui.colors.muted(k)));
+    }
+    console.error('');
+    console.error(ui.colors.dim('  Aliases:'));
+    for (const [alias, target] of Object.entries(keyMap)) {
+      console.error(ui.bullet(ui.colors.muted(`${alias} -> ${target}`)));
+    }
+    process.exit(1);
+  }
+
+  // Parse value based on type
+  let parsedValue: any = value;
+
+  // Boolean values
+  if (['includeDate', 'includeTime', 'showTruncationEllipsis', 'includeProjectName', 'includeProfile'].includes(normalizedKey)) {
+    if (!['true', 'false', '1', '0', 'on', 'off', 'yes', 'no'].includes(value.toLowerCase())) {
+      console.error(ui.error(`Invalid boolean value: ${value}. Use: true/false, on/off, yes/no, 1/0`));
+      process.exit(1);
+    }
+    parsedValue = value === 'true' || value === '1' || value === 'on' || value === 'yes';
+  }
+
+  // Number values
+  else if (['maxNestedFolders', 'maxFolderPaths'].includes(normalizedKey)) {
+    parsedValue = parseInt(value, 10);
+    if (isNaN(parsedValue) || parsedValue < 1) {
+      console.error(ui.error(`Invalid number value: ${value}. Must be a positive integer`));
+      process.exit(1);
+    }
+  }
+
+  // Enum values with validation
+  else if (normalizedKey === 'strategy') {
+    if (!['smart', 'simple', 'detailed', 'custom'].includes(value)) {
+      console.error(ui.error(`Invalid strategy: ${value}. Use: smart, simple, detailed, custom`));
+      process.exit(1);
+    }
+  }
+  else if (normalizedKey === 'datePosition') {
+    if (!['prefix', 'suffix', 'none'].includes(value)) {
+      console.error(ui.error(`Invalid date position: ${value}. Use: prefix, suffix, none`));
+      process.exit(1);
+    }
+  }
+  else if (normalizedKey === 'dateFormat') {
+    if (!['YYYY-MM-DD', 'YYYYMMDD', 'YYYY-MM', 'YYYYMM'].includes(value)) {
+      console.error(ui.error(`Invalid date format: ${value}. Use: YYYY-MM-DD, YYYYMMDD, YYYY-MM, YYYYMM`));
+      process.exit(1);
+    }
+  }
+  else if (normalizedKey === 'timeFormat') {
+    if (!['24h', '12h', 'timestamp'].includes(value)) {
+      console.error(ui.error(`Invalid time format: ${value}. Use: 24h, 12h, timestamp`));
+      process.exit(1);
+    }
+  }
+  else if (normalizedKey === 'truncationPattern') {
+    if (!['...', '---', '–', '••'].includes(value)) {
+      console.error(ui.error(`Invalid truncation pattern: ${value}. Use: ..., ---, –, ••`));
+      process.exit(1);
+    }
+  }
+
+  await setFilenameSetting(normalizedKey as keyof FilenameGenerationSettings, parsedValue);
+  console.log(ui.success(`Set ${normalizedKey} to ${parsedValue}`));
+}
+
+/**
+ * Reset filename settings to defaults
+ */
+export async function resetFilenameSettingsCommand(): Promise<void> {
+  await resetFilenameSettings();
+  console.log(ui.success('Filename generation settings reset to defaults'));
+  console.log('');
+  console.log(ui.colors.dim('  Defaults:'));
+
+  for (const [key, value] of Object.entries(DEFAULT_FILENAME_SETTINGS)) {
+    console.log(`  ${ui.colors.muted(ui.symbols.bullet)} ${key}: ${ui.colors.primary(String(value))}`);
   }
   console.log('');
 }

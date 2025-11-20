@@ -263,7 +263,7 @@ export async function executeMainCommand(ctx: CommandContext): Promise<void> {
     _userDisplaySettings: userDisplaySettings,
   };
 
-  let resolved = resolveOptions(cliOptionsWithUserSettings, ctx.config, ctx.repoRollerConfig);
+  let resolved = await resolveOptions(cliOptionsWithUserSettings, ctx.config, ctx.repoRollerConfig);
 
   // Now properly merge: user settings as base, then CLI overrides
   // Each setting should be evaluated individually, not all-or-nothing

@@ -257,7 +257,7 @@ function createHandlers(
       const repoRollerConfig = await loadRepoRollerYml(root);
 
       // Resolve options
-      const options = resolveOptions(
+      const options = await resolveOptions(
         {
           root,
           preset: params.preset as string | undefined,
@@ -309,7 +309,7 @@ function createHandlers(
       const repoRollerConfig = await loadRepoRollerYml(root);
 
       // Resolve options
-      const options = resolveOptions(
+      const options = await resolveOptions(
         {
           root,
           preset: params.preset as string | undefined,

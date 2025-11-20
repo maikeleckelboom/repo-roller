@@ -114,9 +114,11 @@ async function main(): Promise<void> {
     .command('settings')
     .description('Manage CLI display settings and preferences')
     .option('--show', 'Show current display settings (default)')
-    .option('--set <key=value>', 'Set a specific setting (e.g., showCodeComposition=false)')
+    .option('--show-filename', 'Show filename generation settings')
+    .option('--set <key=value>', 'Set a specific setting (e.g., showCodeComposition=false, filename.includeDate=true)')
     .option('--reset', 'Reset display settings to defaults')
-    .option('--reset-all', 'Reset ALL settings to defaults (display + interactive preferences)')
+    .option('--reset-filename', 'Reset filename generation settings to defaults')
+    .option('--reset-all', 'Reset ALL settings to defaults (display + interactive + filename preferences)')
     .option('--all', 'Show all user settings (not just display)')
     .option('--export', 'Export settings as JSON')
     .option('--import <json>', 'Import settings from JSON string')
@@ -353,26 +355,47 @@ async function handleDaemonCommand(options: {
  */
 async function handleSettingsCommand(options: {
   show?: boolean;
+  showFilename?: boolean;
   set?: string;
   reset?: boolean;
+  resetFilename?: boolean;
   resetAll?: boolean;
   all?: boolean;
   export?: boolean;
   import?: string;
   path?: boolean;
 }): Promise<void> {
+  const {
+    displayFilenameSettings,
+    setFilenameSettingCommand,
+    resetFilenameSettingsCommand,
+  } = await import('./cli/settings.js');
+
   if (options.set) {
     const [key, value] = options.set.split('=');
     if (!key || !value) {
       console.error(ui.error('Invalid format. Use: --set key=value'));
-      console.error(ui.colors.dim('  Example: repo-roller settings --set showCodeComposition=false'));
+      console.error(ui.colors.dim('  Examples:'));
+      console.error(ui.colors.dim('    repo-roller settings --set showCodeComposition=false'));
+      console.error(ui.colors.dim('    repo-roller settings --set filename.includeDate=true'));
       process.exit(1);
     }
-    await setDisplaySettingCommand(key, value);
+
+    // Check if this is a filename setting (starts with 'filename.')
+    if (key.startsWith('filename.')) {
+      const filenameKey = key.substring('filename.'.length);
+      await setFilenameSettingCommand(filenameKey, value);
+    } else {
+      await setDisplaySettingCommand(key, value);
+    }
   } else if (options.resetAll) {
     await resetAllSettingsCommand();
+  } else if (options.resetFilename) {
+    await resetFilenameSettingsCommand();
   } else if (options.reset) {
     await resetDisplaySettingsCommand();
+  } else if (options.showFilename) {
+    await displayFilenameSettings();
   } else if (options.all) {
     await displayAllSettings();
   } else if (options.export) {

@@ -59,10 +59,55 @@ import { normalizeExtension } from './helpers.js';
 import { env } from './env.js';
 
 /**
- * Get a smart project name that includes nested directories (up to 5 levels deep)
+ * Format date according to the specified format
+ */
+function formatDate(date: Date, format: string): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  switch (format) {
+    case 'YYYY-MM-DD':
+      return `${year}-${month}-${day}`;
+    case 'YYYYMMDD':
+      return `${year}${month}${day}`;
+    case 'YYYY-MM':
+      return `${year}-${month}`;
+    case 'YYYYMM':
+      return `${year}${month}`;
+    default:
+      return `${year}-${month}-${day}`;
+  }
+}
+
+/**
+ * Format time according to the specified format
+ */
+function formatTime(date: Date, format: '24h' | '12h' | 'timestamp'): string {
+  if (format === 'timestamp') {
+    return String(date.getTime());
+  }
+
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  if (format === '24h') {
+    return `${String(hours).padStart(2, '0')}${minutes}${seconds}`;
+  }
+
+  // 12h format
+  const isPM = hours >= 12;
+  const hours12 = hours % 12 || 12;
+  const period = isPM ? 'PM' : 'AM';
+  return `${String(hours12).padStart(2, '0')}${minutes}${period}`;
+}
+
+/**
+ * Get a smart project name that includes nested directories
  * from the repository root if we're in a git repo
  */
-function getSmartProjectName(root: string): string {
+function getSmartProjectName(root: string, config = env.defaults.filenameGeneration): string {
   try {
     // Try to get the git repository root
     const repoRoot = execSync('git rev-parse --show-toplevel', {
@@ -79,16 +124,24 @@ function getSmartProjectName(root: string): string {
       return basename(repoRoot) || 'code';
     }
 
-    // Split the path into parts and take up to 5 levels (including repo name)
+    // Split the path into parts and take up to configured levels (including repo name)
     const repoName = basename(repoRoot);
     const pathParts = relativePath.split(sep);
 
-    // Limit to configurable nested levels (plus repo name = total)
-    const maxNestedLevels = env.defaults.maxNestedFolders;
+    // Limit to configurable nested levels
+    const maxNestedLevels = config.maxNestedFolders;
+
+    if (pathParts.length > maxNestedLevels && config.showTruncationEllipsis) {
+      // Show first and last with truncation pattern in between
+      const firstPart = pathParts[0];
+      const lastPart = pathParts[pathParts.length - 1];
+      return [repoName, firstPart, config.truncationPattern, lastPart].join(config.folderSeparator);
+    }
+
     const selectedParts = pathParts.slice(0, maxNestedLevels);
 
     // Combine repo name with nested path
-    return [repoName, ...selectedParts].join('-');
+    return [repoName, ...selectedParts].join(config.folderSeparator);
   } catch {
     // Not in a git repo or git command failed, fall back to basename
     return basename(root) || 'code';
@@ -97,32 +150,96 @@ function getSmartProjectName(root: string): string {
 
 /**
  * Generate contextual output filename with smart naming
+ * Supports multiple strategies: smart, simple, detailed, custom
  */
-function generateSmartOutputFile(
+async function generateSmartOutputFile(
   root: string,
   format: OutputFormat,
   profile: string,
-  template?: string
-): string {
-  // Use slice instead of split to avoid TypeScript type issues
-  const timestamp = new Date().toISOString().slice(0, 10); // 2025-11-12
+  template?: string,
+  configOverride?: Partial<typeof env.defaults.filenameGeneration>
+): Promise<string> {
+  // Load user filename settings and merge with defaults
+  const { getFilenameSettings } = await import('./userSettings.js');
+  const userSettings = await getFilenameSettings();
 
-  // Get smart project name with nested directories
-  const projectName = getSmartProjectName(root);
+  // Merge: env defaults < user settings < config override
+  const config = {
+    ...env.defaults.filenameGeneration,
+    ...userSettings,
+    ...(configOverride || {}),
+  };
+  const now = new Date();
 
-  // Only add profile suffix if it's not the default
-  const profileSuffix = profile !== 'llm-context' ? `-${profile}` : '';
+  // Handle custom template strategy
+  if (template || (config.strategy === 'custom' && config.customTemplate)) {
+    const effectiveTemplate = template || config.customTemplate || '';
+    const projectName = getSmartProjectName(root, config);
 
-  if (template) {
-    // Custom template support
-    return template
+    return effectiveTemplate
       .replace('{project}', projectName)
       .replace('{profile}', profile)
-      .replace('{date}', timestamp)
-      .replace('{ext}', format);
+      .replace('{date}', formatDate(now, config.dateFormat))
+      .replace('{time}', formatTime(now, config.timeFormat))
+      .replace('{timestamp}', String(now.getTime()))
+      .replace('{ext}', format)
+      .replace('{format}', format);
   }
 
-  return `${projectName}${profileSuffix}-${timestamp}.${format}`;
+  const parts: string[] = [];
+
+  // Date/time prefix (if enabled and position is 'prefix')
+  if (config.includeDate && config.datePosition === 'prefix') {
+    const datePart = formatDate(now, config.dateFormat);
+    if (config.includeTime) {
+      parts.push(`${datePart}-${formatTime(now, config.timeFormat)}`);
+    } else {
+      parts.push(datePart);
+    }
+  }
+
+  // Project name (if enabled)
+  if (config.includeProjectName) {
+    const projectName = getSmartProjectName(root, config);
+    parts.push(projectName);
+  }
+
+  // Profile name (if enabled and not default)
+  if (config.includeProfile && profile !== 'llm-context') {
+    parts.push(profile);
+  }
+
+  // Date/time suffix (if enabled and position is 'suffix')
+  if (config.includeDate && config.datePosition === 'suffix') {
+    const datePart = formatDate(now, config.dateFormat);
+    if (config.includeTime) {
+      parts.push(`${datePart}-${formatTime(now, config.timeFormat)}`);
+    } else {
+      parts.push(datePart);
+    }
+  }
+
+  // Apply strategy-specific formatting
+  let filename: string;
+  switch (config.strategy) {
+    case 'simple':
+      // Simple: just basename + date (if enabled) + format
+      filename = parts.length > 0 ? parts.join('-') : 'output';
+      break;
+
+    case 'detailed':
+      // Detailed: include everything with verbose naming
+      filename = parts.length > 0 ? parts.join('-') : 'source_code';
+      break;
+
+    case 'smart':
+    default:
+      // Smart: balanced approach (current default behavior)
+      filename = parts.length > 0 ? parts.join('-') : 'source_code';
+      break;
+  }
+
+  return `${filename}.${format}`;
 }
 
 /**
@@ -331,11 +448,11 @@ const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
  * 3. CLI overrides
  * 4. RepoRoller YAML config
  */
-export function resolveOptions(
+export async function resolveOptions(
   cli: CliOptions,
   config: RollerConfig | undefined,
   repoRollerConfig?: RepoRollerYmlConfig
-): ResolvedOptions {
+): Promise<ResolvedOptions> {
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
 
@@ -391,7 +508,7 @@ export function resolveOptions(
     outFile = cli.out;
   } else {
     // Default to smart naming (project-date.ext)
-    outFile = generateSmartOutputFile(root, format, profile, cli.outTemplate);
+    outFile = await generateSmartOutputFile(root, format, profile, cli.outTemplate);
   }
 
   // Handle language shortcuts
