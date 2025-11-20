@@ -353,250 +353,132 @@ export function analyzeSelectedFolders(
   folderSeparator = '-',
   truncationPattern = '...'
 ): string {
-  // Use provided values (defaults already set in parameters for backward compatibility)
-  const effectiveMaxFolders = maxFolders;
-  const effectiveMaxNestedDepth = maxNestedDepth;
-  const effectiveSeparator = folderSeparator;
-  const effectiveTruncation = truncationPattern;
-  const showTruncation = true; // Always show truncation when it's needed
-
   if (selectedPaths.length === 0) {
     return '';
   }
 
-  // Extract unique nested folder paths (up to maxNestedDepth)
-  const folderPaths = new Set<string>();
+  // Extract all folder segments from selected paths
   const allFolderSegments: string[][] = [];
 
   for (const path of selectedPaths) {
-    // Normalize path separators
     const normalizedPath = path.replace(/\\/g, '/');
     const parts = normalizedPath.split('/');
 
-    // Skip files in root directory (no folder path)
+    // Skip files in root directory
     if (parts.length <= 1) {
       continue;
     }
 
-    // Remove the filename (last part)
     const folders = parts.slice(0, -1);
-
-    if (folders.length === 0) {
-      continue;
-    }
-
-    allFolderSegments.push(folders);
-
-    // If the folder path exceeds maxNestedDepth, take the deepest (most specific) folders
-    if (folders.length > effectiveMaxNestedDepth && showTruncation) {
-      // Take the last N folders (most specific) with truncation indicator at the start
-      const depthToKeep = Math.min(effectiveMaxNestedDepth - 1, folders.length - 1);
-      const deepFolders = folders.slice(-depthToKeep);
-      folderPaths.add(`${effectiveTruncation}${effectiveSeparator}${deepFolders.join(effectiveSeparator)}`);
-    } else {
-      // Use the full nested path (limited to maxNestedDepth)
-      const limitedFolders = folders.slice(0, effectiveMaxNestedDepth);
-      folderPaths.add(limitedFolders.join(effectiveSeparator));
+    if (folders.length > 0) {
+      allFolderSegments.push(folders);
     }
   }
 
-  // If no folders found (all files in root), return empty string
-  if (folderPaths.size === 0) {
+  if (allFolderSegments.length === 0) {
     return '';
   }
 
-  // Special handling for deeply nested paths with common patterns
-  // If we have many deeply nested paths (indicated by truncation), find their common parent
-  // and show only the unique leaf folders to avoid repetition
-  if (allFolderSegments.length > 1 && allFolderSegments.some(f => f.length > effectiveMaxNestedDepth)) {
-    const minLength = Math.min(...allFolderSegments.map(s => s.length));
-    const commonPrefixLength = findCommonPrefixLength(allFolderSegments);
+  // Find common prefix among all paths
+  const commonPrefixLength = findCommonPrefixLength(allFolderSegments);
+  const maxDepth = Math.max(...allFolderSegments.map(s => s.length));
+  const minDepth = Math.min(...allFolderSegments.map(s => s.length));
 
-    // If there's a common prefix and paths are deep, use a smarter approach
-    if (commonPrefixLength > 0 && minLength > effectiveMaxNestedDepth) {
-      // Get unique leaf folders (the most specific parts)
-      const uniqueLeaves = new Set<string>();
-      for (const segments of allFolderSegments) {
-        // Take the last folder (most specific)
-        const leaf = segments[segments.length - 1];
-        if (leaf) {
-          uniqueLeaves.add(leaf);
+  // Strategy 1: If there's a deep common prefix (2+ levels), extract unique parts after it
+  if (commonPrefixLength >= 2) {
+    // Get unique folder paths after the common prefix
+    const uniqueSuffixes = new Set<string>();
+    const uniqueFolderPaths = new Set<string>();
+
+    for (const segments of allFolderSegments) {
+      if (segments.length === commonPrefixLength) {
+        // File is directly in the common parent - no suffix
+        uniqueSuffixes.add('');
+      } else if (segments.length > commonPrefixLength) {
+        // Take the next folder after common prefix
+        const nextFolder = segments[commonPrefixLength];
+        if (nextFolder) {
+          uniqueSuffixes.add(nextFolder);
+          // Also track full path after prefix for cases where we need more detail
+          const suffix = segments.slice(commonPrefixLength).join(folderSeparator);
+          uniqueFolderPaths.add(suffix);
         }
       }
+    }
 
-      // If we have a reasonable number of unique leaves, use them
-      if (uniqueLeaves.size > 0 && uniqueLeaves.size <= effectiveMaxFolders) {
-        const sortedLeaves = Array.from(uniqueLeaves).sort();
-        return sortedLeaves.join(effectiveSeparator);
+    // If all files are in subdirectories of the common parent (not directly in it)
+    if (!uniqueSuffixes.has('') && uniqueSuffixes.size > 0) {
+      // If we have few enough unique next-level folders, use those
+      if (uniqueSuffixes.size <= maxFolders) {
+        const sorted = Array.from(uniqueSuffixes).filter(s => s.length > 0).sort();
+        return sanitizeFolders(sorted, folderSeparator);
       }
 
-      // Otherwise, show common parent + unique leaves
-      if (uniqueLeaves.size > effectiveMaxFolders && commonPrefixLength > 0) {
-        const commonPrefix = allFolderSegments[0]?.slice(0, commonPrefixLength) ?? [];
-        const parentName = commonPrefix[commonPrefix.length - 1];
-        if (parentName) {
-          return parentName;
+      // If too many, fall back to common parent name
+      const commonPrefix = allFolderSegments[0]?.slice(0, commonPrefixLength) ?? [];
+      if (commonPrefix.length > 0) {
+        // Use last segment of common prefix (most specific)
+        const lastCommon = commonPrefix[commonPrefix.length - 1];
+        if (lastCommon) {
+          return sanitizeFolders([lastCommon], folderSeparator);
         }
       }
+    }
+
+    // If some files are directly in common parent, return the full common path
+    if (uniqueSuffixes.has('')) {
+      const commonPrefix = allFolderSegments[0]?.slice(0, commonPrefixLength) ?? [];
+      return sanitizeFolders(commonPrefix, folderSeparator);
     }
   }
 
-  const pathsArray = Array.from(folderPaths);
-
-  // If too many unique folder paths, find common parent or take first N
-  if (pathsArray.length > effectiveMaxFolders) {
-    // Try to find common parent directory
-    const commonParent = findCommonParent(pathsArray, effectiveSeparator);
-
-    if (commonParent) {
-      // If all paths share a common parent, use that
-      return commonParent.replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator).replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator).replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '');
-    }
-
-    // Otherwise, take the first maxFolders paths in selection order (not alphabetically)
-    const firstNPaths = pathsArray.slice(0, effectiveMaxFolders);
-    const sanitized = firstNPaths.map(folderPath =>
-      folderPath
-        .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
-        .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
-        .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
-    );
-    return sanitized.join(effectiveSeparator);
-  }
-
-  // Even when not exceeding maxFolders, check for common parent to avoid repetition
-  const commonParent = findCommonParent(pathsArray, effectiveSeparator);
-
-  // If all paths share a common parent and there are unique suffixes, use only the unique parts
-  // BUT: Don't strip the truncation marker - it's meaningful and should be preserved
-  if (commonParent && commonParent !== effectiveTruncation && pathsArray.length > 1) {
-    // Extract unique suffixes by removing the common parent prefix
-    const uniqueSuffixes = pathsArray
-      .map(path => {
-        // If path equals the common parent exactly, return empty string
-        if (path === commonParent) {
-          return '';
-        }
-        // Remove common parent prefix (e.g., 'src-cli' -> 'cli' when commonParent is 'src')
-        const prefix = commonParent + effectiveSeparator;
-        return path.startsWith(prefix) ? path.slice(prefix.length) : path;
-      })
-      .filter(suffix => suffix.length > 0); // Filter out empty strings
-
-    // If we have unique suffixes (not just the common parent), use them
-    // ONLY if all paths produced non-empty suffixes
-    if (uniqueSuffixes.length > 0 && uniqueSuffixes.length === pathsArray.length) {
-      const sortedSuffixes = uniqueSuffixes.sort();
-      const sanitized = sortedSuffixes.map(suffix =>
-        suffix
-          .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
-          .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
-          .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
-      );
-      return sanitized.join(effectiveSeparator);
-    }
-
-    // If some paths were the common parent itself (produced empty suffixes),
-    // just return the common parent to show the full breadcrumb context
-    if (uniqueSuffixes.length < pathsArray.length) {
-      return commonParent
-        .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
-        .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
-        .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '');
+  // Strategy 2: Extract unique leaf folders when paths are varied
+  const uniqueLeaves = new Set<string>();
+  for (const segments of allFolderSegments) {
+    const leaf = segments[segments.length - 1];
+    if (leaf) {
+      uniqueLeaves.add(leaf);
     }
   }
 
-  // Check for repeating folder names (like "src-errors-...-src-errors-codes")
-  // This happens when we have both full paths and truncated paths with overlapping segments
-  const truncatedPaths = pathsArray.filter(p => p.includes(effectiveTruncation));
-  const fullPaths = pathsArray.filter(p => !p.includes(effectiveTruncation));
-
-  if (truncatedPaths.length > 0 && fullPaths.length > 0) {
-    // Extract segments from truncated paths (without the truncation marker)
-    const truncatedSegments = truncatedPaths.map(p => {
-      const withoutTruncation = p.replace(effectiveTruncation + effectiveSeparator, '');
-      return withoutTruncation.split(effectiveSeparator);
-    });
-
-    // Extract segments from full paths
-    const fullPathSegments = fullPaths.map(p => p.split(effectiveSeparator));
-
-    // Check for CONTIGUOUS overlapping segments (e.g., "src-errors" appears in both)
-    // We look for sequences of 2+ matching segments to avoid false positives
-    let hasSignificantOverlap = false;
-    for (const truncSegs of truncatedSegments) {
-      for (const fullSegs of fullPathSegments) {
-        // Check if we have at least 2 contiguous matching segments
-        for (let i = 0; i < truncSegs.length - 1; i++) {
-          const seg1 = truncSegs[i];
-          const seg2 = truncSegs[i + 1];
-          if (seg1 && seg2) {
-            // Look for this pair in the full path
-            for (let j = 0; j < fullSegs.length - 1; j++) {
-              if (fullSegs[j] === seg1 && fullSegs[j + 1] === seg2) {
-                hasSignificantOverlap = true;
-                break;
-              }
-            }
-          }
-          if (hasSignificantOverlap) {break;}
-        }
-        if (hasSignificantOverlap) {break;}
-      }
-      if (hasSignificantOverlap) {break;}
-    }
-
-    // If significant overlap detected, use only unique leaf folders to avoid repetition
-    if (hasSignificantOverlap) {
-      const uniqueLeaves = new Set<string>();
-
-      // Get leaf folders from all paths
-      for (const segments of [...fullPathSegments, ...truncatedSegments]) {
-        const leaf = segments[segments.length - 1];
-        if (leaf && leaf.length > 0 && leaf !== effectiveTruncation) {
-          uniqueLeaves.add(leaf);
-        }
-      }
-
-      // If we got unique leaves, use them instead
-      if (uniqueLeaves.size > 0) {
-        const sortedLeaves = Array.from(uniqueLeaves).sort();
-        const sanitized = sortedLeaves.map(leaf =>
-          leaf
-            .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
-            .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
-            .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
-        );
-        return sanitized.join(effectiveSeparator);
-      }
-    }
+  // If we have multiple unique leaf folders (but not too many), use those
+  // Skip if only 1 unique leaf - that's too generic
+  if (uniqueLeaves.size > 1 && uniqueLeaves.size <= maxFolders) {
+    const sorted = Array.from(uniqueLeaves).sort();
+    return sanitizeFolders(sorted, folderSeparator);
   }
 
-  // Sort folder paths: put non-truncated paths first, then truncated ones
-  // This ensures common parent detection works better and output is more intuitive
-  const sortedPaths = pathsArray.sort((a, b) => {
-    const aHasTruncation = a.includes(effectiveTruncation);
-    const bHasTruncation = b.includes(effectiveTruncation);
+  // Strategy 3: Use top-level folders (or first N levels)
+  const topLevelFolders = new Set<string>();
+  const maxLevelsToShow = Math.min(2, maxNestedDepth);
 
-    // Non-truncated paths come first
-    if (!aHasTruncation && bHasTruncation) {return -1;}
-    if (aHasTruncation && !bHasTruncation) {return 1;}
+  for (const segments of allFolderSegments) {
+    const topPart = segments.slice(0, maxLevelsToShow).join(folderSeparator);
+    topLevelFolders.add(topPart);
+  }
 
-    // For paths of the same type, maintain natural order (don't alphabetically sort)
-    // This makes the output more predictable based on file selection order
-    return 0;
-  });
+  if (topLevelFolders.size <= maxFolders) {
+    const sorted = Array.from(topLevelFolders).sort();
+    return sanitizeFolders(sorted, folderSeparator);
+  }
 
-  // Sanitize folder paths (remove special chars, keep alphanumeric, dashes, and dots for separator)
-  const sanitized = sortedPaths.map(folderPath =>
-    folderPath
-      .replace(/[^a-zA-Z0-9-.]/g, effectiveSeparator)
-      .replace(new RegExp(`${effectiveSeparator}+`, 'g'), effectiveSeparator)
-      .replace(new RegExp(`^${effectiveSeparator}|${effectiveSeparator}$`, 'g'), '')
-  );
+  // Strategy 4: Fall back to first N top-level folders
+  const firstN = Array.from(topLevelFolders).slice(0, maxFolders);
+  return sanitizeFolders(firstN, folderSeparator);
+}
 
-  // Join multiple paths with the configured separator
-  return sanitized.join(effectiveSeparator);
+/**
+ * Sanitize and join folder names
+ */
+function sanitizeFolders(folders: string[], separator: string): string {
+  const sanitized = folders.map(folder =>
+    folder
+      .replace(/[^a-zA-Z0-9-.]/g, separator)
+      .replace(new RegExp(`${separator}+`, 'g'), separator)
+      .replace(new RegExp(`^${separator}|${separator}$`, 'g'), '')
+  ).filter(f => f.length > 0);
+
+  return sanitized.join(separator);
 }
 
 /**
