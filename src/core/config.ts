@@ -41,7 +41,8 @@
  * - `repo-roller.config.mjs` - Custom presets (JavaScript module)
  */
 
-import { readFile, access } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve, join, basename, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -130,22 +131,11 @@ function hashString(str: string): string {
 }
 
 /**
- * Check if a file exists
- */
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Generate a unique filename by appending a number if collision detected
+ * Uses synchronous fs operations to maintain backwards compatibility
  */
-async function avoidCollision(filepath: string): Promise<string> {
-  if (!(await fileExists(filepath))) {
+function avoidCollision(filepath: string): string {
+  if (!existsSync(filepath)) {
     return filepath;
   }
 
@@ -155,7 +145,7 @@ async function avoidCollision(filepath: string): Promise<string> {
   let counter = 1;
   let newPath = `${base}-${counter}${ext}`;
 
-  while (await fileExists(newPath)) {
+  while (existsSync(newPath)) {
     counter++;
     newPath = `${base}-${counter}${ext}`;
   }
@@ -215,22 +205,17 @@ function getSmartProjectName(root: string, config = env.defaults.filenameGenerat
  * Generate contextual output filename with smart naming
  * Supports multiple strategies: smart, simple, detailed, custom
  */
-async function generateSmartOutputFile(
+function generateSmartOutputFile(
   root: string,
   format: OutputFormat,
   profile: string,
   template?: string,
   configOverride?: Partial<typeof env.defaults.filenameGeneration>,
   tokenCount?: number
-): Promise<string> {
-  // Load user filename settings and merge with defaults
-  const { getFilenameSettings } = await import('./userSettings.js');
-  const userSettings = await getFilenameSettings();
-
-  // Merge: env defaults < user settings < config override
+): string {
+  // Use env defaults as base (user settings can be passed via configOverride)
   const config = {
     ...env.defaults.filenameGeneration,
-    ...userSettings,
     ...(configOverride || {}),
   };
   const now = new Date();
@@ -374,7 +359,7 @@ async function generateSmartOutputFile(
 
   // Handle collision prevention
   if (config.preventCollisions) {
-    fullFilename = await avoidCollision(fullFilename);
+    fullFilename = avoidCollision(fullFilename);
   }
 
   return fullFilename;
@@ -586,11 +571,11 @@ const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
  * 3. CLI overrides
  * 4. RepoRoller YAML config
  */
-export async function resolveOptions(
+export function resolveOptions(
   cli: CliOptions,
   config: RollerConfig | undefined,
   repoRollerConfig?: RepoRollerYmlConfig
-): Promise<ResolvedOptions> {
+): ResolvedOptions {
   // Start with defaults
   let options = { ...DEFAULT_OPTIONS };
 
@@ -685,7 +670,7 @@ export async function resolveOptions(
     }
 
     // Default to smart naming (project-date.ext)
-    outFile = await generateSmartOutputFile(
+    outFile = generateSmartOutputFile(
       root,
       format,
       profile,

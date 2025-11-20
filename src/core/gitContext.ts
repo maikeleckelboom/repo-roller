@@ -162,6 +162,20 @@ export function getGitContext(path: string): GitContext {
 }
 
 /**
+ * Sanitize a string to be filesystem-safe
+ * @param str - String to sanitize
+ * @returns Sanitized string safe for use in filenames
+ */
+function sanitizeForFilename(str: string): string {
+  // Replace problematic characters with dashes
+  return str
+    .replace(/[\/\\:*?"<>|]/g, '-')  // Replace filesystem-unsafe chars with dash
+    .replace(/\s+/g, '-')              // Replace whitespace with dash
+    .replace(/-{2,}/g, '-')            // Collapse multiple dashes
+    .replace(/^-+|-+$/g, '');          // Remove leading/trailing dashes
+}
+
+/**
  * Format git context for use in filename
  * @param context - Git context object
  * @param includeHash - Whether to include the commit hash
@@ -177,11 +191,11 @@ export function formatGitContextForFilename(
 
   const parts: string[] = [];
 
-  // Use tag if available, otherwise use branch
+  // Use tag if available, otherwise use branch (sanitized for filename safety)
   if (context.tag) {
-    parts.push(context.tag);
+    parts.push(sanitizeForFilename(context.tag));
   } else if (context.branch) {
-    parts.push(context.branch);
+    parts.push(sanitizeForFilename(context.branch));
   }
 
   // Add hash if requested and available
