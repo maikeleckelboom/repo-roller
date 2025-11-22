@@ -57,7 +57,7 @@ import type {
   OutputFormat,
 } from './types.js';
 import { getBuiltInPreset, listBuiltInPresets } from './builtInPresets.js';
-import { normalizeExtension } from './helpers.js';
+import { normalizeExtension, analyzeSelectedFolders } from './helpers.js';
 import { env } from './env.js';
 import { getGitContext, formatGitContextForFilename } from './gitContext.js';
 
@@ -205,13 +205,14 @@ function getSmartProjectName(root: string, config = env.defaults.filenameGenerat
  * Generate contextual output filename with smart naming
  * Supports multiple strategies: smart, simple, detailed, custom
  */
-function generateSmartOutputFile(
+export function generateSmartOutputFile(
   root: string,
   format: OutputFormat,
   profile: string,
   template?: string,
   configOverride?: Partial<typeof env.defaults.filenameGeneration>,
-  tokenCount?: number
+  tokenCount?: number,
+  selectedPaths?: readonly string[]
 ): string {
   // Use env defaults as base (user settings can be passed via configOverride)
   const config = {
@@ -222,6 +223,18 @@ function generateSmartOutputFile(
 
   // Get git context if enabled
   const gitContext = config.includeGitContext ? getGitContext(root) : null;
+
+  // Analyze selected folders if paths provided
+  const folderSuffix = selectedPaths && selectedPaths.length > 0
+    ? analyzeSelectedFolders(
+        selectedPaths,
+        3,
+        config.maxNestedFolders,
+        getPathSeparatorChar(config.pathSeparator),
+        '...',
+        root // Pass root to make paths relative
+      )
+    : '';
 
   // Build template variables object
   const projectName = getSmartProjectName(root, config);
@@ -243,6 +256,7 @@ function generateSmartOutputFile(
     '{tag}': gitContext?.tag || '',
     '{label}': config.customLabel || '',
     '{tokens}': tokenCount && config.includeTokenCount ? `${Math.round(tokenCount / 1000)}k` : '',
+    '{folders}': folderSuffix,
   };
 
   // Handle custom template strategy
@@ -276,6 +290,11 @@ function generateSmartOutputFile(
   // Project name (if enabled)
   if (config.includeProjectName) {
     parts.push(projectName);
+  }
+
+  // Folder context from selected files (if available)
+  if (folderSuffix) {
+    parts.push(folderSuffix);
   }
 
   // Git context (if enabled and available)

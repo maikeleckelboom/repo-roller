@@ -22,6 +22,7 @@ vi.mock('../src/core/userSettings.js', () => ({
   loadUserSettings: vi.fn(),
   saveUserSettings: vi.fn(),
   setLastSelectedFiles: vi.fn(),
+  getFilenameSettings: vi.fn(),
 }));
 
 vi.mock('../src/core/history.js', () => ({
@@ -99,6 +100,29 @@ describe('runInteractive', () => {
     // Setup default mocks
     vi.mocked(userSettingsModule.loadUserSettings).mockResolvedValue({});
     vi.mocked(userSettingsModule.saveUserSettings).mockResolvedValue();
+    vi.mocked(userSettingsModule.getFilenameSettings).mockResolvedValue({
+      strategy: 'smart',
+      includeDate: true,
+      datePosition: 'suffix',
+      dateFormat: 'YYYY-MM-DD',
+      includeTime: false,
+      timeFormat: '24h',
+      maxNestedFolders: 4,
+      maxFolderPaths: 3,
+      folderSeparator: '-',
+      pathSeparator: 'dash',
+      truncationPattern: '...',
+      showTruncationEllipsis: true,
+      includeProjectName: true,
+      includeProfile: true,
+      customTemplate: '',
+      includeGitContext: true,
+      includeTokenCount: false,
+      customLabel: '',
+      enableWindowsSafeMode: true,
+      maxFilenameLength: 250,
+      preventCollisions: true,
+    });
     vi.mocked(renderModule.render).mockResolvedValue('# Mock Output\n');
     vi.mocked(fsModule.writeFile).mockResolvedValue();
     vi.mocked(historyModule.recordHistoryEntry).mockResolvedValue();
