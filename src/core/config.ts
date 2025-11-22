@@ -230,7 +230,9 @@ export function generateSmartOutputFile(
         selectedPaths,
         3,
         config.maxNestedFolders,
-        getPathSeparatorChar(config.pathSeparator)
+        getPathSeparatorChar(config.pathSeparator),
+        '...',
+        root // Pass root to make paths relative
       )
     : '';
 

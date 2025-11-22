@@ -351,7 +351,8 @@ export function analyzeSelectedFolders(
   maxFolders = 3,
   maxNestedDepth = 4,
   folderSeparator = '-',
-  truncationPattern = '...'
+  truncationPattern = '...',
+  root?: string
 ): string {
   if (selectedPaths.length === 0) {
     return '';
@@ -361,7 +362,19 @@ export function analyzeSelectedFolders(
   const allFolderSegments: string[][] = [];
 
   for (const path of selectedPaths) {
-    const normalizedPath = path.replace(/\\/g, '/');
+    let pathToAnalyze = path;
+
+    // Make path relative to root if root is provided
+    if (root) {
+      const relativePath = relative(root, path);
+      // Skip if path is outside root
+      if (relativePath.startsWith('..')) {
+        continue;
+      }
+      pathToAnalyze = relativePath;
+    }
+
+    const normalizedPath = pathToAnalyze.replace(/\\/g, '/');
     const parts = normalizedPath.split('/');
 
     // Skip files in root directory
