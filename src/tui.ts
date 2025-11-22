@@ -28,14 +28,14 @@ import React from 'react';
 import { basename } from 'node:path';
 import type { ResolvedOptions, ScanResult, OutputFormat } from './core/types.js';
 import { scanFiles } from './core/scan.js';
-import { analyzeSelectedFolders } from './core/helpers.js';
 import { render as renderOutput } from './core/render.js';
 import { CustomTreeSelect } from './components/CustomTreeSelect.js';
 import { TextInput } from './components/TextInput.js';
 import { OutputOptions } from './components/OutputOptions.js';
 import { OutputFormatSelect } from './components/OutputFormatSelect.js';
 import { FilenameInput } from './components/FilenameInput.js';
-import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS } from './core/userSettings.js';
+import { loadUserSettings, saveUserSettings, resetInteractiveSettings, DEFAULT_INTERACTIVE_SETTINGS, getFilenameSettings } from './core/userSettings.js';
+import { generateSmartOutputFile } from './core/config.js';
 import * as ui from './core/ui.js';
 import { estimateTokens, calculateCost } from './core/tokens.js';
 import { formatBytes, resolveOutputPath } from './core/helpers.js';
@@ -228,26 +228,6 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     // Update scan with selected files
     scan = selectedScan;
 
-    // Generate default filename base: reponame[-folders]-timestamp
-    const generateDefaultFilenameBase = (): string => {
-      const repoName = basename(options.root);
-      const timestamp = new Date().toISOString().split('T')[0];
-
-      // Analyze selected folders for smart naming (max 3 unique paths, max 4 levels deep)
-      const folderSuffix = analyzeSelectedFolders(
-        selectedPaths,
-        3,
-        options.maxNestedFolders
-      );
-
-      // Include folder context if available
-      if (folderSuffix) {
-        return `${repoName}-${folderSuffix}-${timestamp}`;
-      }
-
-      return `${repoName}-${timestamp}`;
-    };
-
     // Prompt for output format (unless --yes mode)
     let outFile = options.outFile;
     let selectedFormat: OutputFormat = options.format;
@@ -307,7 +287,17 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
       // Step 4: Filename input
       console.log('');
 
-      const defaultFilenameBase = generateDefaultFilenameBase();
+      // Load user filename settings and generate smart default filename
+      const userFilenameSettings = await getFilenameSettings();
+      const defaultFilenameBase = generateSmartOutputFile(
+        options.root,
+        selectedFormat,
+        options.profile,
+        undefined, // no custom template
+        userFilenameSettings,
+        undefined, // token count not yet known
+        selectedPaths // pass selected paths for smart folder analysis
+      );
 
       inkExitPromise = undefined;
       const filenameResult = await new Promise<string | 'cancel'>((resolve) => {
@@ -344,10 +334,20 @@ export async function runInteractive(options: ResolvedOptions): Promise<void> {
     }
 
     // Ensure output path has correct extension using helper
+    // Load user filename settings for fallback filename generation
+    const userFilenameSettings = await getFilenameSettings();
     outFile = resolveOutputPath({
       out: outFile,
       format: selectedFormat,
-      defaultBaseName: generateDefaultFilenameBase(),
+      defaultBaseName: generateSmartOutputFile(
+        options.root,
+        selectedFormat,
+        options.profile,
+        undefined,
+        userFilenameSettings,
+        undefined,
+        selectedPaths
+      ),
     });
 
     // Update options with user selections
